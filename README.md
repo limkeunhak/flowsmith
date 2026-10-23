@@ -72,3 +72,15 @@ API 목록은 편집 화면의 **API**(Swagger) 또는 `GET /api/openapi.json` �
 
 빌드 단계가 없다 — Node의 type stripping으로 `.ts`를 그대로 돌린다.
 Playwright는 1.63.0(Chromium headless shell 1243).
+
+### git — WSL 저장소를 Windows git으로도 볼 때
+
+저장소는 WSL 안에 두고, 커밋하는 git도 WSL의 것을 쓴다. 그래도 Windows의 git · VS Code가 `\\wsl.localhost\…` 경로로 같은 폴더를 보면 아래 두 가지가 생긴다. 그래서 저장소마다 아래 설정을 한 번 해 둔다(`.git/config`에 들어가 WSL git과 Windows git이 함께 쓴다). 리눅스 · 맥 · CI에서 받은 저장소나, Windows git을 쓰지 않는 WSL 저장소에는 필요 없다.
+
+```bash
+git config core.autocrlf false   # Windows git(전역 autocrlf=true)이 파일을 CRLF로 다시 쓰지 않게
+git config core.filemode false   # Windows git은 이 경로에서 실행 권한을 못 읽는다 — 755 파일이 늘 «바뀜»으로 보이지 않게
+```
+
+- ★실행 권한은 저장소에 기록된 대로 남는다(`#!`로 시작하는 `docker/workers.sh` · `packages/engine/src/cli.ts` · `packages/worker/src/main.ts`는 755). 다만 filemode를 껐으니 **새 실행 파일은 `chmod +x`만으로는 커밋에 들어가지 않는다** — `git update-index --chmod=+x <파일>`을 한 번 한다.
+- 내용은 그대로인데 «바뀜»이 뜨면 줄 끝이나 권한 차이다. `git diff --ignore-cr-at-eol`이 비어 있으면 WSL에서 `git checkout -- <파일>`로 되돌린다.
