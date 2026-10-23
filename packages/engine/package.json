@@ -1,0 +1,21 @@
+{
+  "name": "@flowsmith/engine",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "플로우 실행기 — Primitives(Playwright) · 노드 실행 · 점검 · 실행 정책. 워커(packages/worker)가 부른다",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "bin": {
+    "flowsmith": "./src/cli.ts"
+  },
+  "dependencies": {
+    "@flowsmith/core": "workspace:*",
+    "playwright": "1.63.0",
+    "viem": "2.57.2"
+  },
+  "devDependencies": {
+    "@flowsmith/testsite": "workspace:*"
+  }
+}

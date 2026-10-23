@@ -1,0 +1,28 @@
+{
+  "name": "@flowsmith/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "HTTP API · 저장소(SQLite) · 시크릿 상자 · 실행 관리 · 워커 나눠 주기(master)",
+  "exports": {
+    ".": "./src/index.ts",
+    "./api-types": "./src/api-types.ts"
+  },
+  "scripts": {
+    "start": "node src/main.ts"
+  },
+  "dependencies": {
+    "@flowsmith/core": "workspace:*",
+    "@flowsmith/engine": "workspace:*",
+    "@flowsmith/recorder": "workspace:*",
+    "@flowsmith/worker": "workspace:*",
+    "nodemailer": "6.9.16",
+    "playwright": "1.63.0",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "@flowsmith/testsite": "workspace:*",
+    "@types/nodemailer": "6.4.17",
+    "@types/ws": "^8.18.2"
+  }
+}

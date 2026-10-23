@@ -1,0 +1,43 @@
+# 푸시 · PR마다 — 타입 검사 · 시험(진짜 Chromium · 시험 사이트) · 편집 화면 빌드 (PLAN §27)
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      # 시험의 시각(파일 이름 · 일정)이 개발 PC와 같게
+      TZ: Asia/Seoul
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4   # package.json의 packageManager(pnpm 11)를 따른다
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: 의존성
+        run: pnpm install --frozen-lockfile
+
+      - name: Chromium
+        run: pnpm --filter @flowsmith/engine exec playwright install --with-deps chromium
+
+      - name: 타입 검사
+        run: pnpm typecheck
+
+      - name: 시험
+        run: pnpm test
+
+      - name: 편집 화면 빌드
+        run: pnpm studio:build

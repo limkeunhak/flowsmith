@@ -1,0 +1,24 @@
+{
+  "name": "flowsmith",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "웹 자동화 플로우 엔진 — 웹 페이지에서 하는 일을 노드로, 데이터 흐름을 엣지로 그린다",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "packageManager": "pnpm@11.15.0",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p apps/studio/tsconfig.json --noEmit",
+    "studio:build": "pnpm --filter @flowsmith/studio build",
+    "studio:dev": "pnpm --filter @flowsmith/studio dev",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "ext": "node packages/pack/src/main.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0",
+    "vitest": "^4.1.10"
+  }
+}

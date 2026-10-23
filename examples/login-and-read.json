@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "id": "login-and-read",
+  "name": "로그인하고 주문 상태 읽기",
+  "description": "시험 사이트에 로그인해서 주문번호로 조회하고, 상태가 '취소'면 멈춘다",
+  "params": [{ "name": "orderNo", "label": "주문번호", "required": true }],
+  "vars": { "baseUrl": "http://localhost:4300" },
+  "secrets": [{ "name": "shop", "kind": "login", "description": "시험 사이트 계정" }],
+  "settings": {
+    "forbiddenLabels": ["삭제", "결제", "주문\\s*취소"],
+    "defaultTimeoutMs": 15000,
+    "monitorIntervalMin": 360,
+    "probeParams": { "orderNo": "A-1001" }
+  },
+  "nodes": [
+    {
+      "id": "login",
+      "type": "web",
+      "name": "로그인",
+      "position": { "x": 0, "y": 0 },
+      "config": {
+        "start": { "kind": "url", "url": "{{ $vars.baseUrl }}/login" },
+        "actions": [
+          {
+            "id": "a1", "kind": "fill", "value": "{{ $secrets.shop.username }}",
+            "target": { "label": "'아이디' 칸", "locators": [{ "kind": "label", "value": "아이디" }, { "kind": "css", "value": "#uid" }], "fingerprint": { "tag": "input", "attrs": { "id": "uid", "name": "uid" }, "text": "", "nearText": "아이디" }, "frames": [], "verifiedAt": "2026-10-14T00:00:00Z" }
+          },
+          {
+            "id": "a2", "kind": "fill", "value": "{{ $secrets.shop.password }}",
+            "target": { "label": "'비밀번호' 칸", "locators": [{ "kind": "label", "value": "비밀번호" }], "fingerprint": null, "frames": [], "verifiedAt": null }
+          },
+          {
+            "id": "a3", "kind": "click",
+            "target": { "label": "'로그인' 버튼", "locators": [{ "kind": "role", "value": "button", "name": "로그인" }], "fingerprint": null, "frames": [], "verifiedAt": null }
+          },
+          {
+            "id": "a4", "kind": "read", "output": "userName", "strategy": "text",
+            "target": { "label": "오른쪽 위 사용자 이름", "locators": [{ "kind": "testid", "value": "user-name" }], "fingerprint": null, "frames": [], "verifiedAt": null }
+          }
+        ]
+      }
+    },
+    {
+      "id": "search",
+      "type": "web",
+      "name": "주문 조회",
+      "position": { "x": 300, "y": 0 },
+      "config": {
+        "start": { "kind": "continue" },
+        "actions": [
+          { "id": "b0", "kind": "goto", "url": "{{ $vars.baseUrl }}/orders" },
+          {
+            "id": "b1", "kind": "fill", "value": "{{ $params.orderNo }}",
+            "target": { "label": "'주문번호' 칸", "locators": [{ "kind": "placeholder", "value": "주문번호" }], "fingerprint": null, "frames": [], "verifiedAt": null }
+          },
+          {
+            "id": "b2", "kind": "click",
+            "target": { "label": "'조회' 버튼", "locators": [{ "kind": "role", "value": "button", "name": "조회" }], "fingerprint": null, "frames": [], "verifiedAt": null }
+          },
+          {
+            "id": "b3", "kind": "read", "output": "status", "strategy": "text",
+            "target": { "label": "주문 상태", "locators": [{ "kind": "css", "value": "#order-status" }], "fingerprint": null, "frames": [], "verifiedAt": null }
+          },
+          {
+            "id": "b4", "kind": "read", "output": "amount", "strategy": "text",
+            "target": { "label": "결제 금액", "locators": [{ "kind": "css", "value": "#order-amount" }], "fingerprint": null, "frames": [], "verifiedAt": null }
+          }
+        ]
+      }
+    },
+    {
+      "id": "check",
+      "type": "condition",
+      "name": "취소된 주문인가",
+      "position": { "x": 600, "y": 0 },
+      "config": {
+        "cases": [
+          {
+            "id": "cancelled", "label": "취소됨", "match": "all",
+            "rules": [{ "left": "{{ $input.status }}", "op": "eq", "right": "취소" }],
+            "then": { "kind": "end", "status": "failure", "message": "취소된 주문입니다" }
+          }
+        ],
+        "else": { "then": { "kind": "next" } }
+      }
+    },
+    {
+      "id": "shape",
+      "type": "custom",
+      "name": "금액 숫자로",
+      "position": { "x": 900, "y": 0 },
+      "config": {
+        "code": "return { amountNumber: Number(String(input.amount).replace(/[^0-9.-]/g, '')), status: input.status };",
+        "outputs": ["amountNumber", "status"],
+        "usesPage": false,
+        "timeoutMs": 2000
+      }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "from": { "node": "login", "port": "out" }, "to": { "node": "search" } },
+    { "id": "e2", "from": { "node": "search", "port": "out" }, "to": { "node": "check" } },
+    { "id": "e3", "from": { "node": "check", "port": "else" }, "to": { "node": "shape" } }
+  ]
+}

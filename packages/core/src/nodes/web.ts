@@ -1,0 +1,160 @@
+/**
+ * **웹페이지 노드** — 시작(주소 · 이어서 · 사람의 탭)과 동작들, 요소를 가리키는 위치(Target) (PLAN §3.4).
+ */
+import type { Rule } from "./condition.ts";
+
+export interface WebConfig {
+  /**
+   * url: 이 주소로 가서 시작한다 · continue: 앞 웹페이지 노드가 머문 페이지에서 이어서
+   * tab: **사람이 열어 둔 탭** 중 주소에 이 글자가 든 것에서 시작한다(attach 전용) — 주소를 옮기지 않는다.
+   *      WebSquare처럼 페이지를 옮기면 껍데기가 날아가는 사이트가 있다
+   */
+  start: { kind: "url"; url: string } | { kind: "continue" } | { kind: "tab"; match: string };
+  actions: WebAction[];
+}
+
+export const LOCATOR_KINDS = ["testid", "role", "label", "placeholder", "text", "css", "xpath"] as const;
+export type LocatorKind = (typeof LOCATOR_KINDS)[number];
+
+export interface Locator {
+  kind: LocatorKind;
+  value: string;
+  /** role일 때 접근성 이름 */
+  name?: string;
+}
+
+/** 녹화 때 요소의 모습. 변경 감시가 지금 요소와 비교한다 (PLAN §6) */
+export interface Fingerprint {
+  tag: string;
+  attrs: Record<string, string>;
+  text: string;
+  nearText: string;
+}
+
+export interface Target {
+  /** 사람 말 — "'로그인' 버튼" */
+  label: string;
+  /** ★실행은 locators[0]만 쓴다. 정확히 하나를 가리켜야 한다 — 나머지는 진단용(결정 3) */
+  locators: Locator[];
+  fingerprint: Fingerprint | null;
+  /** iframe 경로 — 바깥부터 차례로 iframe을 가리키는 css */
+  frames: string[];
+  verifiedAt: string | null;
+}
+
+export const RISKS = ["safe", "unsafe"] as const;
+export type Risk = (typeof RISKS)[number];
+
+export const READ_STRATEGIES = ["auto", "value", "text", "innerText", "checked", "attribute", "selected", "link"] as const;
+export type ReadStrategy = (typeof READ_STRATEGIES)[number];
+
+export const WAIT_KINDS = ["fixed", "visible", "hidden", "url", "networkIdle", "filled"] as const;
+export type WaitKind = (typeof WAIT_KINDS)[number];
+
+export type Wait =
+  | { kind: "fixed"; ms: number }
+  | { kind: "visible"; target: Target }
+  | { kind: "hidden"; target: Target }
+  | { kind: "url"; pattern: string }
+  | { kind: "networkIdle" }
+  /** 칸 · 요소에 값이 찰 때까지 — 조회 뒤 결과가 늦게 채워지는 화면 */
+  | { kind: "filled"; target: Target };
+
+interface ActionBase {
+  id: string;
+  /** 되돌릴 수 없는 동작이면 unsafe — 점검 실행이 누르지 않는다 */
+  risk: Risk;
+  timeoutMs: number | null;
+  /**
+   * «있을 때만» — 요소를 잠깐(2초) 찾아보고 없으면 건너뛴다. 처음 들어올 때만 뜨는 안내창 닫기 같은 것.
+   * ★«없음»을 성공으로 넘기는 자리라 꼭 필요한 동작에는 켜지 않는다
+   */
+  optional: boolean;
+  /** 실패하면 다시 — 없으면 플로우 설정을 따른다. 되돌릴 수 없는 동작은 다시 하지 않는다 */
+  retries?: number;
+  /**
+   * «조건이 맞을 때만» — 조건 노드의 규칙 하나. 안 맞으면 건너뛴다(선물 포장이 「있음」일 때만 체크 같은 것).
+   * 없으면 늘 한다
+   */
+  when?: Rule;
+}
+
+/**
+ * «사람 기다리기»가 끝났다는 표시 — 로그인 화면이 사라지면 · 이 요소가 보이면 · 주소가 이렇게 되면
+ * (기다리기의 일부만 — 「고정 시간」 · 「네트워크 조용」은 사람이 끝냈다는 뜻이 아니다)
+ */
+export type HumanDone = Extract<Wait, { kind: "hidden" | "visible" | "url" }>;
+export const HUMAN_DONE_KINDS = ["hidden", "visible", "url"] as const;
+/** 사람을 기다리는 시간 — 기본 5분 · 10초~30분 */
+export const HUMAN_TIMEOUT = { defaultMs: 5 * 60_000, minMs: 10_000, maxMs: 30 * 60_000 } as const;
+
+/** 읽은 글자를 바꾸는 법 — number: 숫자 · 부호 · 소수점만 남겨 숫자로(「651,170원」→ 651170) */
+export const READ_TRANSFORMS = ["number"] as const;
+export type ReadTransform = (typeof READ_TRANSFORMS)[number];
+
+export type WebAction =
+  | (ActionBase & { kind: "goto"; url: string })
+  | (ActionBase & { kind: "click"; target: Target; popup: boolean })
+  | (ActionBase & { kind: "fill"; target: Target; value: string })
+  | (ActionBase & { kind: "select"; target: Target; value: string })
+  | (ActionBase & { kind: "check"; target: Target; checked: boolean })
+  | (ActionBase & { kind: "press"; target: Target | null; key: string })
+  | (ActionBase & { kind: "wait"; wait: Wait })
+  | (ActionBase & { kind: "read"; target: Target; output: string; strategy: ReadStrategy; attribute: string | null; transform: ReadTransform | null })
+  | (ActionBase & { kind: "readTable"; table: TableTarget; output: string })
+  /** 팝업 창을 닫고 연 창으로 돌아간다(닫기 단추가 없을 때) */
+  | (ActionBase & { kind: "closeWindow" })
+  /** 표에서 키 열이 그 값인 행을 찾아 누른다 — 행 번호가 아니라 값으로 찾는다 */
+  | (ActionBase & { kind: "pickRow"; pick: RowPick })
+  /** 확인 — 화면의 값이 기대와 다르면 **멈춘다**(신원 대조: 다른 고객의 화면이면 더 가지 않는다) */
+  | (ActionBase & { kind: "assert"; target: Target; strategy: ReadStrategy; equals: string })
+  /**
+   * **사람 기다리기** — 로그인 · 본인 인증처럼 사람이 직접 해야 하는 일. 실행이 멈춰 기다리고, 끝났다는 표시가 오면 이어 간다.
+   *   appears  이 요소가 보일 때만 기다린다(로그인 화면일 때만) — 없으면 건너뛴다. null이면 늘 기다린다
+   *   done     끝났다는 표시. 처음부터 맞으면(이미 로그인됨) 기다리지 않는다
+   *   timeoutMs 기다리는 시간(ActionBase) — 없으면 5분. 넘으면 실패
+   * ★사람이 넣은 것(아이디 · 비밀번호)은 녹화하지도 기록하지도 않는다. 점검 실행은 이 동작 앞에서 멈춘다
+   */
+  | (ActionBase & { kind: "human"; prompt: string; appears: Target | null; done: HumanDone });
+
+export const ACTION_KINDS = ["goto", "click", "fill", "select", "check", "press", "wait", "read", "readTable", "closeWindow", "pickRow", "assert", "human"] as const;
+export type ActionKind = WebAction["kind"];
+
+export interface TableTarget {
+  label: string;
+  /** 행 하나하나를 가리키는 위치 */
+  rows: Target;
+  /** 행 안에서의 상대 위치(css) */
+  columns: TableColumn[];
+  maxRows: number;
+}
+
+/**
+ * 행을 찾는 방법 — key: 키 칸의 글자가 value인 행(순서가 바뀌어도 같은 건) ·
+ * index: value번째 행(1부터 · 음수는 끝에서 — -1은 마지막). 목록의 «n번째 레코드»
+ */
+export const ROW_PICK_BY = ["key", "index"] as const;
+export type RowPickBy = (typeof ROW_PICK_BY)[number];
+
+export interface RowPick {
+  label: string;
+  /** 행 하나하나를 가리키는 위치(여러 개가 정상) */
+  rows: Target;
+  /** 찾는 방법 — 없으면 key(옛 매니페스트) */
+  by?: RowPickBy;
+  /** 키 칸 — 행 안에서의 css · 그 칸의 글자가 value와 같은 행을 고른다(by key만) */
+  keyColumn: string;
+  keyLabel: string;
+  /** 표현식 — key면 찾을 글자「{{ $params.orderNo }}」 · index면 몇 번째「3」「{{ $params.n }}」「-1」 */
+  value: string;
+  /** 행 안에서 누를 것(css). 비우면 행 자체를 누른다 */
+  click: string;
+  /** 고르면 안 되는 행 — 이 칸의 글자가 값들 중 하나면 이유를 말하며 멈춘다(「주문확정」) */
+  refuse: { column: string; values: string[]; reason: string } | null;
+}
+
+export interface TableColumn {
+  name: string;
+  selector: string;
+  strategy: ReadStrategy;
+}

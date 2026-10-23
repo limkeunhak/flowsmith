@@ -1,0 +1,56 @@
+# 이 PC에서 master/worker를 띄워 본다 (docs/DOCKER.md)
+#
+#   docker compose up -d --build                     서버 → http://localhost:4410 (첫 관리자는 로그의 설정 토큰으로)
+#   ./docker/workers.sh                              워커 둘의 토큰을 만들어 .env에 적는다
+#   docker compose --profile workers up -d           워커 둘이 서버에 붙는다
+#
+# ★시험용이다 — 워커와 서버가 http로 이야기한다(FLOWSMITH_WORKER_ALLOW_HTTP=1). 사내에서는 서버 앞에 https를 둔다.
+# ★워커 컨테이너에는 사람의 크롬이 없다 — «브라우저를 띄우는» 플로우만 돈다(attach 플로우는 그 PC의 워커로).
+
+name: flowsmith
+
+x-image: &image
+  build: .
+  image: flowsmith:local
+
+services:
+  server:
+    <<: *image
+    environment:
+      HOST: 0.0.0.0                                  # 밖으로 연다 — 로그인이 저절로 켜진다
+      FLOWSMITH_MASTER_KEY_FILE: /data/master.key
+      FLOWSMITH_PUBLIC_URL: http://localhost:4410 # 알림 속 링크
+    # 마스터 키가 없으면 처음 한 번 만든다(데이터 볼륨에 남는다)
+    command: >
+      sh -c 'test -s /data/master.key || node packages/server/src/main.ts keygen > /data/master.key;
+             exec node packages/server/src/main.ts --port 4400 --data /data'
+    ports: ["4410:4400"]
+    volumes: ["flowsmith-data:/data"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4400/api/auth/me').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 5s
+      retries: 20
+    restart: unless-stopped
+
+  worker1:
+    <<: *image
+    profiles: [workers]
+    command: ["node", "packages/worker/src/main.ts", "--server", "http://server:4400"]
+    environment:
+      FLOWSMITH_WORKER_TOKEN: ${WORKER1_TOKEN:-}
+      FLOWSMITH_WORKER_ALLOW_HTTP: "1"
+    depends_on: { server: { condition: service_healthy } }
+    restart: on-failure:3
+
+  worker2:
+    <<: *image
+    profiles: [workers]
+    command: ["node", "packages/worker/src/main.ts", "--server", "http://server:4400"]
+    environment:
+      FLOWSMITH_WORKER_TOKEN: ${WORKER2_TOKEN:-}
+      FLOWSMITH_WORKER_ALLOW_HTTP: "1"
+    depends_on: { server: { condition: service_healthy } }
+    restart: on-failure:3
+
+volumes:
+  flowsmith-data:

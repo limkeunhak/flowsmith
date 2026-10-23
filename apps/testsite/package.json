@@ -1,0 +1,13 @@
+{
+  "name": "@flowsmith/testsite",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "엔진 · 레코더 · 변경 감시 시험용 작은 쇼핑몰",
+  "exports": {
+    ".": "./server.ts"
+  },
+  "scripts": {
+    "start": "node server.ts"
+  }
+}

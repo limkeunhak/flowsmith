@@ -1,0 +1,28 @@
+{
+  "name": "@flowsmith/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "워커 — 엔진을 돌리는 쪽. 서버 안(같은 프로세스) 또는 사람 PC(서버에 붙는 워커 프로그램 — 실행 · 그 PC의 크롬에서 녹화)",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "bin": {
+    "flowsmith-worker": "./src/main.ts"
+  },
+  "scripts": {
+    "start": "node src/main.ts"
+  },
+  "dependencies": {
+    "@flowsmith/core": "workspace:*",
+    "@flowsmith/engine": "workspace:*",
+    "@flowsmith/recorder": "workspace:*",
+    "adm-zip": "0.6.1",
+    "playwright": "1.63.0",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "0.5.7",
+    "@types/ws": "^8.18.2"
+  }
+}

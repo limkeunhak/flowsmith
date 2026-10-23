@@ -1,0 +1,10 @@
+{
+  "name": "@flowsmith/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "플로우 매니페스트 — 타입 · 검문소 · 컴파일 · 표현식 · 실행 상태. 순수, 브라우저 없음",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

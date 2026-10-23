@@ -1,0 +1,19 @@
+{
+  "name": "@flowsmith/recorder",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "레코더 — 페이지에 심는 스크립트 · 위치 확인 · 녹화 세션(Playwright Page 위). 표시 방식과 무관",
+  "exports": {
+    ".": "./src/index.ts",
+    "./protocol": "./src/protocol.ts"
+  },
+  "dependencies": {
+    "@flowsmith/core": "workspace:*",
+    "@flowsmith/engine": "workspace:*",
+    "playwright": "1.63.0"
+  },
+  "devDependencies": {
+    "@flowsmith/testsite": "workspace:*"
+  }
+}
