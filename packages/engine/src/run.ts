@@ -17,7 +17,7 @@ import {
   type CheckResult, type ExtensionNode, type Flow, type FlowNode, type NodeStatus, type Output, type ProbeFinding, type ProbeReport, type Scope, type SecretValue,
 } from "@flowsmith/core";
 import { probeReport, ProbeStop } from "./probe.ts";
-import { BrowserSession } from "./browser/browser-session.ts";
+import { BrowserSession, type AppView } from "./browser/browser-session.ts";
 import type { ExtensionRegistry } from "./extensions.ts";
 import { RunStopped, StepError, toFailure, type StepFailure } from "./errors.ts";
 import { Primitives } from "./browser/primitives.ts";
@@ -56,6 +56,8 @@ export interface RunOptions {
    * 없으면 지갑 브라우저 플로우는 브라우저를 열 때 멈춘다(화면이 없는 워커)
    */
   metamask?: MetaMaskEnv;
+  /** 앱 안 브라우저(browser: "app")의 뷰를 연다 — 데스크톱 앱의 워커가 준다. 없으면 그 플로우는 브라우저를 열 때 멈춘다 */
+  openApp?: () => Promise<AppView>;
   /** 이 워커에 설치된 확장들 */
   extensions?: ExtensionRegistry;
   /** 점검 실행 — 요소를 녹화 때와 견주고, 되돌릴 수 없는 동작 앞에서 멈춘다. 결과에 `probe` 보고서가 붙는다 */
@@ -207,6 +209,7 @@ export async function runFlow(flow: Flow, opts: RunOptions = {}): Promise<RunRes
     ...(opts.browser ? { browser: opts.browser } : {}), ...(opts.page ? { page: opts.page } : {}),
     ...(opts.headless !== undefined ? { headless: opts.headless } : {}), ...(opts.cdpUrl ? { cdpUrl: opts.cdpUrl } : {}),
     ...(openWallet ? { openWallet } : {}),
+    ...(opts.openApp && flow.settings.browser === "app" ? { openApp: opts.openApp } : {}),
   });
   let chainReady = false;
   const walletBase = (page: Page) => {
@@ -260,7 +263,7 @@ export async function runFlow(flow: Flow, opts: RunOptions = {}): Promise<RunRes
   const findings: ProbeFinding[] = [];
   let probeStop: ProbeStop | null = null;
   let shot: RunResult["shot"];
-  const humanOk = !opts.probe && (opts.human ?? (flow.settings.browser === "attach" || opts.page !== undefined));
+  const humanOk = !opts.probe && (opts.human ?? (flow.settings.browser === "attach" || flow.settings.browser === "app" || opts.page !== undefined));
 
   try {
     for (let job = state.next(); job !== null; job = state.next()) {

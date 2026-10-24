@@ -36,7 +36,7 @@ import { InProcessWorker } from "./run/worker.ts";
 import { mailerFromEnv } from "./run/mailer.ts";
 import { readFileSync } from "node:fs";
 import { configureEngine, makeHttpGuard } from "@flowsmith/engine";
-import { parseTrustedKeys, type TrustedKey } from "@flowsmith/worker";
+import { AppViews, parseTrustedKeys, type TrustedKey } from "@flowsmith/worker";
 
 const host = process.env["HOST"] ?? "127.0.0.1";
 const loopback = host === "127.0.0.1" || host === "localhost" || host === "::1";
@@ -115,6 +115,11 @@ for (const ext of ["", "-wal", "-shm"]) {
 // 확장 — FLOWSMITH_EXTENSIONS=모듈,모듈 · 사람의 크롬 — FLOWSMITH_CDP_URL (기본 http://127.0.0.1:9222)
 const extensions = await loadExtensions((process.env["FLOWSMITH_EXTENSIONS"] ?? "").split(",")).catch((e: Error) => { console.error(e.message); process.exit(1); });
 const cdpUrl = process.env["FLOWSMITH_CDP_URL"];
+// 데스크톱 앱이 띄웠으면(parentPort) 앱과 말을 주고받는다 — 끄기 · 앱 안 브라우저 뷰
+const parentPort = (process as { parentPort?: { on(e: "message", f: (m: { data: unknown }) => void): void; postMessage(m: unknown): void } }).parentPort;
+// 앱 안 브라우저(PLAN §44) — 앱이 연 CDP 주소(127.0.0.1 · 임의 포트)를 받았을 때만
+const appCdp = process.env["FLOWSMITH_APP_CDP"]?.trim();
+const appViews = appCdp && parentPort ? new AppViews(appCdp, { post: (m) => parentPort.postMessage(m), onMessage: (fn) => parentPort.on("message", (m) => fn(m.data)) }) : undefined;
 // 확장 플러그인 — 믿는 키 · 서명 정책 · 사내 저장소
 const keysFile = process.env["FLOWSMITH_PLUGIN_KEYS"];
 let pluginKeys: TrustedKey[] = [];
@@ -132,7 +137,7 @@ const app = await startApp({
   dbPath: join(dataDir, "flowsmith.db"),
   box,
   // 지갑 브라우저 — --headed면 저절로 · FLOWSMITH_WALLET_BROWSER=on이면 띄우는 브라우저는 창 없이 두고 지갑 브라우저만 창을 띄운다(데스크톱 앱)
-  worker: new InProcessWorker({ headless: !argv.includes("--headed"), walletWindow: (process.env["FLOWSMITH_WALLET_BROWSER"] ?? "").trim().toLowerCase() === "on", extensions, filesDir, ...(cdpUrl ? { cdpUrl } : {}) }),
+  worker: new InProcessWorker({ headless: !argv.includes("--headed"), walletWindow: (process.env["FLOWSMITH_WALLET_BROWSER"] ?? "").trim().toLowerCase() === "on", extensions, filesDir, ...(cdpUrl ? { cdpUrl } : {}), ...(appViews ? { appViews } : {}) }),
   filesDir,
   extensions,
   ai: { envKey: process.env["FLOWSMITH_ANTHROPIC_KEY"]?.trim() || null, envGeminiKey: process.env["FLOWSMITH_GEMINI_KEY"]?.trim() || null },
@@ -163,5 +168,5 @@ const stop = async () => { console.log("끄는 중…"); await app.close(); proc
 process.on("SIGINT", stop);
 process.on("SIGTERM", stop);
 // 데스크톱 앱(Electron utilityProcess)이 띄웠으면 — 앱이 닫힐 때 «stop»을 보낸다(Windows에는 SIGTERM이 없다)
-(process as { parentPort?: { on(e: "message", f: (m: { data: unknown }) => void): void; postMessage(m: unknown): void } }).parentPort?.on("message", (m) => { if (m.data === "stop") void stop(); });
-(process as { parentPort?: { postMessage(m: unknown): void } }).parentPort?.postMessage({ t: "ready", url: app.url });
+parentPort?.on("message", (m) => { if (m.data === "stop") void stop(); });
+parentPort?.postMessage({ t: "ready", url: app.url });

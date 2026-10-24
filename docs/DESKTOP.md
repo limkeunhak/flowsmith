@@ -138,7 +138,7 @@ Flowsmith 데스크톱 앱 (Electron · Windows)
 | **0. 확인** ✅ | ① Electron의 Node에서 서버 · 워커가 도나(type stripping · `node:sqlite` · Playwright) ② WebContentsView를 Playwright로 조종 · 녹화(connectOverCDP) ③ CDP 포트 위험을 줄이는 길 ④ Windows에서 지갑 브라우저로 로그인까지(qa.msu.io — 사내망) | 넷 다 «된다 / 이렇게 바꾼다»가 정해짐 — §9. ④의 서명 · 로그인 완료만 사내망에서 남음 |
 | **1. 지갑 브라우저** 🔶 | `wallet` 모드 · 프로필 · MetaMask 받기 · «MetaMask 승인» 동작 · 설정 화면 · 가이드. **앱 없이** 화면 있는 워커(`--headed`)에서 먼저 쓴다 | 사람 PC 워커에서 qa.msu.io 로그인 시나리오가 무인으로 돈다 — 실행 · 녹화 · 지갑 다시 준비는 됨(§10) · qa.msu.io 확인(사내망)만 남음 |
 | **2. 앱 껍데기** ✅ | `apps/desktop` · 로컬 모드(서버 · 워커 내장) · 편집 화면 · Windows 설치본 | 설치하고 켜면 편집 화면이 뜨고 `launch` · `wallet` 실행이 돈다 — Windows 설치본으로 확인(§11) |
-| **3. 앱 안 브라우저** | `app` 모드 · `ElectronTransport` · 녹화 · 실행 화면 · 사람 기다리기 | 일반 사이트를 앱 안에서 녹화 → 실행 |
+| **3. 앱 안 브라우저** ✅ | `app` 모드 · `ElectronTransport` · 녹화 · 실행 화면 · 사람 기다리기 | 일반 사이트를 앱 안에서 녹화 → 실행 — Windows의 Electron에서 확인(§12) |
 | **4. 회사 서버 모드** | 서버 주소 + 워커 토큰으로 붙기 · `capabilities` · 실행 단추의 «이번만 어디서» | 회사 서버의 워크플로우가 이 PC의 앱 안 · 지갑 브라우저에서 돈다 |
 | **5. 배포** | 코드 서명 · 자동 업데이트 · macOS | — |
 
@@ -261,4 +261,42 @@ npx electron-builder --win nsis        # → dist\Flowsmith-Setup-<판>.exe (약
 - pnpm 11은 Electron의 설치 스크립트를 막는다 — `pnpm-workspace.yaml`의 `allowBuilds: electron: true`.
 - 설치본은 서명이 없다 — SmartScreen이 경고한다(5단계). 아이콘은 Electron 기본.
 
-남은 것: 앱 안 브라우저(3단계) · 회사 서버 모드(4단계).
+남은 것: 앱 안 브라우저(3단계 — §12) · 회사 서버 모드(4단계).
+
+## 12. 3단계 — 앱 안 브라우저 (2026-10-24)
+
+브라우저 모드 `app`. 데스크톱 앱이 **실행 · 녹화마다 WebContentsView 하나**를 열고, 서버 안 워커가 앱의 CDP로 붙어 그 뷰를 Playwright `Page`로 받는다(§4). 엔진 · 레코더는 Page만 알아서 거의 그대로다.
+
+```
+워커(서버 utilityProcess)                       앱(Electron main · views.ts)
+  AppViews.open("run" | "record", 이름)
+    ── { t: "view:open", id, purpose, title } ──▶  WebContentsView(세션 fs-view-<id> · 메모리) → 표시 주소 …#fs-view=<id>
+    ◀── { t: "view:opened", id } ──────────────    run: 따로 창(앞으로 가져오지 않음) · record: 편집 화면 창 위(처음엔 숨김)
+  CDP(FLOWSMITH_APP_CDP)에서 표시 주소로 우리 뷰를 찾는다
+  사람 기다리기가 시작되면  ── { t: "view:focus", id } ──▶  실행 창을 앞으로
+  끝나면                    ── { t: "view:close", id } ──▶  뷰(와 실행 창)를 닫는다
+```
+
+| 어디 | 무엇 |
+|---|---|
+| core | `BROWSER_MODES`에 `app` · 이름 «앱 안 브라우저» · 테스트 지갑(페이지에 넣는 것)은 싣지 않는다(컨텍스트를 앱 전체가 함께 쓴다) |
+| engine `browser-session.ts` · `run.ts` | `openApp` — 뷰가 그 실행의 «하나뿐인 페이지» · 컨텍스트는 닫지 않고 뷰만 닫는다 · 사람 기다리기 됨 |
+| recorder `session.ts` | `AppSource` — 사람의 크롬에 붙을 때와 같이 다룬다(레코더는 우리 뷰에만 · 크기를 바꾸지 않는다 · 우리가 연 팝업만 따라간다) · 화면 전송 없음 · 화면에 `{ t: "app-view", id }` |
+| worker `app-views.ts` · `local.ts` | 앱과 주고받는 말 · CDP 연결 하나를 모든 뷰가 함께 쓴다 · `capabilities`에 `app` · `appSource()`(녹화) |
+| server | 앱이 띄웠을 때만(`parentPort` + `FLOWSMITH_APP_CDP`) AppViews · LiveHub의 앱 안 녹화 · 워커 고르기(`app`을 알린 워커만 — 없으면 이유와 함께 바로 실패) |
+| desktop `main.ts` · `views.ts` · `preload.cjs` | `--remote-debugging-port=0`(127.0.0.1 · `--remote-allow-origins` 없음) · 포트는 `userData/DevToolsActivePort` · 뷰 열고 닫기 · 편집 화면에 `flowsmithDesktop.placeView(id, rect)` 하나만 |
+| 편집 화면 `LiveView.tsx` | `app-view`를 받으면 캔버스 대신 빈 자리를 두고 그 자리를 150ms마다 재서 앱에 알린다 · 덮개(진행 · 고르기 목록 · 대화상자)가 떠야 하면 뷰를 숨긴다 · 사람 기다리기 안내는 아래 줄에 |
+| 편집 화면 그 밖 | 설정의 «앱 안 브라우저» · 워커 화면 «🖥 앱 안 브라우저 됨» · 사람 기다리기에서 실제 화면을 저절로 열지 않는다(실행 창에서) · 가이드 `desktop.md` |
+
+- **녹화 뷰의 크기** — 라이브 패널 자리 그대로 · 폭이 1024보다 좁으면 줄여 보인다(`setZoomFactor` — 사이트가 휴대폰 배치가 되지 않게 · 녹화기의 MIN_WIDTH와 같은 값). 주소가 바뀌면 배율이 처음으로 돌아가 다시 맞춘다.
+- **뷰는 편집 화면보다 위에 그려진다** — 편집 화면의 HTML이 뷰를 덮을 수 없다. 그래서 덮개가 떠야 할 때는 뷰를 숨긴다(고르기 목록은 숨긴 자리에 그린다).
+- **실행 화면 보기**(화면 전송)도 그대로 된다 — 실행 창이 떠 있어 프레임이 나온다.
+
+시험: `packages/worker/test/app-views.test.ts` — 원격 디버깅 포트를 연 Chromium을 «앱»으로 흉내 낸다(편집 화면 탭 하나 + 부탁하면 표시 주소로 탭을 여는 ViewHost). 실행(뷰만 닫히고 편집 화면 · 앱은 그대로) · 사람 기다리기(view:focus → 사람이 그 뷰에서 로그인) · 앱 없는 워커는 바로 실패 · 녹화(뷰 id 알림 · 화면 전송 없음 · 편집 화면에는 레코더를 심지 않음). server workers 시험에 «앱 없는 워커 · 서버는 바로 실패» · core 검문소.
+
+**Windows의 Electron에서 확인(2026-10-24)** — 빌드 폴더의 풀지 않은 앱을 띄우고 앱의 CDP로 편집 화면을 사람처럼 눌렀다(`fsb\p3-drive.mjs`):
+앱 안 브라우저 워크플로우 만들기 → «녹화로 동작 더하기» → 라이브 패널 자리에 진짜 페이지(iana.org) → 링크 누르기(녹화) · «읽기»로 제목 누르기 → «녹화 끝 — 동작 2개 넣기»(뷰가 닫힘) →
+실행(따로 창 · 0.8초 · 결과 «IANA-managed Reserved Domains» · 끝나고 창이 닫힘) → 사람 기다리기 실행(실행 창이 앞으로 · «실제 화면 보기»에 화면이 옴 · 실행 창에서 링크를 누르니 이어 가 성공) → 창 닫기로 끄기.
+☆뷰는 창 위에 따로 그려져 편집 화면만 찍으면 그 자리가 비어 보인다 — 확인 캡쳐는 편집 화면과 뷰를 따로 찍어 그 자리에 겹쳤다.
+
+아직 확인하지 않은 것: 사이트가 연 팝업(Electron 기본은 앱의 새 창 — 엔진 · 레코더가 따라가는지) · 파일 받기 · 녹화 중 편집 화면 창 크기를 바꿀 때.

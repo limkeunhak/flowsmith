@@ -3,12 +3,15 @@
  *
  * ★한글 입력: 캔버스는 글자를 못 받는다. 보이지 않는 textarea에 포커스를 두고 IME 조합이 **끝난 글자**를
  *  `text`로 보낸다(조합 중의 키는 보내지 않는다). Enter · Backspace · 화살표 같은 특수 키만 `key`로 간다.
- * ☆B(Electron)로 가면 이 파일이 통째로 WebContentsView로 바뀐다. 녹화 패널은 그대로다.
+ * B(데스크톱 앱 · 앱 안 브라우저): 서버가 `app-view`로 뷰 id를 알려 오면 캔버스 대신 빈 자리를 두고, 그 자리를 앱에 알려
+ *  WebContentsView를 위에 놓는다 — 사람이 뷰를 직접 누르고 친다(화면 전송 · 입력 전달 없음). 녹화 패널은 그대로다.
+ *  ★뷰는 편집 화면보다 위에 그려진다 — 이 패널의 덮개(진행 · 고르기 목록 · 대화상자)가 보여야 할 때는 뷰를 숨긴다.
  */
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import type { Phase, ServerMessage } from "@flowsmith/recorder/protocol";
 import { IconArrowLeft } from "../icons.tsx";
 import type { LiveTransport } from "./transport.ts";
+import { desktop } from "./desktop.ts";
 
 type SelectOpen = Extract<ServerMessage, { t: "select-open" }>;
 type DialogOpen = Extract<ServerMessage, { t: "dialog" }>;
@@ -29,6 +32,8 @@ export function LiveView({ transport, phase, progress, onMeasure, human }: { tra
   const [promptText, setPromptText] = useState("");
   const composing = useRef(false);
   const lastMove = useRef(0);
+  /** 앱 안 브라우저 뷰 — 있으면 캔버스 대신 이 자리에 앱이 뷰를 놓는다 */
+  const [appView, setAppView] = useState<string | null>(null);
 
   // 서버 메시지
   useEffect(() => transport.onMessage((m) => {
@@ -36,6 +41,7 @@ export function LiveView({ transport, phase, progress, onMeasure, human }: { tra
     if (m.t === "page") { setPage(m); setUrlText(m.url); }
     if (m.t === "select-open") setSelect(m);
     if (m.t === "dialog") { setDialog(m); setPromptText(m.defaultValue); }
+    if (m.t === "app-view") setAppView(m.id);
   }), [transport]);
 
   // 화면 — 늦게 온 프레임이 먼저 온 프레임을 덮지 않게 순서를 센다
@@ -89,6 +95,29 @@ export function LiveView({ transport, phase, progress, onMeasure, human }: { tra
 
   const ready = phase === "ready";
 
+  // 앱 안 브라우저 — 자리를 앱에 알린다. 덮개가 떠야 할 때(준비 중 · 고르기 목록 · 대화상자)는 숨긴다.
+  //  자리는 창 크기 · 스크롤 · 패널 움직임으로 바뀐다 — 잠깐마다 재서 바뀌었을 때만 보낸다
+  const bridge = desktop();
+  const showView = appView !== null && (ready || !!human) && !select && !dialog;
+  useEffect(() => {
+    if (!appView || !bridge) return;
+    let last = "";
+    let first = true;
+    const tick = () => {
+      const r = box.current?.getBoundingClientRect();
+      const rect = showView && r ? { x: r.left, y: r.top, width: r.width, height: r.height } : null;
+      const key = JSON.stringify(rect);
+      if (key === last) return;
+      last = key;
+      bridge.placeView(appView, rect);
+      // 처음 놓인 뒤 페이지 크기를 다시 재게 한다(고르기 목록 자리 · 배율)
+      if (rect && first) { first = false; window.setTimeout(() => transport.send({ t: "resize", width: Math.round(rect.width), height: Math.round(rect.height) }), 300); }
+    };
+    tick();
+    const timer = window.setInterval(tick, 150);
+    return () => { window.clearInterval(timer); bridge.placeView(appView, null); };
+  }, [appView, bridge, showView, transport]);
+
   // 키보드 — textarea가 받는다
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.nativeEvent.isComposing || composing.current || e.key === "Process" || e.key === "Unidentified") return;
@@ -124,7 +153,8 @@ export function LiveView({ transport, phase, progress, onMeasure, human }: { tra
         )}
       </div>
       <div className="live-stage" ref={box}>
-        <canvas
+        {appView && !bridge && <div className="banner warn small" style={{ margin: 16 }}>앱 안 브라우저로 녹화합니다 — 데스크톱 앱 창에서 여세요(이 창에서는 보이지 않습니다)</div>}
+        {!appView && <canvas
           ref={canvas}
           width={viewport.width}
           height={viewport.height}
@@ -144,7 +174,7 @@ export function LiveView({ transport, phase, progress, onMeasure, human }: { tra
           }}
           onWheel={(e) => transport.send({ t: "wheel", ...pos(e), dx: e.deltaX, dy: e.deltaY })}
           onContextMenu={(e) => e.preventDefault()}
-        />
+        />}
         <textarea
           ref={keys}
           className="live-keys"
@@ -185,7 +215,7 @@ export function LiveView({ transport, phase, progress, onMeasure, human }: { tra
           </div>
         )}
 
-        {human && (
+        {human && !appView && (
           <div className="live-human banner warn small" role="status">🙋 {human.prompt} — 이 화면에서 직접 하세요. 끝나면 재생이 이어 갑니다(넣은 것은 녹화하지 않습니다)</div>
         )}
         {!ready && !human && (
@@ -198,7 +228,11 @@ export function LiveView({ transport, phase, progress, onMeasure, human }: { tra
         )}
       </div>
       {/* 제목 줄은 처음부터 자리를 잡는다 — 나중에 생기면 화면 칸이 줄어 페이지 크기가 다시 바뀐다 */}
-      {<div className="live-foot small muted"><span className="grow">{page.title || "00a0"}</span><button className="small ghost" title="입력이 안 먹으면 눌러 키보드를 라이브 페이지로" onClick={() => keys.current?.focus()}>⌨ 키보드</button></div>}
+      {/* 앱 안 브라우저 — 뷰가 패널을 덮으므로 사람 기다리기 안내는 여기에 · 키보드는 뷰가 바로 받는다 */}
+      {<div className="live-foot small muted">
+        {appView && human ? <span className="grow" role="status">🙋 {human.prompt} — 위 화면에서 직접 하세요. 끝나면 재생이 이어 갑니다(넣은 것은 녹화하지 않습니다)</span> : <span className="grow">{page.title || "\u00a0"}</span>}
+        {!appView && <button className="small ghost" title="입력이 안 먹으면 눌러 키보드를 라이브 페이지로" onClick={() => keys.current?.focus()}>⌨ 키보드</button>}
+      </div>}
     </div>
   );
 }

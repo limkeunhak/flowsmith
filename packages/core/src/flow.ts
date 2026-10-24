@@ -136,6 +136,8 @@ export interface FlowSettings {
    *            ★사람의 브라우저 · 탭은 닫지 않는다. 붙을 주소는 워커 설정(FLOWSMITH_CDP_URL)이다
    *   wallet — **지갑 브라우저**(PLAN §44): 진짜 MetaMask를 실은 크롬 · 창이 있어야 한다(settings.wallet.mode = metamask).
    *            지갑마다 프로필 하나를 워커가 계속 쓴다 — 같은 지갑으로는 한 번에 하나만 돈다
+   *   app    — **앱 안 브라우저**(PLAN §44 · DESKTOP.md §4): 데스크톱 앱의 WebContentsView. 실행마다 뷰 하나(쿠키가 새지 않게 따로 세션) ·
+   *            사람이 그 창을 바로 만진다(사람 기다리기 · 녹화). 데스크톱 앱의 워커만 받는다
    */
   browser: BrowserMode;
   /**
@@ -202,7 +204,7 @@ export interface Schedule {
   enabled: boolean;
 }
 
-export const BROWSER_MODES = ["launch", "attach", "wallet"] as const;
+export const BROWSER_MODES = ["launch", "attach", "wallet", "app"] as const;
 export type BrowserMode = (typeof BROWSER_MODES)[number];
 
 // ─── 노드 ──────────────────────────────────────────────────────────

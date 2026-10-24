@@ -39,7 +39,7 @@ export function RunForm({ flowId }: { flowId: string }) {
 
   // 서버 브라우저에서 돌다 사람을 기다리면 실제 화면을 바로 연다(사람의 크롬이면 그 창에서 한다)
   const waiting = view?.status === "running" && view.human ? view.runId : null;
-  useEffect(() => { if (waiting && loaded && "flow" in loaded && loaded.flow.settings.browser !== "attach") setWatching(true); }, [waiting]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (waiting && loaded && "flow" in loaded && loaded.flow.settings.browser !== "attach" && loaded.flow.settings.browser !== "app") setWatching(true); }, [waiting]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!loaded) return <div className="page"><div className="empty">불러오는 중…</div></div>;
   if ("error" in loaded) return <div className="page run-form"><div className="banner bad">{loaded.error}</div></div>;

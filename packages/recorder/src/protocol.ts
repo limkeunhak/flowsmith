@@ -106,6 +106,11 @@ export type ServerMessage =
    * 앞 단계 재생이 이 노드에 넘겨준 값(`$input`) — 화면이 «앞 단계에서 읽은 값»으로 보이고,
    * 녹화한 입력의 글자가 이 값과 같으면 `{{ $input.이름 }}`으로 저절로 잇는다. 재생하지 않았으면 오지 않는다
    */
-  | { t: "inputs"; input: Record<string, unknown> };
+  | { t: "inputs"; input: Record<string, unknown> }
+  /**
+   * **앱 안 브라우저에서 녹화한다**(데스크톱 앱 · PLAN §44) — 화면은 그 뷰가 직접 그린다(화면 전송 · 입력 전달 없음).
+   * 편집 화면은 라이브 패널 자리를 앱에 알려 뷰를 그 위에 놓는다(id로 고른다)
+   */
+  | { t: "app-view"; id: string };
 
 export type { Target, TableTarget };

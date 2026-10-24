@@ -1,4 +1,4 @@
-export { RecorderSession, type SessionIO, type WalletSource } from "./session.ts";
+export { RecorderSession, type AppSource, type SessionIO, type WalletSource } from "./session.ts";
 export { readLabel, toName, keyColumnOf, withoutContentLocators } from "./suggest.ts";
 export { replayDraft } from "./replay.ts";
 export type * from "./protocol.ts";

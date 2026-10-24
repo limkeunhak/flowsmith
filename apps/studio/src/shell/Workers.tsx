@@ -70,7 +70,7 @@ function WorkerCard({ w, admin, act, onToken }: { w: WorkerRow; admin: boolean; 
         <span className="pill" title="동시 실행">실행 {w.running.length}/{w.slots}</span>
         <span className="pill" title="이 워커에서 실행하는 워크플로우">워크플로우 {w.flows}</span>
       </div>
-      <div className="worker-meta">{state.text}{w.info ? ` · ${w.info.host}` : ""}{w.info?.capabilities?.includes("wallet") ? " · 🦊 지갑 브라우저(MetaMask) 됨" : ""}{w.info?.extensions.length ? ` · 확장 ${w.info.extensions.join(", ")}` : ""}{w.info?.plugins && Object.keys(w.info.plugins).length ? ` · 플러그인 ${Object.entries(w.info.plugins).map(([k, v]) => `${k} ${v}`).join(", ")}` : ""}</div>
+      <div className="worker-meta">{state.text}{w.info ? ` · ${w.info.host}` : ""}{w.info?.capabilities?.includes("wallet") ? " · 🦊 지갑 브라우저(MetaMask) 됨" : ""}{w.info?.capabilities?.includes("app") ? " · 🖥 앱 안 브라우저 됨" : ""}{w.info?.extensions.length ? ` · 확장 ${w.info.extensions.join(", ")}` : ""}{w.info?.plugins && Object.keys(w.info.plugins).length ? ` · 플러그인 ${Object.entries(w.info.plugins).map(([k, v]) => `${k} ${v}`).join(", ")}` : ""}</div>
       {w.info?.pluginErrors && Object.keys(w.info.pluginErrors).length > 0 && <div className="banner bad small">플러그인을 싣지 못했습니다 — {Object.entries(w.info.pluginErrors).map(([k, v]) => `${k}: ${v}`).join(" · ")}</div>}
       <div className="row wrap" style={{ gap: 6 }}>
         <span className="small muted">라벨</span>

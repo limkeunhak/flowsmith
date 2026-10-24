@@ -69,6 +69,10 @@ describe("검문소 — 지갑 방식과 브라우저", () => {
     expect(problems(flowWith({ browser: "wallet", wallet: null }, [])).join("\n")).toMatch(/«MetaMask 확장» 방식으로 정하세요/);
     expect(problems(flowWith({ browser: "wallet", wallet: { mode: "inject", secret: "wk", chains: [{ chainId: 1 }] } }, [])).join("\n")).toMatch(/페이지에 넣는 테스트 지갑을 쓰지 않습니다/);
     expect(problems(flowWith({ browser: "attach", wallet: { mode: "inject", secret: "wk", chains: [{ chainId: 1 }] } }, [])).join("\n")).toMatch(/사람의 크롬에 붙는 워크플로우에는 넣지 않습니다/);
+    // 앱 안 브라우저 — 컨텍스트를 앱 전체가 함께 쓰므로 페이지에 넣는 지갑은 싣지 않는다 · MetaMask도 안 된다
+    expect(problems(flowWith({ browser: "app", wallet: { mode: "inject", secret: "wk", chains: [{ chainId: 1 }] } }, [])).join("\n")).toMatch(/앱 안 브라우저에는 넣지 않습니다/);
+    expect(problems(flowWith({ browser: "app", wallet: { mode: "metamask", secret: "wk", chains: [] } }, [])).join("\n")).toMatch(/«지갑 브라우저\(MetaMask\)»로 고르세요/);
+    expect(parseFlow(flowWith({ browser: "app", wallet: null }, [])).settings.browser).toBe("app");
     expect(problems({ ...flowWith({ browser: "wallet", wallet: { mode: "metamask", secret: "nope", chains: [] } }), secrets: [] }).join("\n")).toMatch(/MetaMask 지갑: 시크릿 "nope"이\(가\) 정의되지 않았습니다 — 개인키 또는 복구 문구/);
   });
 });

@@ -150,6 +150,22 @@ describe("못 갈 때 · 자리 · 멈추기 · 끊김", () => {
     expect(JSON.stringify(onServer)).toMatch(/지갑 브라우저\(MetaMask\)를 열 수 없습니다/);
   }, 30_000);
 
+  it("★앱 안 브라우저는 데스크톱 앱의 워커만 — 다른 워커 · 앱 없는 서버는 이유와 함께 바로 실패", async () => {
+    const { token } = await newWorker("앱 없는 PC", { labels: ["앱"] });
+    await agentFor(token);
+    const draft = {
+      schemaVersion: 1, id: "w-app", name: "앱 안", settings: { browser: "app" },
+      nodes: [{ id: "w", type: "web", name: "열기", position: pos, config: { start: { kind: "url", url: "https://example.com" }, actions: [] } }], edges: [],
+    };
+    expect((await call("POST", "/api/flows", { draft })).status).toBe(201);
+    const onLabel = await runOf("w-app", { on: "label:앱" });
+    expect(onLabel.status).toBe("failure");
+    expect(onLabel.message).toMatch(/워커 «앱 없는 PC»는 앱 안 브라우저를 열 수 없습니다 — 데스크톱 앱이/);
+    const onServer = await runOf("w-app", { on: "server" });
+    expect(onServer.status).toBe("failure");
+    expect(JSON.stringify(onServer)).toMatch(/앱 안 브라우저를 열 수 없습니다 — 데스크톱 앱에서 돌리세요/);
+  }, 30_000);
+
   it("★자리가 차면 줄을 선다 — 동시 실행 수만큼 · 줄 선 것도 멈출 수 있다", async () => {
     const { worker, token } = await newWorker("느린 PC", { slots: 1 });
     const a = await agentFor(token);

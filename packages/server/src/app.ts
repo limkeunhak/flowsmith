@@ -135,9 +135,12 @@ export async function startApp(opts: {
   // WebSocket 길 — 한 곳에서 받아 나눈다(맞는 길이 없으면 404)
   const upgrades = new Upgrades(server);
   // 지갑 브라우저 녹화 — 서버 안 워커가 창을 띄울 수 있으면(capabilities에 wallet) 그 워커가 연다
-  const inProc = opts.worker as { capabilities?: string[]; walletSource?: NonNullable<ConstructorParameters<typeof LiveHub>[2]>["walletSource"] };
+  // 앱 안 브라우저 녹화 — 데스크톱 앱 안의 워커면(capabilities에 app) 편집 화면 자리에 뷰를 놓는다
+  type LiveOpts = NonNullable<ConstructorParameters<typeof LiveHub>[2]>;
+  const inProc = opts.worker as { capabilities?: string[]; walletSource?: LiveOpts["walletSource"]; appSource?: LiveOpts["appSource"] };
   const walletSource = inProc.capabilities?.includes("wallet") && inProc.walletSource ? inProc.walletSource.bind(opts.worker) : undefined;
-  const live = new LiveHub(store, secrets, { workers, ...(opts.cdpUrl ? { cdpUrl: opts.cdpUrl } : {}), ...(walletSource ? { walletSource } : {}) });
+  const appSource = inProc.capabilities?.includes("app") && inProc.appSource ? inProc.appSource.bind(opts.worker) : undefined;
+  const live = new LiveHub(store, secrets, { workers, ...(opts.cdpUrl ? { cdpUrl: opts.cdpUrl } : {}), ...(walletSource ? { walletSource } : {}), ...(appSource ? { appSource } : {}) });
   live.attach(upgrades, (req) => auth.checkUpgrade(req, "editor"), (req, flowId) => auth.canSeeFlowReq(req, flowId));
   // 실행 화면 보기 — 보는 사람이 있을 때만 화면을 보낸다
   const screens = new RunScreens();

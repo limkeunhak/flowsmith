@@ -113,12 +113,12 @@ export function FlowEditor({ id, runId, panel }: { id: string; runId?: string; p
       return now?.version === was ? [] : [{ name: now?.name ?? pid, was, now: now?.version ?? null }];
     });
   }, [detail, exts]);
-  // 사람 기다리기 — 방금 누른 실행이 사람을 기다리기 시작하면 로그를 펴고, 서버 브라우저면 실제 화면을 바로 연다(사람의 크롬이면 그 창에서 한다)
+  // 사람 기다리기 — 방금 누른 실행이 사람을 기다리기 시작하면 로그를 펴고, 서버 브라우저면 실제 화면을 바로 연다(사람의 크롬 · 앱 안 브라우저면 그 창에서 한다)
   const waitingFor = run.view?.status === "running" && run.view.human ? run.view.runId : null;
   useEffect(() => {
     if (!waitingFor) return;
     setLogOpen(true);
-    if (draft?.settings.browser !== "attach") setWatching(waitingFor);
+    if (draft?.settings.browser !== "attach" && draft?.settings.browser !== "app") setWatching(waitingFor);
   }, [waitingFor]);
   // 실행이 끝나면 감시 기록도 다시 본다 — 실제 실행이 깨진 것을 발견했을 수 있다
   const runStatus = run.view?.status;

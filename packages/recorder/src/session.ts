@@ -67,7 +67,8 @@ export interface SessionIO {
 
 const sameKey = (l: Locator) => `${l.kind}\0${l.value}\0${l.name ?? ""}`;
 interface Attached {
-  browser: Browser;
+  /** 사람의 크롬에 붙은 연결 — 앱 안 브라우저면 null(연결은 워커가 함께 쓴다) */
+  browser: Browser | null;
   /** 우리가 연 탭 — 끝나면 닫는다. 사람이 연 탭에서 녹화했으면 null */
   ownPage: Page | null;
 }
@@ -75,6 +76,14 @@ interface Attached {
 /** 지갑 브라우저(PLAN §44) — 워커가 MetaMask를 실은 크롬을 열어 준다. 닫으면 프로필 잠금도 풀린다 */
 export interface WalletSource {
   wallet: () => Promise<{ context: BrowserContext; close(): Promise<void> }>;
+}
+
+/**
+ * 앱 안 브라우저(PLAN §44) — 데스크톱 앱이 뷰 하나를 열어 준다. ★그 컨텍스트는 앱 전체의 것(편집 화면도 들어 있다)이라
+ *  사람의 크롬에 붙을 때와 같이 다룬다: 레코더는 우리 뷰에만 심고 · 크기를 바꾸지 않고 · 끝나면 뷰만 닫는다
+ */
+export interface AppSource {
+  app: () => Promise<{ id: string; page: Page; close(): Promise<void> }>;
 }
 
 export class RecorderSession {
@@ -109,6 +118,8 @@ export class RecorderSession {
    *  그리로 옮겨 가지 않고(사이트가 연 팝업만 따라간다) 그 안의 누르기는 녹화하지 않는다(사람이 승인한 것이 사이트 동작으로 남지 않게)
    */
   readonly #walletClose: (() => Promise<void>) | null;
+  /** 앱 안 브라우저 — 화면은 뷰가 그린다(화면 전송을 하지 않는다) */
+  #app = false;
 
   private constructor(context: BrowserContext, page: Page, io: SessionIO, forbidden: string[], viewport: { width: number; height: number }, attached: Attached | null = null, walletClose: (() => Promise<void>) | null = null) {
     this.#walletClose = walletClose;
@@ -136,14 +147,19 @@ export class RecorderSession {
    * created — 페이지가 생기자마자(재생 **전에**) 세션을 알린다. 재생 중 «사람 기다리기»(로그인)에서 사람의 입력이 이 세션으로 가야 한다
    *  (준비가 끝난 뒤에야 세션을 받으면 그동안의 입력은 버려진다)
    */
-  static async open(src: Browser | { cdpUrl: string } | WalletSource, req: OpenRequest, secrets: Record<string, SecretValue>, io: SessionIO, created?: (s: RecorderSession) => void): Promise<RecorderSession> {
+  static async open(src: Browser | { cdpUrl: string } | WalletSource | AppSource, req: OpenRequest, secrets: Record<string, SecretValue>, io: SessionIO, created?: (s: RecorderSession) => void): Promise<RecorderSession> {
     const attach = "cdpUrl" in src;
-    io.send({ t: "phase", phase: "starting", message: attach ? "사람의 크롬에 붙는 중" : "wallet" in src ? "지갑 브라우저(MetaMask)를 여는 중 — 처음이면 지갑을 준비합니다(30초쯤)" : "브라우저를 띄우는 중" });
+    io.send({ t: "phase", phase: "starting", message: attach ? "사람의 크롬에 붙는 중" : "wallet" in src ? "지갑 브라우저(MetaMask)를 여는 중 — 처음이면 지갑을 준비합니다(30초쯤)" : "app" in src ? "앱 안 브라우저를 여는 중" : "브라우저를 띄우는 중" });
     const forbidden = (req.draft.settings?.forbiddenLabels ?? []).filter((x) => { try { new RegExp(x, "u"); return true; } catch { return false; } });
     let s: RecorderSession;
     if (attach) {
       const { context, page, viewport, attached } = await RecorderSession.#attachTo(src.cdpUrl, req);
       s = new RecorderSession(context, page, io, forbidden, viewport, attached);
+    } else if ("app" in src) {
+      const v = await src.app();
+      s = new RecorderSession(v.page.context(), v.page, io, forbidden, await RecorderSession.#sizeOf(v.page), { browser: null, ownPage: null }, v.close);
+      s.#app = true;
+      io.send({ t: "app-view", id: v.id });
     } else if ("wallet" in src) {
       // 지갑 브라우저 — 워커가 연 MetaMask 크롬에 우리 탭을 하나 연다(창이 보이는 PC · 사람은 MetaMask 창을 직접 볼 수 있다)
       const w = await src.wallet();
@@ -307,6 +323,7 @@ export class RecorderSession {
   }
 
   async #startScreencast(): Promise<void> {
+    if (this.#app) return;
     const size = { maxWidth: this.#viewport.width, maxHeight: this.#viewport.height };
     if (this.#cast?.page === this.#page) { await this.#cast.restart(size); return; }
     const page = this.#page;
@@ -454,7 +471,8 @@ export class RecorderSession {
         case "back": await p.goBack({ timeout: 15_000 }).catch(() => undefined); break;
         case "reload": await p.reload({ timeout: 15_000 }).catch(() => undefined); break;
         case "resize":
-          if (this.#attached) { this.#io.send({ t: "viewport", ...this.#viewport }); break; }   // 사람의 탭 크기는 건드리지 않는다
+          // 사람의 탭 크기는 건드리지 않는다 · 앱 안 브라우저는 앱이 뷰 크기를 맞춘다 — 지금 크기를 다시 재서 알린다
+          if (this.#attached) { if (this.#app) this.#viewport = await RecorderSession.#sizeOf(p); this.#io.send({ t: "viewport", ...this.#viewport }); break; }
           this.#viewport = RecorderSession.viewportFor(m);
           await p.setViewportSize(this.#viewport);
           await this.#startScreencast();
@@ -694,7 +712,7 @@ export class RecorderSession {
     if (this.#closed) return;
     this.#closed = true;
     await this.#cast?.stop();
-    // 지갑 브라우저 — 크롬을 닫고 프로필 잠금을 푼다(프로필은 남는다)
+    // 지갑 브라우저 — 크롬을 닫고 프로필 잠금을 푼다(프로필은 남는다) · 앱 안 브라우저 — 뷰째 닫는다
     if (this.#walletClose) { await this.#walletClose(); return; }
     if (!this.#attached) { await this.#context.close().catch(() => undefined); return; }
     // ★사람의 크롬 — 레코더를 끄고(남은 문서에서도 아무것도 가로채지 않게) 우리 탭만 닫고 연결을 놓는다
@@ -702,6 +720,6 @@ export class RecorderSession {
       await Promise.all(p.frames().map((f) => f.evaluate(() => (globalThis as any).__relaySetMode?.("off")).catch(() => undefined)));
     }
     await this.#attached.ownPage?.close().catch(() => undefined);
-    await this.#attached.browser.close().catch(() => undefined);
+    await this.#attached.browser?.close().catch(() => undefined);
   }
 }

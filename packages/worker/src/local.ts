@@ -3,11 +3,13 @@
  * standalone 서버가 이것 하나로 돌고, 사람 PC의 워커 프로그램(agent.ts)도 안에서 이것을 쓴다.
  * 브라우저는 처음 필요할 때 띄우고 실행마다 새 컨텍스트를 쓴다.
  * 지갑 브라우저(PLAN §44)는 **창이 보이는 워커**(--headed · 화면이 있는 PC)만 연다 — MetaMask는 처음 쓸 때 받는다(metamask.ts).
+ * 앱 안 브라우저(app)는 **데스크톱 앱 안의 워커**만 연다 — 앱이 준 `appViews`로(app-views.ts).
  */
 import { chromium, type Browser } from "playwright";
 import type { SecretValue } from "@flowsmith/core";
 import { ExtensionRegistry, openWalletBrowser, runFlow, type MetaMaskEnv, type RunEvent, type RunResult } from "@flowsmith/engine";
-import type { WalletSource } from "@flowsmith/recorder";
+import type { AppSource, WalletSource } from "@flowsmith/recorder";
+import type { AppViews } from "./app-views.ts";
 import type { RunHooks, RunJob, WorkerClient } from "./job.ts";
 import { ensureMetaMask, hasDisplay, walletDirs } from "./metamask.ts";
 
@@ -17,13 +19,17 @@ export class InProcessWorker implements WorkerClient {
   readonly #extensions: ExtensionRegistry;
   readonly #filesDir: string | undefined;
   readonly #wallet: MetaMaskEnv | null;
+  readonly #app: AppViews | null;
   #browser: Promise<Browser> | null = null;
 
   constructor(opts: {
     headless?: boolean; cdpUrl?: string; extensions?: ExtensionRegistry; /** 파일 쓰기 노드의 파일 뿌리 */ filesDir?: string; /** 지갑 폴더(시험) — 없으면 이 PC의 것 */ wallet?: MetaMaskEnv;
     /** 띄우는 브라우저는 창 없이 두고 지갑 브라우저만 창을 띄운다(데스크톱 앱 — FLOWSMITH_WALLET_BROWSER=on) */
     walletWindow?: boolean;
+    /** 앱 안 브라우저 뷰 — 데스크톱 앱이 띄운 서버만 준다 */
+    appViews?: AppViews;
   } = {}) {
+    this.#app = opts.appViews ?? null;
     this.#headless = opts.headless ?? true;
     this.#filesDir = opts.filesDir;
     this.#cdpUrl = opts.cdpUrl;
@@ -32,8 +38,15 @@ export class InProcessWorker implements WorkerClient {
     this.#wallet = (!this.#headless || opts.walletWindow === true) && hasDisplay() ? opts.wallet ?? walletDirs() : null;
   }
 
-  /** 이 워커가 할 수 있는 일 — 서버가 실행을 보낼 곳을 고를 때 본다(wallet: 지갑 브라우저) */
-  get capabilities(): string[] { return this.#wallet ? ["wallet"] : []; }
+  /** 이 워커가 할 수 있는 일 — 서버가 실행을 보낼 곳을 고를 때 본다(wallet: 지갑 브라우저 · app: 앱 안 브라우저) */
+  get capabilities(): string[] { return [...(this.#wallet ? ["wallet"] : []), ...(this.#app ? ["app"] : [])]; }
+
+  /** 녹화를 앱 안 브라우저에서 — 편집 화면의 라이브 패널 자리에 뷰를 놓는다 */
+  appSource(draft: { name?: string }): AppSource {
+    const views = this.#app;
+    if (!views) throw new Error("이 PC는 앱 안 브라우저를 열 수 없습니다 — 데스크톱 앱에서 녹화하세요");
+    return { app: () => views.open("record", draft.name ?? "녹화") };
+  }
 
   /**
    * 녹화를 지갑 브라우저에서 — 이 PC의 MetaMask(처음이면 받는다)와 그 지갑의 프로필로. 못 열면 까닭을 던진다.
@@ -74,10 +87,16 @@ export class InProcessWorker implements WorkerClient {
     const files = hooks.fileOps ? { ops: hooks.fileOps, ...where } : this.#filesDir ? { root: this.#filesDir, ...where } : null;
     // 지갑 브라우저 — MetaMask를 (처음이면 받아) 넘긴다. 못 여는 워커면 넘기지 않는다(엔진이 이유와 함께 멈춘다)
     const metamask = job.flow.settings.browser === "wallet" && this.#wallet ? { ...this.#wallet, extensionDir: await ensureMetaMask(this.#wallet) } : null;
+    // 앱 안 브라우저 — 실행 창을 연다 · 사람을 기다리기 시작하면 그 창을 앞으로
+    const app = job.flow.settings.browser === "app" ? this.#app : null;
+    let viewId: string | null = null;
+    const openApp = app ? async () => { const v = await app.open("run", job.flow.name); viewId = v.id; return v; } : null;
+    const events = app ? (e: RunEvent) => { if (e.kind === "human" && e.state === "waiting" && viewId) app.focus(viewId); onEvent(e); } : onEvent;
     return runFlow(job.flow, {
+      ...(openApp ? { openApp } : {}),
       ...(metamask ? { metamask: job.resetWallet ? { ...metamask, reset: true } : metamask } : {}),
       // ★시작할 때의 확장으로 끝까지 — 도중에 플러그인이 바뀌어도(PLAN §41)
-      runId: job.runId, params: job.params, secrets: job.secrets, onEvent, extensions: this.#extensions.snapshot(), probe: job.probe ?? false,
+      runId: job.runId, params: job.params, secrets: job.secrets, onEvent: events, extensions: this.#extensions.snapshot(), probe: job.probe ?? false,
       ...(browser ? { browser } : {}), ...(this.#cdpUrl ? { cdpUrl: this.#cdpUrl } : {}),
       ...(files ? { files } : {}),
       ...(hooks.callFlow ? { callFlow: hooks.callFlow } : {}),
@@ -85,13 +104,14 @@ export class InProcessWorker implements WorkerClient {
       ...(hooks.onPage ? { onPage: hooks.onPage } : {}),
       ...(hooks.signal ? { signal: hooks.signal } : {}),
       // 사람 기다리기 — 사람이 화면을 만질 수 있나: 사람의 크롬 · 창이 보이는 브라우저(이 PC) · 서버의 실행 화면(onPage를 받는다)
-      human: job.flow.settings.browser === "attach" || !this.#headless || hooks.onPage !== undefined,
+      human: job.flow.settings.browser === "attach" || job.flow.settings.browser === "app" || !this.#headless || hooks.onPage !== undefined,
       ...(job.stopBefore ? { stopBefore: job.stopBefore } : {}), ...(job.stopAfter ? { stopAfter: job.stopAfter } : {}),
       ...(job.pins ? { pins: job.pins } : {}),
     });
   }
 
   async close(): Promise<void> {
+    await this.#app?.close();
     const b = this.#browser;
     this.#browser = null;
     if (b) await (await b).close().catch(() => undefined);

@@ -44,7 +44,14 @@ export function SettingsPanel({ flow, update, dirty, onToast, team, onMoveTeam, 
         {/* ★MetaMask 지갑은 지갑 브라우저에만 실린다 — 브라우저를 바꾸면 지갑 설정도 함께 맞춘다(검문소 graph.ts와 같은 규칙) */}
         <label className="check"><input type="radio" checked={s.browser === "launch"} onChange={() => setSettings({ browser: "launch", ...(s.wallet?.mode === "metamask" ? { wallet: null } : {}) })} />Flowsmith가 브라우저를 띄웁니다(기본) — 로그인은 시크릿으로</label>
         <label className="check"><input type="radio" checked={s.browser === "attach"} onChange={() => setSettings({ browser: "attach", ...(s.wallet ? { wallet: null } : {}) })} />사람이 로그인한 크롬에 붙습니다 — 보안 프로그램 · OTP 사이트</label>
+        <label className="check"><input type="radio" checked={s.browser === "app"} onChange={() => setSettings({ browser: "app", ...(s.wallet ? { wallet: null } : {}) })} />앱 안 브라우저 — 데스크톱 앱 창 안에서 녹화 · 실행(사람이 바로 만집니다)</label>
         <label className="check"><input type="radio" checked={s.browser === "wallet"} onChange={() => setSettings({ browser: "wallet", wallet: s.wallet?.mode === "metamask" ? s.wallet : newMetaMaskWallet(flow) })} />지갑 브라우저(MetaMask) — MetaMask 확장으로 로그인하는 블록체인 사이트</label>
+        {s.browser === "app" && (
+          <div className="banner info small">
+            데스크톱 앱 안에 브라우저를 엽니다 — 녹화는 이 화면의 라이브 패널 자리에, 실행은 따로 창에 뜹니다. 실행마다 새 세션(쿠키가 이어지지 않습니다)이라 로그인은 시크릿이나 «사람 기다리기»로 합니다.
+            <b> 데스크톱 앱에서만 돕니다</b> — 서버 · 다른 워커에서 돌리려면 «띄우기»로 바꾸세요(워크플로우는 그대로 됩니다).
+          </div>
+        )}
         {s.browser === "wallet" && (
           <div className="banner info small">
             진짜 MetaMask를 실은 크롬을 <b>창을 띄워</b> 엽니다 — 화면이 있는 PC의 워커(데스크톱 앱 · <code>--headed</code>)에서만 돕니다.

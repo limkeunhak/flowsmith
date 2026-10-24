@@ -11,7 +11,7 @@ export { runApprovalNode, type AskApproval, type ApprovalAsk, type ApprovalAnswe
 export { enginePolicy, configureEngine, makeHttpGuard, blockedAddress, BlockedAddressError, type EnginePolicy } from "./policy.ts";
 export { runWebNode, type StepLog } from "./nodes/web-node.ts";
 export { build, rootOf, locateOne, describeLocator } from "./browser/locate.ts";
-export { BrowserSession, BrowserSessionError, DEFAULT_CDP_URL } from "./browser/browser-session.ts";
+export { BrowserSession, BrowserSessionError, DEFAULT_CDP_URL, type AppView } from "./browser/browser-session.ts";
 export { installWallet, WalletError } from "./browser/wallet.ts";
 export { openWalletBrowser, resetWalletProfile, profilePathProblem, walletFingerprint, addressOf, type MetaMaskEnv, type WalletBrowser } from "./browser/metamask/wallet-browser.ts";
 export { readScreen, approveUntil, ensureChain, chainIdOf } from "./browser/metamask/approve.ts";

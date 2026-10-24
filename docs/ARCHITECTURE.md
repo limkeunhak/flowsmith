@@ -472,6 +472,7 @@ FLOWSMITH_WORKER_TOKEN=fsw_… node packages/worker/src/main.ts --server https:/
 | `FLOWSMITH_CDP_URL` | 사람의 크롬 CDP 주소(기본 `http://127.0.0.1:9222`) — attach 실행 · 녹화 |
 | `FLOWSMITH_WALLET_DIR` | 지갑 브라우저 폴더(PLAN §44) — `mm/<판>`(MetaMask) · `w/`(지갑마다의 크롬 프로필). 기본 Windows `%LOCALAPPDATA%\Flowsmith` · 그 밖 `~/.cache/flowsmith`. ★Windows는 짧게(260자 제한) |
 | `FLOWSMITH_WALLET_BROWSER=on` | 띄우는 브라우저는 창 없이 두고 지갑 브라우저만 창을 띄운다(데스크톱 앱이 준다 · `--headed`면 저절로 지갑도 됨) |
+| `FLOWSMITH_APP_CDP` | 앱 안 브라우저(브라우저 `app`) — 데스크톱 앱의 CDP 주소(`http://127.0.0.1:<임의>`). ★데스크톱 앱이 서버를 띄울 때만 준다(`parentPort`로 뷰를 부탁한다 — DESKTOP.md §12) |
 | `FLOWSMITH_METAMASK_ZIP` | 받아 둔 MetaMask 묶음(사내망에서 GitHub가 막혔을 때) — SHA256은 똑같이 본다 |
 | `FLOWSMITH_EXTENSIONS` | 확장 모듈(쉼표로) |
 | `FLOWSMITH_MAX_RUNS` | 서버 전체에서 동시에 도는 실행 수(기본 3) — 넘으면 차례를 기다린다. 다른 플로우가 부른 실행은 부른 실행의 자리를 함께 쓴다 |

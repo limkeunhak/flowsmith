@@ -1,5 +1,5 @@
 /**
- * **Flowsmith 데스크톱 앱**(PLAN §44 · docs/DESKTOP.md) — 2단계: 로컬 모드.
+ * **Flowsmith 데스크톱 앱**(PLAN §44 · docs/DESKTOP.md) — 2단계: 로컬 모드 · 3단계: 앱 안 브라우저.
  *
  *   이 PC의 서버 · 워커를 앱이 띄우고(utilityProcess — Electron의 Node 24로 `.ts`를 그대로) 편집 화면을 창에 연다.
  *   서버는 127.0.0.1의 빈 포트 · 로그인 꺼짐(이 PC에서 혼자 쓰는 모드) — 지금의 standalone 서버와 같다.
@@ -10,15 +10,21 @@
  *   지갑        %LOCALAPPDATA%\Flowsmith\{mm,w}      MetaMask · 지갑 프로필(worker metamask.ts) — ★짧은 경로(260자)
  *
  * 띄우는 브라우저는 창 없이(실행 화면 보기로 본다) · 지갑 브라우저만 창을 띄운다(FLOWSMITH_WALLET_BROWSER=on).
- * 앱 안 브라우저(WebContentsView · 3단계)와 회사 서버 모드(4단계)는 아직.
+ * 앱 안 브라우저(browser: app) — 서버 안 워커가 부탁하면 WebContentsView를 열고(views.ts), 워커는 이 앱의 CDP로 붙는다(FLOWSMITH_APP_CDP).
+ * 회사 서버 모드(4단계)는 아직.
  */
 import { app, BrowserWindow, dialog, Menu, safeStorage, shell, utilityProcess, type UtilityProcess } from "electron";
 import { randomBytes } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { Views } from "./views.ts";
 
 app.setName("Flowsmith");
+// 앱 안 브라우저 — 워커가 CDP로 뷰에 붙는다. ★127.0.0.1의 임의 포트(번호는 userData/DevToolsActivePort) ·
+//  --remote-allow-origins는 주지 않는다(웹 페이지 출처의 접속은 크롬이 늘 거절한다 — DESKTOP.md §4 · §9-③)
+app.commandLine.appendSwitch("remote-debugging-port", "0");
 // WSL(WSLg)에서 개발할 때만 — 렌더러가 /dev/shm · /tmp를 못 본다(0단계 · Electron 실험)
 if (process.env["FLOWSMITH_DESKTOP_WSL"] === "1") for (const s of ["no-sandbox", "disable-dev-shm-usage", "no-zygote"]) app.commandLine.appendSwitch(s);
 
@@ -36,6 +42,7 @@ let win: BrowserWindow | null = null;
 let server: UtilityProcess | null = null;
 let serverUrl: string | null = null;
 let quitting = false;
+const views = new Views(() => win, (t) => log(t));
 
 const log = (text: string) => { try { mkdirSync(logDir, { recursive: true }); appendFileSync(join(logDir, "desktop.log"), `${new Date().toISOString()} ${text}\n`); } catch { /* 로그는 실패해도 된다 */ } };
 
@@ -106,15 +113,27 @@ function installBrowsers(dir: string): Promise<void> {
 
 // ─── 서버 ──────────────────────────────────────────────────────────
 
-function startServer(key: string): Promise<string> {
+/** 이 앱의 CDP 주소 — 크롬이 켜지며 userData/DevToolsActivePort에 적는다(첫 줄이 포트). 못 읽으면 앱 안 브라우저 없이 간다 */
+async function cdpUrl(): Promise<string | null> {
+  const file = join(userDir, "DevToolsActivePort");
+  for (let i = 0; i < 50; i++) {
+    try { const port = readFileSync(file, "utf8").split(/\r?\n/)[0]?.trim(); if (port && /^\d+$/.test(port)) return `http://127.0.0.1:${port}`; } catch { /* 아직 */ }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  log("CDP 포트를 읽지 못했습니다 — 앱 안 브라우저 없이 켭니다");
+  return null;
+}
+
+function startServer(key: string, cdp: string | null): Promise<string> {
   return new Promise((ok, fail) => {
     mkdirSync(dataDir, { recursive: true });
-    const env: Record<string, string> = { ...(process.env as Record<string, string>), FLOWSMITH_APP_ROOT: appRoot, FLOWSMITH_MASTER_KEY: key, FLOWSMITH_WALLET_BROWSER: "on" };
+    const env: Record<string, string> = { ...(process.env as Record<string, string>), FLOWSMITH_APP_ROOT: appRoot, FLOWSMITH_MASTER_KEY: key, FLOWSMITH_WALLET_BROWSER: "on", ...(cdp ? { FLOWSMITH_APP_CDP: cdp } : {}) };
     delete env["ELECTRON_RUN_AS_NODE"];
     delete env["FLOWSMITH_MASTER_KEY_FILE"];
     if (browsersDir) env["PLAYWRIGHT_BROWSERS_PATH"] = browsersDir;
     const p = utilityProcess.fork(join(appRoot, "apps", "desktop", "src", "boot.ts"), ["--port", "0", "--data", dataDir], { stdio: "pipe", serviceName: "Flowsmith 서버", env });
     server = p;
+    views.serve(p);
     const tail: string[] = [];
     const keep = (d: unknown) => { const s = String(d); log(`[서버] ${s.trimEnd()}`); tail.push(...s.split(/\r?\n/).filter(Boolean)); tail.splice(0, Math.max(0, tail.length - 12)); };
     p.stdout?.on("data", keep);
@@ -136,7 +155,8 @@ function startServer(key: string): Promise<string> {
 function createWindow(): BrowserWindow {
   const w = new BrowserWindow({
     width: 1440, height: 920, minWidth: 960, minHeight: 600, title: "Flowsmith", show: false, backgroundColor: "#f6f7fb",
-    webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false },
+    // preload — 데스크톱 앱이라는 것과 녹화 뷰를 놓는 길만(preload.cjs)
+    webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, preload: fileURLToPath(new URL("./preload.cjs", import.meta.url)) },
   });
   w.once("ready-to-show", () => w.show());
   // 새 창 — 이 서버의 화면은 앱 창으로 · 밖의 주소는 기본 브라우저로
@@ -161,7 +181,7 @@ async function boot(): Promise<void> {
       await installBrowsers(browsersDir);
     }
     status("서버를 켜는 중…");
-    serverUrl = await startServer(masterKey());
+    serverUrl = await startServer(masterKey(), await cdpUrl());
     log(`서버: ${serverUrl}`);
     await win?.loadURL(serverUrl);
   } catch (e) {

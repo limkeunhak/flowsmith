@@ -15,7 +15,7 @@ import type { Duplex } from "node:stream";
 import { WebSocketServer, type WebSocket } from "ws";
 import { chromium, type Browser } from "playwright";
 import { DEFAULT_CDP_URL } from "@flowsmith/engine";
-import { RecorderSession, type WalletSource } from "@flowsmith/recorder";
+import { RecorderSession, type AppSource, type WalletSource } from "@flowsmith/recorder";
 import type { SecretValue } from "@flowsmith/core";
 import type { ClientMessage, OpenRequest, ServerMessage } from "@flowsmith/recorder/protocol";
 import type { Secrets } from "../storage/secrets.ts";
@@ -40,10 +40,13 @@ export class LiveHub {
   readonly #workers: WorkerHub | null;
   /** 지갑 브라우저 녹화 — 서버 안 워커가 창을 띄울 수 있을 때만(데스크톱 앱 · --headed) */
   readonly #walletSource: ((draft: OpenRequest["draft"], secrets: Record<string, SecretValue>, log: (t: string) => void) => Promise<WalletSource>) | null;
+  /** 앱 안 브라우저 녹화 — 데스크톱 앱이 띄운 서버만 */
+  readonly #appSource: ((draft: OpenRequest["draft"]) => AppSource) | null;
 
-  constructor(store: Store, secrets: Secrets, opts: { headless?: boolean; cdpUrl?: string; workers?: WorkerHub; walletSource?: (draft: OpenRequest["draft"], secrets: Record<string, SecretValue>, log: (t: string) => void) => Promise<WalletSource> } = {}) {
+  constructor(store: Store, secrets: Secrets, opts: { headless?: boolean; cdpUrl?: string; workers?: WorkerHub; walletSource?: (draft: OpenRequest["draft"], secrets: Record<string, SecretValue>, log: (t: string) => void) => Promise<WalletSource>; appSource?: (draft: OpenRequest["draft"]) => AppSource } = {}) {
     this.#workers = opts.workers ?? null;
     this.#walletSource = opts.walletSource ?? null;
+    this.#appSource = opts.appSource ?? null;
     this.#store = store;
     this.#secrets = secrets;
     this.#headless = opts.headless ?? true;
@@ -127,8 +130,10 @@ export class LiveHub {
     // 지갑 브라우저면 MetaMask를 실은 크롬 — 창이 보이는 서버만(아니면 그 PC의 워커에서 녹화)
     const browser = req.draft?.settings?.browser;
     if (browser === "wallet" && !this.#walletSource) throw new Error("이 서버는 지갑 브라우저(MetaMask)를 열 수 없습니다 — «녹화 시작»에서 화면이 있는 PC의 워커를 고르세요");
+    if (browser === "app" && !this.#appSource) throw new Error("앱 안 브라우저는 데스크톱 앱에서만 녹화합니다 — 앱으로 여세요(브라우저 설정을 «띄우기»로 바꾸면 여기서도 됩니다)");
     const src = browser === "attach" ? { cdpUrl: this.#cdpUrl }
       : browser === "wallet" ? await this.#walletSource!(req.draft, secrets, (text) => send({ t: "progress", text }))
+      : browser === "app" ? this.#appSource!(req.draft)
       : await this.#getBrowser();
     const s = await RecorderSession.open(src, req, secrets, { send, frame }, created);
     this.#sessions.add(s);

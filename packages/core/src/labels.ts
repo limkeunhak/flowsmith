@@ -14,7 +14,7 @@ export const ACTION_LABEL: Record<WebAction["kind"], string> = {
 };
 
 /** 어느 브라우저에서 도나(settings.browser) */
-export const BROWSER_MODE_LABEL = { launch: "띄우기", attach: "사람의 크롬에 붙기", wallet: "지갑 브라우저(MetaMask)" } as const;
+export const BROWSER_MODE_LABEL = { launch: "띄우기", attach: "사람의 크롬에 붙기", wallet: "지갑 브라우저(MetaMask)", app: "앱 안 브라우저" } as const;
 
 /** 실행을 시작한 길 */
 export const TRIGGER_LABEL: Record<string, string> = { manual: "손으로", api: "API", schedule: "일정", webhook: "웹훅", flow: "다른 워크플로우", after: "다른 워크플로우가 끝나서", file: "파일이 생겨서", suite: "Suite(테스트)" };

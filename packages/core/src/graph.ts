@@ -246,6 +246,7 @@ export function compile(flow: Flow): CompiledFlow {
     if (!sec) problems.push(`${what}: 시크릿 "${wallet.secret}"이(가) 정의되지 않았습니다 — ${keyWord}를 담을 글자 시크릿을 만드세요`);
     else if (sec.kind !== "text") problems.push(`${what}: 시크릿 "${wallet.secret}"은(는) 글자 하나(${keyWord})여야 합니다`);
     if (wallet.mode === "inject" && browser === "attach") problems.push("테스트 지갑: 사람의 크롬에 붙는 워크플로우에는 넣지 않습니다 — 그 크롬의 메타마스크를 쓰고 «사람 기다리기»로 승인하세요");
+    if (wallet.mode === "inject" && browser === "app") problems.push("테스트 지갑: 앱 안 브라우저에는 넣지 않습니다 — 블록체인 사이트는 «띄우기»(테스트 지갑)나 «지갑 브라우저(MetaMask)»로 돌리세요");
     if (wallet.mode === "inject" && browser === "wallet") problems.push("테스트 지갑: 지갑 브라우저(MetaMask)에는 페이지에 넣는 테스트 지갑을 쓰지 않습니다 — 지갑 방식을 «MetaMask 확장»으로 바꾸세요");
     if (wallet.mode === "metamask" && browser !== "wallet") problems.push("MetaMask 지갑: 브라우저를 «지갑 브라우저(MetaMask)»로 고르세요 — MetaMask는 그 브라우저에만 실립니다");
   }

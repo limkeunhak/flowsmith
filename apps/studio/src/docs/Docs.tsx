@@ -14,6 +14,7 @@ import aiDoc from "./content/ai.md?raw";
 import running from "./content/running.md?raw";
 import tests from "./content/tests.md?raw";
 import wallet from "./content/wallet.md?raw";
+import desktopDoc from "./content/desktop.md?raw";
 import notify from "./content/notify.md?raw";
 import monitor from "./content/monitor.md?raw";
 import files from "./content/files.md?raw";
@@ -34,6 +35,7 @@ const PAGES: Page[] = [
   { slug: "running", group: "실행과 운영", src: running },
   { slug: "tests", group: "실행과 운영", src: tests },
   { slug: "wallet", group: "실행과 운영", src: wallet },
+  { slug: "desktop", group: "실행과 운영", src: desktopDoc },
   { slug: "notify", group: "실행과 운영", src: notify },
   { slug: "monitor", group: "실행과 운영", src: monitor },
   { slug: "files", group: "실행과 운영", src: files },

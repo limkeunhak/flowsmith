@@ -308,7 +308,7 @@ function HumanForm({ action: a, onChange }: { action: Extract<WebAction, { kind:
   const minutes = Math.round((a.timeoutMs ?? HUMAN_TIMEOUT.defaultMs) / 6_000) / 10;
   return (
     <>
-      <div className="banner info small">실행이 여기서 멈춰 사람을 기다립니다. 사람의 크롬이면 그 크롬 창에서, 서버 브라우저면 «실제 화면 보기»에서 직접 합니다. 사람이 넣은 것(아이디 · 비밀번호)은 녹화하지도 기록하지도 않습니다.</div>
+      <div className="banner info small">실행이 여기서 멈춰 사람을 기다립니다. 사람의 크롬이면 그 크롬 창에서, 앱 안 브라우저면 앞으로 나온 실행 창에서, 서버 브라우저면 «실제 화면 보기»에서 직접 합니다. 사람이 넣은 것(아이디 · 비밀번호)은 녹화하지도 기록하지도 않습니다.</div>
       <Field label="안내 문구 — 기다리는 동안 사람에게 보입니다">
         <input value={a.prompt} placeholder="포털에 로그인해 주세요" onChange={(e) => onChange({ ...a, prompt: e.target.value })} />
       </Field>

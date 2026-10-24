@@ -9,6 +9,10 @@
  *    («우리가 연 것은 우리가 닫는다»)
  *   ☆대화상자 처리기를 달지 않는다 — 같은 크롬에 붙은 다른 도구가 따로 다룬다.
  *    둘이 동시에 달면 서로 먼저 닫아 버린다
+ *
+ * app(데스크톱 앱 · PLAN §44):
+ *   - 실행기가 준 `openApp`이 앱 안 브라우저 뷰 하나를 연다 — 그 뷰가 이 실행의 «하나뿐인 페이지»다
+ *   ★컨텍스트는 앱 전체가 함께 쓰는 것이다(편집 화면도 들어 있다) — 닫지 않고, 컨텍스트에 아무것도 달지 않는다. 끝나면 뷰만 닫는다
  */
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
 import type { BrowserMode } from "@flowsmith/core";
@@ -29,6 +33,14 @@ export interface SessionOptions {
   cdpUrl?: string;
   /** 지갑 브라우저(wallet)를 연다 — 실행기가 준다(키 · MetaMask 폴더를 안다). 없으면 그 모드는 멈춘다 */
   openWallet?: () => Promise<{ context: BrowserContext; close: () => Promise<void> }>;
+  /** 앱 안 브라우저(app)의 뷰를 연다 — 데스크톱 앱의 워커가 준다. 없으면 그 모드는 멈춘다 */
+  openApp?: () => Promise<AppView>;
+}
+
+/** 앱 안 브라우저 뷰 하나 — 닫으면 뷰째 없어진다 */
+export interface AppView {
+  page: Page;
+  close: () => Promise<void>;
 }
 
 export class BrowserSession {
@@ -46,7 +58,7 @@ export class BrowserSession {
   /** launch의 하나뿐인 페이지 · 받은 페이지(녹화기) — 팝업에 머물다 끝나도 «주소로 가서»는 여기서 */
   #main: Page | null = null;
   readonly #opts: SessionOptions;
-  /** 지갑 브라우저를 닫는다(프로필 잠금도 푼다) */
+  /** 지갑 브라우저를 닫는다(프로필 잠금도 푼다) · 앱 안 브라우저 뷰를 닫는다 */
   #walletClose: (() => Promise<void>) | null = null;
   /** 우리가 컨텍스트를 만들었을 때(launch) — 테스트 지갑을 단다(run.ts). 받은 페이지 · 사람의 크롬에는 부르지 않는다 */
   onContext: ((ctx: BrowserContext) => Promise<void>) | null = null;
@@ -95,6 +107,14 @@ export class BrowserSession {
       this.#walletClose = w.close;
       return w.context;
     }
+    if (this.mode === "app") {
+      if (!this.#opts.openApp) throw new BrowserSessionError("이 워커는 앱 안 브라우저를 열 수 없습니다 — 데스크톱 앱에서 돌리세요(브라우저 설정을 «띄우기»로 바꾸면 어디서나 돕니다)");
+      const v = await this.#opts.openApp();
+      this.#main = v.page;
+      this.#walletClose = v.close;
+      this.#context = v.page.context();
+      return this.#context;
+    }
     const browser =this.#opts.browser ?? (this.#ownBrowser = true, await chromium.launch({ headless: this.#opts.headless ?? true }));
     this.#browser = browser;
     this.#context = await browser.newContext({ locale: "ko-KR" });
@@ -107,6 +127,11 @@ export class BrowserSession {
   async pageForUrl(): Promise<Page> {
     if (this.#main && !this.#main.isClosed()) return this.#use(this.#main);
     const ctx = await this.#ensureContext();
+    // 앱 안 브라우저 — 뷰가 곧 페이지다(컨텍스트에 새 탭을 열면 앱 밖의 빈 창이 된다)
+    if (this.mode === "app") {
+      if (this.#main && !this.#main.isClosed()) return this.#use(this.#main);
+      throw new BrowserSessionError("앱 안 브라우저 창이 닫혔습니다");
+    }
     if (this.mode === "attach") {
       const mine = this.#opened.find((p) => !p.isClosed());
       if (mine) return this.#use(mine);

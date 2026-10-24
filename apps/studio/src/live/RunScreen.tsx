@@ -147,7 +147,7 @@ export function RunScreen({ runId, title, step, onClose }: { runId: string; titl
             </div>
           )}
         </div>
-        <div className="small muted">사람의 크롬에 붙는 워크플로우는 그 크롬 창에서 직접 하는 것이 빠릅니다. 창이 가려져 있으면 화면이 늦게 올 수 있습니다.</div>
+        <div className="small muted">사람의 크롬에 붙는 워크플로우는 그 크롬 창에서, 앱 안 브라우저는 앞으로 나온 실행 창에서 직접 하는 것이 빠릅니다. 창이 가려져 있으면 화면이 늦게 올 수 있습니다.</div>
       </div>
     </div>
   );

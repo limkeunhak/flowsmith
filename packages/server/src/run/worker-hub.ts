@@ -56,7 +56,7 @@ interface Conn {
 /** 이 실행에 필요한 확장 */
 const needsOf = (job: RunJob): string[] => [...new Set(job.flow.nodes.flatMap((n) => (n.type === "extension" ? [n.config.extension] : [])))];
 /** 이 실행이 워커에게 바라는 일 — 지갑 브라우저(창이 보이는 워커만 연다 · PLAN §44) */
-const capsOf = (job: RunJob): string[] => (job.flow.settings.browser === "wallet" ? ["wallet"] : []);
+const capsOf = (job: RunJob): string[] => (job.flow.settings.browser === "wallet" ? ["wallet"] : job.flow.settings.browser === "app" ? ["app"] : []);
 const hasCaps = (c: { info: WorkerInfo }, caps: string[]): boolean => caps.every((x) => c.info.capabilities?.includes(x));
 
 /** 녹화의 Studio 쪽 — 세션이 보내는 말 · 화면 */
@@ -325,6 +325,9 @@ export class WorkerHub implements WorkerClient {
     const can = [...this.#conns.values()].filter((c) => { const w = snap.byId.get(c.id); return w !== undefined && this.#fits(w, job.flow.id, on, snap); });
     if (can.length === 0) return null;
     // 지갑 브라우저 — 창이 보이는 워커가 하나도 없으면 기다리지 않고 바로(§26 «못 가면 바로 실패»)
+    if (caps.includes("app") && !can.some((c) => hasCaps(c, caps))) {
+      return `워커 «${can.map((c) => c.name).join(", ")}»는 앱 안 브라우저를 열 수 없습니다 — 데스크톱 앱이 이 PC의 워커로 붙었을 때만 돕니다(브라우저 설정을 «띄우기»로 바꾸면 어느 워커에서나 돕니다)`;
+    }
     if (caps.length > 0 && !can.some((c) => hasCaps(c, caps))) {
       return `워커 «${can.map((c) => c.name).join(", ")}»는 지갑 브라우저(MetaMask)를 열 수 없습니다 — 화면이 있는 PC에서 워커를 --headed로 켜세요(데스크톱 앱이면 그대로 됩니다)`;
     }
