@@ -1,6 +1,8 @@
 /**
  * 캔버스 아래 가운데의 실행 버튼 (n8n의 「Test workflow」 자리).
  * 실행 입력이 있으면 위로 작은 창이 열려 받는다. 지난번 입력은 이 브라우저에 기억한다(편의).
+ * 데스크톱 앱이 회사 서버에 붙어 있으면(PLAN §44 · 4단계) **«내 PC에서 실행하기»** — 이 PC(개인 워커)에서 돌려 눈으로 본다.
+ *  끄면 워크플로우 설정대로(공용 워커 · 서버). 앱 안 · 지갑 브라우저 워크플로우는 화면이 있어야 해서 늘 내 PC에서.
  */
 import { useEffect, useRef, useState } from "react";
 import { paramProblem, type Flow } from "@flowsmith/core";
@@ -10,6 +12,11 @@ import { placeLabel, useWorkers } from "../../shell/workers.ts";
 import { IconChevronUp, IconPlay } from "../../icons.tsx";
 import type { RunTarget } from "./useRun.ts";
 import { recallParams, rememberParams } from "../../shell/remember.ts";
+import { myPc, useDesktop } from "../../live/desktop.ts";
+
+const MINE_KEY = "flowsmith.runMine";
+const readMine = (): boolean => { try { return localStorage.getItem(MINE_KEY) === "1"; } catch { return false; } };
+const writeMine = (on: boolean) => { try { localStorage.setItem(MINE_KEY, on ? "1" : "0"); } catch { /* 기억은 편의 */ } };
 
 
 /** onlyPublished — 실행자(편집자 아래): 초안은 못 돌린다 · 게시된 버전만 */
@@ -28,6 +35,11 @@ export function RunLauncher({ flow, detail, running, error, onRun, onlyPublished
   const [on, setOn] = useState("");
   /** 지갑 브라우저 — 이번만 지갑 프로필을 지우고 처음부터 준비한다(한 번 쓰면 다시 끈다) */
   const [resetWallet, setResetWallet] = useState(false);
+  // 내 PC — 데스크톱 앱(회사 서버 모드)일 때만. 화면이 있어야 하는 워크플로우는 늘 켠다
+  const pc = myPc(useDesktop());
+  const needsScreen = flow.settings.browser === "app" || flow.settings.browser === "wallet";
+  const [mineWanted, setMineWanted] = useState(readMine);
+  const mine = pc !== null && (needsScreen || mineWanted);
 
   useEffect(() => { if (error) setOpen(true); }, [error]);
   useEffect(() => {
@@ -43,9 +55,11 @@ export function RunLauncher({ flow, detail, running, error, onRun, onlyPublished
     if (missing.length > 0) { setOpen(true); return; }
     rememberParams(flow.id, params);
     const wantReset = resetWallet && flow.settings.browser === "wallet";
-    if (await onRun(target, params, { ...(on ? { on } : {}), ...(wantReset ? { resetWallet: true } : {}) })) { setOpen(false); setResetWallet(false); }
+    const where = mine && pc ? `worker:${pc.id}` : on;
+    if (await onRun(target, params, { ...(where ? { on: where } : {}), ...(wantReset ? { resetWallet: true } : {}) })) { setOpen(false); setResetWallet(false); }
   };
-  const targetLabel = (target === "draft" ? "초안" : target === "active" ? `배포 v${detail.activeVersion}` : `v${target}`) + (on ? ` · ${placeLabel(on, workers)}` : "") + (resetWallet && flow.settings.browser === "wallet" ? " · 지갑 다시 준비" : "");
+  const targetLabel = (target === "draft" ? "초안" : target === "active" ? `배포 v${detail.activeVersion}` : `v${target}`) + (mine ? " · 내 PC" : on ? ` · ${placeLabel(on, workers)}` : "") + (resetWallet && flow.settings.browser === "wallet" ? " · 지갑 다시 준비" : "");
+  const shared = workers?.workers.filter((w) => w.kind !== "personal") ?? [];
 
   return (
     <div className="launcher" ref={box}>
@@ -58,13 +72,13 @@ export function RunLauncher({ flow, detail, running, error, onRun, onlyPublished
               {detail.versions.map((v) => <option key={v.version} value={v.version}>v{v.version}{v.note ? ` — ${v.note}` : ""}</option>)}
             </select>
           </label>
-          {workers && workers.workers.length > 0 && (
+          {!mine && workers && shared.length > 0 && (
             <label className="field"><span>실행 위치 <em className="hint">이번만</em></span>
               <select value={on} onChange={(e) => setOn(e.target.value)}>
                 <option value="">기본 — {placeLabel(detail.runOn ?? null, workers)}</option>
                 <option value="server">서버</option>
                 <optgroup label="워커">
-                  {workers.workers.map((w) => <option key={w.id} value={`worker:${w.id}`} disabled={!w.online || !w.enabled}>{w.name} — {!w.enabled ? "잠시 끔" : w.online ? `연결됨 · ${w.running.length}/${w.slots}` : "꺼짐"}</option>)}
+                  {shared.map((w) => <option key={w.id} value={`worker:${w.id}`} disabled={!w.online || !w.enabled}>{w.name} — {!w.enabled ? "잠시 끔" : w.online ? `연결됨 · ${w.running.length}/${w.slots}` : "꺼짐"}</option>)}
                 </optgroup>
                 {workers.labels.length > 0 && <optgroup label="라벨 (비어 있는 워커)">
                   {workers.labels.map((l) => <option key={l} value={`label:${l}`}>라벨 {l}</option>)}
@@ -85,7 +99,13 @@ export function RunLauncher({ flow, detail, running, error, onRun, onlyPublished
         </div>
       )}
       <div className="launcher-bar">
-        <button className="run-btn" disabled={running} onClick={() => void go()}>
+        {pc && (
+          <label className={`run-mine${mine ? " on" : ""}`} title={needsScreen ? "화면이 있어야 하는 워크플로우(앱 안 · 지갑 브라우저)라 늘 이 PC에서 돕니다" : pc.online ? `«${pc.name}»(이 PC)에서 돌려 실행 창으로 봅니다. 끄면 워크플로우 설정대로(공용 워커 · 서버)` : `이 PC가 회사 서버에 붙어 있지 않습니다(${pc.state})`}>
+            <input type="checkbox" checked={mine} disabled={needsScreen} onChange={(e) => { setMineWanted(e.target.checked); writeMine(e.target.checked); }} />
+            내 PC에서 실행하기{mine && !pc.online ? " · 연결 안 됨" : ""}
+          </label>
+        )}
+        <button className="run-btn" disabled={running || (mine && pc !== null && !pc.online)} onClick={() => void go()}>
           {running ? <span className="spinner" /> : <IconPlay size={14} />}
           {running ? "도는 중…" : `워크플로우 실행 · ${targetLabel}`}
         </button>

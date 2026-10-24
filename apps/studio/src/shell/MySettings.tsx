@@ -6,8 +6,28 @@ import { useEffect, useState } from "react";
 import { api, type AiStatus } from "../api.ts";
 import { AI_CHOICE_EVENT, AI_KEY_HINT, AI_KEY_RE, AI_MODEL_RE, AI_PROVIDER_LIST, maskKey, myAiKey, myAiModel, myAiProvider, setMyAiKey, setMyAiModel, setMyAiProvider, type AiProvider } from "../ai/key.ts";
 import { useMe } from "./me.ts";
+import { desktop, useDesktop } from "../live/desktop.ts";
 
 const OTHER = "__other__";
+
+/** 데스크톱 앱 — 어떻게 붙었나 · 연결 바꾸기(앱의 처음 화면) */
+function DesktopCard() {
+  const d = useDesktop();
+  if (!d) return null;
+  const w = d.worker;
+  const state = !w ? "" : w.state === "online" ? "연결됨" : w.state === "denied" ? "거절됨" : w.state === "offline" ? "끊김 — 다시 붙는 중" : w.state;
+  return (
+    <div className="card stack my-settings" style={{ marginBottom: 16 }}>
+      <h2>데스크톱 앱</h2>
+      {d.mode === "server" ? (
+        <span className="small">회사 서버 <code>{d.server}</code>에 붙어 있습니다 — 이 PC는 개인 워커 <b>«{w?.name ?? "?"}»</b>({state}){w?.message ? ` · ${w.message}` : ""}. 실행할 때 <b>내 PC에서 실행하기</b>를 켜면 이 PC에서 돕니다.</span>
+      ) : (
+        <span className="small">이 PC에서만 씁니다 — 워크플로우 · 실행 기록이 이 PC에 있습니다.</span>
+      )}
+      <div className="row"><button className="small" onClick={() => desktop()?.openSetup?.()}>연결 바꾸기</button><span className="small muted">회사 서버 주소 · 워커 토큰을 바꾸거나 «이 PC에서만»으로 돌아갑니다(앱이 다시 켜집니다)</span></div>
+    </div>
+  );
+}
 
 export function MySettings() {
   const me = useMe();
@@ -38,6 +58,7 @@ export function MySettings() {
     <div className="page">
       <div className="page-head"><h1 className="grow">내 설정</h1></div>
       <div className="page-sub">{me.user ? `${me.user.name}님의 설정입니다.` : "이 브라우저에서 쓰는 설정입니다."}</div>
+      <DesktopCard />
       <div className="card stack my-settings">
         <h2>AI 도우미</h2>
         <span className="small muted">오른쪽 아래 «✦ AI» 창이 고른 AI를 부릅니다(AI · 모델은 그 창 위쪽에서도 바꿀 수 있습니다). 키는 <b>이 브라우저에만</b> 저장되고, AI를 부를 때만 서버를 거쳐 그 회사에 전달됩니다(서버는 저장하지 않습니다).</span>

@@ -120,7 +120,9 @@ CREATE TABLE IF NOT EXISTS worker (
   token_hash      TEXT NOT NULL,                  -- ★토큰은 해시만. 토큰 자체는 만들 때 한 번만 보인다
   created_at      TEXT NOT NULL,
   last_seen_at    TEXT,
-  info_json       TEXT                            -- 마지막으로 붙었을 때 — PC 이름 · node 버전 · 확장
+  info_json       TEXT,                           -- 마지막으로 붙었을 때 — PC 이름 · node 버전 · 확장
+  kind            TEXT NOT NULL DEFAULT 'shared', -- shared = 공용 워커(누구의 실행이든) · personal = 개인 워커(주인이 «내 PC에서»로 돌린 실행만)
+  owner           TEXT                            -- 개인 워커의 주인(메일)
 );
 CREATE TABLE IF NOT EXISTS session (
   token_hash      TEXT PRIMARY KEY,
@@ -236,6 +238,10 @@ function migrate(db: DatabaseSync): void {
   if (!runCols.includes("ran_on")) db.exec("ALTER TABLE run ADD COLUMN ran_on TEXT");
   // 대시보드 — 노드 요약(결과 본문을 다시 읽지 않게, 2026-10-17). 옛 기록은 비어 있고 runsSince가 결과에서 만든다
   if (!runCols.includes("nodes_json")) db.exec("ALTER TABLE run ADD COLUMN nodes_json TEXT");
+  // 워커 종류(2026-10-24, PLAN §44 · 4단계) — 옛 워커는 모두 공용
+  const workerCols = (db.prepare("PRAGMA table_info(worker)").all() as Row[]).map((c) => String(c["name"]));
+  if (!workerCols.includes("kind")) db.exec("ALTER TABLE worker ADD COLUMN kind TEXT NOT NULL DEFAULT 'shared'");
+  if (!workerCols.includes("owner")) db.exec("ALTER TABLE worker ADD COLUMN owner TEXT");
   const verCols = (db.prepare("PRAGMA table_info(flow_version)").all() as Row[]).map((c) => String(c["name"]));
   if (!verCols.includes("created_by")) db.exec("ALTER TABLE flow_version ADD COLUMN created_by TEXT");
   // 확장 플러그인(2026-10-20) — 버전을 만들 때 쓴 플러그인 버전(id → 버전). 옛 버전은 비어 있다

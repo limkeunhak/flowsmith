@@ -268,8 +268,10 @@ function SecretsSection({ flow, update, dirty, onToast }: { flow: Flow; update: 
 
 /** 어디서 돌리나 — 서버 · 워커 하나 · 라벨(그 라벨의 비어 있는 워커). 일정 · 웹훅 · 점검도 그곳에서 돈다 */
 function RunOnField({ runOn, onRunOn, disabled }: { runOn: string | null; onRunOn: (on: string | null) => void; disabled: boolean }) {
-  const v = useWorkers();
-  if (!v) return null;
+  const all = useWorkers();
+  if (!all) return null;
+  // ★개인 워커(내 PC)에는 워크플로우를 맡기지 않는다 — 실행할 때 «내 PC에서 실행하기»로만
+  const v = { ...all, workers: all.workers.filter((w) => w.kind !== "personal") };
   const chosen = runOn?.startsWith("worker:") ? v.workers.find((w) => `worker:${w.id}` === runOn) : undefined;
   return (
     <>

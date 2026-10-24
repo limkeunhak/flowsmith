@@ -115,7 +115,7 @@ export const DOCS: Record<string, RouteDoc> = {
 
   // ── 워커
   "GET /api/workers": { tag: "워커", summary: "워커들 — 연결 · 도는 실행 · 줄 · 라벨" },
-  "POST /api/workers": { tag: "워커", summary: "워커 더하기", description: "토큰은 이때 한 번만 온다.", body: { "*name": "이름", labels: "라벨 — 쉼표로", slots: "동시 실행 수(1~20)", team: "팀 전용이면 팀 id" }, example: { name: "김담당 PC", labels: "주문팀", slots: 1 }, ok: 201 },
+  "POST /api/workers": { tag: "워커", summary: "워커 더하기", description: "토큰은 이때 한 번만 온다. 개인 워커(kind: personal)는 주인(owner)이 «내 PC에서 실행하기»로 돌린 실행만 받는다 — 라벨 · 팀 · 워크플로우의 실행 위치로는 고르지 않는다.", body: { "*name": "이름", kind: "shared(공용 — 기본) · personal(개인)", owner: "개인 워커의 주인(사람의 메일)", labels: "라벨 — 쉼표로(공용만)", slots: "동시 실행 수(1~20)", team: "팀 전용이면 팀 id(공용만)" }, example: { name: "김담당 PC", kind: "personal", owner: "kim@company.com" }, ok: 201 },
   "PUT /api/workers/:id": { tag: "워커", summary: "워커 고치기 · 잠시 끄기", body: { name: "이름", labels: "라벨", slots: "동시 실행 수", enabled: "false면 잠시 끔" }, example: { enabled: false } },
   "POST /api/workers/:id/token": { tag: "워커", summary: "워커 토큰 새로", description: "옛 토큰으로 붙어 있던 연결은 끊긴다." },
   "DELETE /api/workers/:id": { tag: "워커", summary: "워커 지우기", description: "이 워커에서 도는 워크플로우가 있으면 409.", ok: 204 },

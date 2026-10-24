@@ -45,7 +45,7 @@ describe("워커 화면", () => {
     await page.getByRole("heading", { name: "워커", exact: true }).waitFor();
     expect(await page.locator(".worker-card").first().innerText()).toContain("서버");
     await page.locator(".page-head").getByRole("button", { name: /워커 더하기/ }).click();
-    await page.getByPlaceholder("예: 김담당 PC").fill("주문팀 PC");
+    await page.getByPlaceholder("예: 도커 워커 1").fill("주문팀 PC");
     await page.getByPlaceholder("관리자화면, 크롬로그인").first().fill("쇼핑몰");
     await page.getByRole("button", { name: "만들고 토큰 받기" }).click();
     const token = (await page.locator(".token-banner code.token").innerText()).trim();

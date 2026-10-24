@@ -6,7 +6,7 @@ import { accepts, pick, unavailable, type Seat } from "../src/run/placement.ts";
 import type { WorkerRow } from "../src/storage/store.ts";
 
 const worker = (id: string, more: Partial<WorkerRow> = {}): WorkerRow => ({
-  id, name: `${id} PC`, labels: [], slots: 1, team: null, enabled: true, createdAt: "", lastSeenAt: null, info: null, flows: 0, ...more,
+  id, name: `${id} PC`, labels: [], slots: 1, team: null, enabled: true, createdAt: "", lastSeenAt: null, info: null, flows: 0, kind: "shared", owner: null, ...more,
 });
 const seat = (id: string, running: string[] = []): Seat => ({ id, running: running.length, has: (r) => running.includes(r) });
 

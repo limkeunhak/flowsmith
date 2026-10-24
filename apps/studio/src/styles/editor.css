@@ -113,6 +113,8 @@
 .run-btn:hover:not(:disabled) { background: var(--accent-hover) !important; }
 .run-more { background: var(--accent); border: none; border-left: 1px solid rgb(255 255 255 / .25); color: var(--on-accent); padding: 0 10px; border-radius: 0 8px 8px 0; }
 .run-more:hover { background: var(--accent-hover) !important; }
+.run-mine { display: flex; align-items: center; gap: 6px; padding: 0 12px; margin-right: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; white-space: nowrap; cursor: pointer; }
+.run-mine.on { border-color: var(--accent); color: var(--accent); font-weight: 600; }
 .launcher-pop { width: 320px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-lg); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
 .spinner { width: 13px; height: 13px; border-radius: 50%; border: 2px solid rgb(255 255 255 / .35); border-top-color: var(--on-solid); animation: spin .8s linear infinite; }
 

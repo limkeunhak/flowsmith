@@ -228,7 +228,8 @@ export class Runs {
     const secrets = this.secrets.unlockFor(flowId, flow.secrets);
     const problems = [...checkRunInputs(flow, params, secrets), ...missing.map((n) => `팀 공용 변수 '${n}'가 없습니다 — 관리자가 팀 화면에서 넣습니다`)];
     if (problems.length > 0) throw new StoreError(400, "실행할 수 없습니다", problems);
-    const on = req.on !== undefined ? this.store.checkRunOn(flowId, req.on) : this.store.flowRunOn(flowId);
+    // 이번만 어디서 — 개인 워커(내 PC)는 그 주인이 돌린 실행만(storage/workers.ts)
+    const on = req.on !== undefined ? this.store.checkRunOn(flowId, req.on, { by: req.startedBy ?? null }) : this.store.flowRunOn(flowId);
 
     const runId = randomUUID();
     this.store.insertRun({ id: runId, flowId, version, trigger: req.trigger ?? "manual", params, parentRunId: req.parentRunId ?? null, startedBy: req.startedBy ?? null });
@@ -296,6 +297,7 @@ export class Runs {
       this.#approvals.set(runId, entry);
     });
     const onPage = this.screens?.track(runId);
+    const screen = this.screens?.sink(runId);
     // ★부른 실행(자식)은 부모의 자리를 함께 쓴다 — 줄을 서지 않는다
     const root = !req.parentRunId;
     const notify = (status: "success" | "failure" | "cancelled" | "blocked", message: string, result: RunResult | null, ms: number | null) => {
@@ -325,9 +327,15 @@ export class Runs {
           ...(req.stopBefore ? { stopBefore: req.stopBefore } : {}), ...(req.stopAfter ? { stopAfter: req.stopAfter } : {}),
           ...(req.resetWallet ? { resetWallet: true } : {}),
         }, push, {
-          callFlow, approval, signal: abort.signal, ...(onPage ? { onPage } : {}),
+          callFlow, approval, signal: abort.signal, ...(onPage ? { onPage } : {}), ...(screen ? { screen } : {}),
           onQueued: (ahead) => push({ kind: "run:queued", ahead }),
-          onPlaced: (w) => { if (w) { this.store.setRanOn(runId, w.name); this.screens?.elsewhere(runId, w.name); push({ kind: "run:placed", worker: w.name }); } },
+          onPlaced: (w) => {
+            if (!w) return;
+            this.store.setRanOn(runId, w.name);
+            // 워커로 갔다 — 화면은 그 PC가 보내 준다(중계 · 옛 워커면 «화면 보기는 서버에서 도는 실행만»)
+            if (w.screen) this.screens?.remote(runId, w.name, w.screen); else this.screens?.elsewhere(runId, w.name);
+            push({ kind: "run:placed", worker: w.name });
+          },
         });
       } finally {
         if (slot) this.#release();

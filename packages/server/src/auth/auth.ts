@@ -147,6 +147,11 @@ export class Auth {
     return u !== null && allows(u.role, need);
   }
 
+  /** WebSocket으로 들어온 사람(로그인을 끈 서버면 null) — 개인 워커에서 녹화해도 되나(주인만) */
+  upgradeUser(req: IncomingMessage): UserRow | null {
+    return this.enabled ? this.#current(req) : null;
+  }
+
   #current(req: IncomingMessage): UserRow | null {
     // API 토큰 — 머리글에 있으면 그것만 본다(쿠키로 넘어가지 않는다)
     const bearer = bearerOf(req);

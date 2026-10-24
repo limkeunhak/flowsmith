@@ -147,7 +147,17 @@ export interface WorkerRow {
   info: WorkerInfo | null;
   /** 이 워커에서 돌게 정해 둔 플로우 수 */
   flows: number;
+  /**
+   * 공용 워커(shared) — 누구의 실행이든 · 일정 · 웹훅을 받는다(도커 · 서버실 PC).
+   * 개인 워커(personal) — **주인이 «내 PC에서 실행하기»로 돌린 실행만** 받는다(데스크톱 앱). 워크플로우의 «어디서 돌리나» · 라벨로는 고를 수 없다
+   */
+  kind: WorkerKind;
+  /** 개인 워커의 주인(메일) — 공용이면 null */
+  owner: string | null;
 }
+
+export const WORKER_KINDS = ["shared", "personal"] as const;
+export type WorkerKind = (typeof WORKER_KINDS)[number];
 
 export interface TeamRow {
   id: string;

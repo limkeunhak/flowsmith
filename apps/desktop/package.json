@@ -10,7 +10,9 @@
     "stage": "node scripts/stage.ts"
   },
   "dependencies": {
-    "@flowsmith/server": "workspace:*"
+    "@flowsmith/engine": "workspace:*",
+    "@flowsmith/server": "workspace:*",
+    "@flowsmith/worker": "workspace:*"
   },
   "devDependencies": {
     "electron": "44.9.3"

@@ -20,6 +20,7 @@ export class InProcessWorker implements WorkerClient {
   readonly #filesDir: string | undefined;
   readonly #wallet: MetaMaskEnv | null;
   readonly #app: AppViews | null;
+  readonly #launchInApp: boolean;
   #browser: Promise<Browser> | null = null;
 
   constructor(opts: {
@@ -28,8 +29,14 @@ export class InProcessWorker implements WorkerClient {
     walletWindow?: boolean;
     /** 앱 안 브라우저 뷰 — 데스크톱 앱이 띄운 서버만 준다 */
     appViews?: AppViews;
+    /**
+     * «띄우기» 플로우도 앱 안 브라우저(실행 창)에서 — 데스크톱 앱이 회사 서버의 워커로 붙었을 때(«내 PC에서 실행하기»는 눈으로 보려고 고른 것이다).
+     * ★페이지에 넣는 테스트 지갑이 있는 플로우는 그대로 띄운다(앱 안 브라우저에는 싣지 않는다)
+     */
+    launchInApp?: boolean;
   } = {}) {
     this.#app = opts.appViews ?? null;
+    this.#launchInApp = opts.launchInApp === true && this.#app !== null;
     this.#headless = opts.headless ?? true;
     this.#filesDir = opts.filesDir;
     this.#cdpUrl = opts.cdpUrl;
@@ -40,6 +47,9 @@ export class InProcessWorker implements WorkerClient {
 
   /** 이 워커가 할 수 있는 일 — 서버가 실행을 보낼 곳을 고를 때 본다(wallet: 지갑 브라우저 · app: 앱 안 브라우저) */
   get capabilities(): string[] { return [...(this.#wallet ? ["wallet"] : []), ...(this.#app ? ["app"] : [])]; }
+
+  /** «띄우기» 플로우도 앱 안 브라우저에서 도나(녹화도 — agent.ts) */
+  get launchInApp(): boolean { return this.#launchInApp; }
 
   /** 녹화를 앱 안 브라우저에서 — 편집 화면의 라이브 패널 자리에 뷰를 놓는다 */
   appSource(draft: { name?: string }): AppSource {
@@ -81,6 +91,8 @@ export class InProcessWorker implements WorkerClient {
 
   async run(job: RunJob, onEvent: (e: RunEvent) => void, hooks: RunHooks = {}): Promise<RunResult> {
     hooks.onPlaced?.(null);
+    // 데스크톱 앱(회사 서버의 워커) — «띄우기»도 실행 창에서 돌려 사람이 본다
+    if (this.#launchInApp && job.flow.settings.browser === "launch" && !job.flow.settings.wallet) job = { ...job, flow: { ...job.flow, settings: { ...job.flow.settings, browser: "app" } } };
     // attach 플로우는 사람의 크롬에 붙는다 — 우리 브라우저는 띄우지 않는다
     const browser = job.flow.settings.browser === "launch" ? await this.#getBrowser() : undefined;
     const where = { ...(job.flowUid ? { flowUid: job.flowUid } : {}), ...(job.flowUids ? { flowUids: job.flowUids } : {}) };

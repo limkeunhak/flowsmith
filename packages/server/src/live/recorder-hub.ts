@@ -64,14 +64,16 @@ export class LiveHub {
   }
 
   /** allow — 들어와도 되나(로그인 · 역할). 녹화는 편집자 이상 */
-  attach(upgrades: Upgrades, allow: (req: IncomingMessage) => boolean = () => true, canSee: (req: IncomingMessage, flowId: string) => boolean = () => true): void {
+  /** who — 들어온 사람(메일 · 로그인을 끈 서버면 null) — 개인 워커(내 PC)에서는 그 주인만 녹화한다 */
+  attach(upgrades: Upgrades, allow: (req: IncomingMessage) => boolean = () => true, canSee: (req: IncomingMessage, flowId: string) => boolean = () => true, who: (req: IncomingMessage) => string | null = () => null): void {
     upgrades.add(/^\/api\/live$/, (req: IncomingMessage, socket: Duplex, head: Buffer) => {
       if (!sameOrigin(req) || !allow(req)) { reject(socket, 403); return; }
-      this.#wss.handleUpgrade(req, socket, head, (ws) => this.#serve(ws, (flowId) => canSee(req, flowId)));
+      const by = who(req);
+      this.#wss.handleUpgrade(req, socket, head, (ws) => this.#serve(ws, (flowId) => canSee(req, flowId), by));
     });
   }
 
-  #serve(ws: WebSocket, canSee: (flowId: string) => boolean = () => true): void {
+  #serve(ws: WebSocket, canSee: (flowId: string) => boolean = () => true, by: string | null = null): void {
     let session: Recording | null = null;
     let opening = false;
     let idle: NodeJS.Timeout;
@@ -93,7 +95,7 @@ export class LiveHub {
         if (!canSee(m.flowId)) { send({ t: "notice", level: "error", text: "없는 워크플로우입니다" }); send({ t: "phase", phase: "closed", message: "열지 못했습니다" }); ws.close(); return; }
         opening = true;
         try {
-          session = await this.#open(m, send, (jpeg) => { if (ws.readyState === ws.OPEN && ws.bufferedAmount < MAX_BUFFERED) ws.send(jpeg, { binary: true }); }, (s) => { session = s; });
+          session = await this.#open(m, by, send, (jpeg) => { if (ws.readyState === ws.OPEN && ws.bufferedAmount < MAX_BUFFERED) ws.send(jpeg, { binary: true }); }, (s) => { session = s; });
           if (ws.readyState !== ws.OPEN) await this.#close(session);
         } catch (e) {
           send({ t: "notice", level: "error", text: `라이브 페이지를 열 수 없습니다 — ${(e as Error).message.split("\n")[0]}` });
@@ -113,7 +115,7 @@ export class LiveHub {
   }
 
   /** created — 재생 전에 세션을 알린다(재생 중 사람 기다리기의 입력이 닿게 — RecorderSession.open) */
-  async #open(req: OpenRequest, send: (m: ServerMessage) => void, frame: (b: Buffer) => void, created?: (s: Recording) => void): Promise<Recording> {
+  async #open(req: OpenRequest, by: string | null, send: (m: ServerMessage) => void, frame: (b: Buffer) => void, created?: (s: Recording) => void): Promise<Recording> {
     this.#store.getFlow(req.flowId);   // 없는 플로우면 여기서 던진다
     // ★시크릿은 서버 저장소에서만 온다. 화면이 보낸 초안의 정의 중 값이 저장된 것만 풀린다
     const secrets = this.#secrets.unlockFor(req.flowId, Array.isArray(req.draft?.secrets) ? req.draft.secrets : []);
@@ -122,7 +124,7 @@ export class LiveHub {
     // 그 PC의 워커에서 — 서버는 잇기만 한다
     if (typeof req.on === "string" && req.on.startsWith("worker:")) {
       if (!this.#workers) throw new Error("워커를 받지 않는 서버입니다");
-      const r = this.#workers.record(req.on.slice(7), req, secrets, { send, frame });
+      const r = this.#workers.record(req.on.slice(7), req, secrets, { send, frame }, by);
       this.#sessions.add(r);
       return r;
     }

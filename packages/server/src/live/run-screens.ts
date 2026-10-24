@@ -14,6 +14,7 @@ import type { IncomingMessage } from "node:http";
 import type { Duplex } from "node:stream";
 import type { Page } from "playwright";
 import { startScreencast, type Screencast } from "@flowsmith/engine";
+import type { ScreenControl, ScreenMeta, ScreenSink } from "@flowsmith/worker";
 import { WebSocketServer, type WebSocket } from "ws";
 import { reject, type Upgrades } from "./upgrade.ts";
 import { sameOrigin } from "../http/router.ts";
@@ -74,8 +75,10 @@ interface Screen {
   casting: Page | null;
   ended: Msg | null;
   lastSize: string;
-  /** 화면이 없는 까닭 — 워커(사람 PC)에서 돈다 */
+  /** 화면이 없는 까닭 — 옛 워커(중계를 모름)에서 돈다 */
   note?: string;
+  /** 워커에서 돈다 — 화면은 그 PC가 보내 준다(보는 사람이 있을 때만 켠다 · 사람의 손도 그리로) */
+  remote?: { worker: string; ctl: ScreenControl };
   /** 사람 기다리기 중이면 — 이때만 입력을 받는다 */
   human: { prompt: string; deadline: string | null } | null;
   /** 누를 수 있는 사람(연결마다) */
@@ -114,7 +117,41 @@ export class RunScreens {
     };
   }
 
-  /** 실행이 워커(사람 PC)로 갔다 — 화면은 그 PC에 있다. 보는 사람에게 그렇게 알린다 */
+  /**
+   * 실행이 워커로 갔고 그 워커가 화면을 보내 준다(PLAN §44 · 4단계) — 보는 사람이 있으면 켠다.
+   * ☆서버에서 도는 실행보다 한 단계 더 건너간다 — 조금 늦다
+   */
+  remote(runId: string, worker: string, ctl: ScreenControl): void {
+    const s = this.#runs.get(runId);
+    if (!s || s.ended) return;
+    s.remote = { worker, ctl };
+    delete s.note;
+    if (s.viewers.size > 0) {
+      ctl.watch(true);
+      for (const ws of s.viewers) this.#send(ws, { t: "wait", message: `워커 «${worker}»의 화면을 받는 중…` });
+    }
+  }
+
+  /** 워커에서 온 화면 · 크기 · 주소가 여기로(WorkerHub) */
+  sink(runId: string): ScreenSink {
+    return {
+      frame: (jpeg) => {
+        const s = this.#runs.get(runId);
+        if (!s || s.ended || !s.remote) return;
+        s.lastFrame = jpeg;
+        for (const ws of s.viewers) if (ws.readyState === ws.OPEN && ws.bufferedAmount < MAX_BUFFERED) ws.send(jpeg, { binary: true });
+      },
+      meta: (m: ScreenMeta) => {
+        const s = this.#runs.get(runId);
+        if (!s || s.ended || !s.remote) return;
+        if (m.t === "viewport") s.viewport = { width: m.width, height: m.height };
+        else s.pageInfo = { url: m.url, title: m.title };
+        this.#broadcast(s, m);
+      },
+    };
+  }
+
+  /** 실행이 워커(사람 PC)로 갔다 — 화면은 그 PC에 있다(중계를 모르는 옛 워커). 보는 사람에게 그렇게 알린다 */
   elsewhere(runId: string, worker: string): void {
     const s = this.#runs.get(runId);
     if (!s) return;
@@ -173,6 +210,13 @@ export class RunScreens {
     if (control) s.control.add(ws);
     // 보기만 — 사람 기다리기 동안 · 누를 수 있는 사람의 입력만 페이지로 보낸다(그 밖에는 버린다)
     ws.on("message", (raw) => {
+      // 워커에서 도는 실행 — 손은 그 PC로(거르는 것은 같다: 사람 기다리기 동안 · 누를 수 있는 사람)
+      if (s.remote) {
+        if (!s.human || !s.control.has(ws)) return;
+        const m = inputOf(raw);
+        if (m) s.remote.ctl.input(m);
+        return;
+      }
       if (!s.human || !s.control.has(ws) || !s.page || s.page.isClosed()) return;
       const m = inputOf(raw);
       if (!m) return;
@@ -192,9 +236,16 @@ export class RunScreens {
     if (s.human) this.#send(ws, this.#humanMsg(s, ws));
     ws.on("close", () => {
       s.viewers.delete(ws);
-      if (s.viewers.size === 0) void this.#stop(s);
+      if (s.viewers.size === 0) { s.remote?.ctl.watch(false); void this.#stop(s); }
     });
-    if (s.page && s.casting === s.page) {
+    if (s.remote) {
+      // 워커에서 — 처음 보는 사람이면 그 PC에 켜라고 · 이미 받는 중이면 지금 것을 바로
+      if (s.viewers.size === 1) s.remote.ctl.watch(true);
+      if (s.viewport) this.#send(ws, { t: "viewport", ...s.viewport });
+      if (s.pageInfo) this.#send(ws, { t: "page", ...s.pageInfo });
+      if (s.lastFrame && ws.readyState === ws.OPEN) ws.send(s.lastFrame, { binary: true });
+      else this.#send(ws, { t: "wait", message: `워커 «${s.remote.worker}»의 화면을 받는 중…` });
+    } else if (s.page && s.casting === s.page) {
       // 이미 보내는 중 — 지금 크기 · 주소 · 마지막 화면을 바로 준다(그림이 바뀔 때까지 기다리지 않게)
       if (s.viewport) this.#send(ws, { t: "viewport", ...s.viewport });
       if (s.pageInfo) this.#send(ws, { t: "page", ...s.pageInfo });

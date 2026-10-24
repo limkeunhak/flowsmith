@@ -2,7 +2,8 @@
  * 워커(젠킨스의 노드) — 실행을 받아 가는 PC들 (run/worker-hub.ts · PLAN §26)
  *
  *   GET    /api/workers                 서버 줄 + 워커들(지금 연결 · 도는 실행 · 줄) + 쓰인 라벨. 관리자가 아니면 내 팀이 쓸 수 있는 것만
- *   POST   /api/workers                 (관리자) { name, labels?, slots?, team? } → 201 { worker, token } — ★토큰은 이때 한 번만
+ *   POST   /api/workers                 (관리자) { name, labels?, slots?, team?, kind?, owner? } → 201 { worker, token } — ★토큰은 이때 한 번만
+ *                                       kind: shared(공용 — 기본) · personal(개인 — owner의 «내 PC에서» 실행만)
  *   PUT    /api/workers/:id             (관리자) { name?, labels?, slots?, enabled? }
  *   POST   /api/workers/:id/token       (관리자) 새 토큰 — 옛 토큰으로 붙어 있던 연결은 끊긴다
  *   DELETE /api/workers/:id             (관리자) 이 워커에서 돌게 정해 둔 플로우가 있으면 409
@@ -23,8 +24,11 @@ export function workerRoutes({ store, runs, auth, workers }: ApiDeps): Route[] {
   };
   return [
     route("GET", "/api/workers", (req) => {
-      const mine = auth.teamsFor(userOf(req));
-      const list = store.listWorkers().filter((w) => visibleTo(mine, w.team?.id ?? null));
+      const me = userOf(req);
+      const mine = auth.teamsFor(me);
+      // 개인 워커는 관리자와 그 주인만 본다(로그인을 끈 서버면 모두)
+      const own = (w: WorkerRow) => w.kind === "shared" || !me || me.role === "admin" || w.owner?.toLowerCase() === me.email.toLowerCase();
+      const list = store.listWorkers().filter((w) => own(w) && visibleTo(mine, w.team?.id ?? null));
       return {
         server: runs.localLoad(),
         workers: (() => { const now = workers.live(); return list.map((w) => view(w, now)); })(),
@@ -34,7 +38,7 @@ export function workerRoutes({ store, runs, auth, workers }: ApiDeps): Route[] {
     route("POST", "/api/workers", async (_q, res, _p, body) => {
       const b = await body();
       const team = typeof b["team"] === "string" && b["team"] ? b["team"] : null;
-      const { worker, token } = store.createWorker({ name: String(b["name"] ?? ""), labels: b["labels"] ?? [], slots: b["slots"] ?? 1, team });
+      const { worker, token } = store.createWorker({ name: String(b["name"] ?? ""), labels: b["labels"] ?? [], slots: b["slots"] ?? 1, team, kind: b["kind"], owner: b["owner"] });
       res.statusCode = 201;
       return { worker: view(worker), token };
     }),

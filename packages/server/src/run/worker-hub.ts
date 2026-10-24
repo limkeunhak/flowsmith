@@ -111,9 +111,11 @@ export class WorkerHub implements WorkerClient {
     let conn: Conn | null = null;
     ws.on("message", (d, binary) => {
       if (binary) {
-        // 녹화 화면 한 장 — [세션 id][JPEG]
+        // 화면 한 장 — [세션 id][JPEG]. 녹화 세션이거나 «r:실행 id»(실행 화면 중계)
         const f = conn ? unpackFrame(Buffer.isBuffer(d) ? d : Buffer.from(d as ArrayBuffer)) : null;
-        if (f) conn!.recs.get(f.sid)?.frame(f.jpeg);
+        if (!f) return;
+        if (f.sid.startsWith("r:")) conn!.running.get(f.sid.slice(2))?.hooks.screen?.frame(f.jpeg);
+        else conn!.recs.get(f.sid)?.frame(f.jpeg);
         return;
       }
       let m: FromWorker;
@@ -196,6 +198,7 @@ export class WorkerHub implements WorkerClient {
       case "event": conn.running.get(m.runId)?.onEvent(m.e); return;
       case "rec-out": conn.recs.get(m.sid)?.send(m.m); return;
       case "rec-ended": conn.recs.delete(m.sid); return;
+      case "screen-out": conn.running.get(m.runId)?.hooks.screen?.meta(m.m); return;
       case "plugin-get": {
         const b = this.#plugins?.bytes(String(m.id), String(m.version)) ?? null;
         this.#send(conn, b ? { t: "plugin-data", id: m.id, version: m.version, ok: true, data: b.toString("base64") } : { t: "plugin-data", id: m.id, version: m.version, ok: false, error: `서버에 ${m.id} ${m.version} 묶음이 없습니다` });
@@ -349,7 +352,12 @@ export class WorkerHub implements WorkerClient {
       this.#queue.splice(this.#queue.indexOf(task), 1);
       task.conn = conn;
       conn.running.set(task.job.runId, task);
-      task.hooks.onPlaced?.({ id: conn.id, name: conn.name });
+      // 실행 화면 — 보는 사람이 생기면 그 PC에 화면을 보내라고 한다 · 사람 기다리기의 손도 그리로
+      const runId = task.job.runId;
+      task.hooks.onPlaced?.({ id: conn.id, name: conn.name, screen: {
+        watch: (on) => { if (conn.running.has(runId)) this.#send(conn, { t: "screen", runId, on }); },
+        input: (m) => { if (conn.running.has(runId)) this.#send(conn, { t: "screen-input", runId, m }); },
+      } });
       const { on: _on, ...job } = task.job;
       this.#send(conn, { t: "job", job });
     }
@@ -372,9 +380,11 @@ export class WorkerHub implements WorkerClient {
    * 이 워커의 PC에서 녹화를 연다 — 못 열면 까닭(사람 말)을 던진다.
    * ★잠시 끈 워커도 된다 · 자리를 쓰지 않는다 · 팀이 맞아야 한다
    */
-  record(workerId: string, req: OpenRequest, secrets: Record<string, SecretValue>, io: RecIO): Recording {
+  record(workerId: string, req: OpenRequest, secrets: Record<string, SecretValue>, io: RecIO, by: string | null = null): Recording {
     const w = this.#store.findWorker(workerId);
     if (!w) throw new Error("녹화할 워커가 지워졌습니다 — 녹화 시작에서 PC를 다시 고르세요");
+    // ★개인 워커(내 PC) — 그 주인만 녹화한다(풀린 시크릿이 그 PC로 간다)
+    if (w.kind === "personal" && (!by || by.toLowerCase() !== w.owner?.toLowerCase())) throw new Error(`«${w.name}»는 ${w.owner ?? "다른 사람"}의 개인 워커입니다 — 그 사람만 녹화합니다`);
     if (!workerFits(w.team?.id ?? null, this.#store.flowTeam(req.flowId) ?? null)) throw new Error(`«${w.name}»는 ${w.team!.name} 전용 워커입니다 — 이 워크플로우는 그 PC에서 녹화할 수 없습니다`);
     const conn = this.#conns.get(workerId);
     if (!conn) throw new Error(`워커 «${w.name}»가 연결돼 있지 않습니다 — 그 PC에서 워커 프로그램을 켜세요`);

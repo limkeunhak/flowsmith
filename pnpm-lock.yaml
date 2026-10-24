@@ -20,9 +20,15 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@flowsmith/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
       '@flowsmith/server':
         specifier: workspace:*
         version: link:../../packages/server
+      '@flowsmith/worker':
+        specifier: workspace:*
+        version: link:../../packages/worker
     devDependencies:
       electron:
         specifier: 44.9.3

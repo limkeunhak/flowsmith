@@ -7,6 +7,8 @@
  * - **확장 플러그인**(PLAN §41): 서버가 켜 둔 목록을 알리면 이 PC에 받아 두고(해시 확인) 싣는다 — PC마다 손으로 깔지 않는다.
  * - **녹화**(PLAN §28): 서버가 rec-open을 보내면 이 PC에서 녹화 세션을 연다 — attach 플로우면 이 PC의 크롬(사람이 로그인해 둔 탭).
  *   사람은 자기 크롬 창에서 직접 해도 되고 Studio의 화면에서 해도 된다. 녹화는 실행 자리를 쓰지 않는다.
+ * - **실행 화면 중계**(PLAN §44 · 4단계): 서버에서 누가 «실제 화면 보기»를 열면 이 PC에서 도는 실행의 화면을 보낸다(screen-relay.ts) ·
+ *   그래서 이 PC의 실행도 사람 기다리기를 할 수 있다(사람의 손은 서버를 거쳐 온다).
  */
 import { homedir, hostname } from "node:os";
 import { join } from "node:path";
@@ -19,7 +21,8 @@ import type { ClientMessage, OpenRequest, ServerMessage } from "@flowsmith/recor
 import type { RunJob } from "./job.ts";
 import type { InProcessWorker } from "./local.ts";
 import { PluginCache, type PluginRef } from "./plugin-cache.ts";
-import { CLOSE, CONNECT_PATH, packFrame, PROTOCOL, type ApprovalRequest, type FileFn, type FromWorker, type ToWorker, type WorkerPolicy } from "./protocol.ts";
+import { CLOSE, CONNECT_PATH, packFrame, PROTOCOL, runFrameId, type ApprovalRequest, type FileFn, type FromWorker, type ToWorker, type WorkerPolicy } from "./protocol.ts";
+import { ScreenRelay } from "./screen-relay.ts";
 
 /** 화면이 못 따라오면 프레임을 버린다 — 쌓이면 지연만 는다 */
 const MAX_BUFFERED = 4 * 1024 * 1024;
@@ -60,6 +63,8 @@ export class WorkerAgent {
   #seq = 0;
   readonly #asks = new Map<number, { ok: (v: unknown) => void; fail: (e: Error) => void }>();
   readonly #running = new Map<string, AbortController>();
+  /** 돌고 있는 실행의 화면 중계 */
+  readonly #screens = new Map<string, ScreenRelay>();
   readonly #recs = new Map<string, Rec>();
   #recBrowser: Promise<Browser> | null = null;
   #online: { resolve: () => void; reject: (e: Error) => void } | null = null;
@@ -67,6 +72,8 @@ export class WorkerAgent {
   /** 달라고 한 묶음 — id@버전 → 받을 곳 */
   readonly #fetches = new Map<string, { ok: (b: Buffer) => void; fail: (e: Error) => void }>();
   name: string | null = null;
+  /** 서버가 알려 준 이 워커의 id(welcome) — 데스크톱 앱이 편집 화면에 «내 PC»로 알린다 */
+  id: string | null = null;
 
   constructor(o: AgentOptions) {
     this.#o = o;
@@ -136,6 +143,7 @@ export class WorkerAgent {
         this.#state = "online";
         this.#backoff = 1000;
         this.name = m.worker.name;
+        this.id = m.worker.id;
         this.#o.onPolicy?.(m.policy);
         this.#log(`서버에 붙었습니다 — 이 PC는 «${m.worker.name}»`);
         this.#online?.resolve();
@@ -150,6 +158,8 @@ export class WorkerAgent {
         return;
       }
       case "rec-close": void this.#recClose(m.sid); return;
+      case "screen": this.#screens.get(m.runId)?.watch(m.on); return;
+      case "screen-input": this.#screens.get(m.runId)?.input(m.m); return;
       case "plugins": void this.#syncPlugins(m.list); return;
       case "plugin-data": {
         const key = `${m.id}@${m.version}`;
@@ -212,10 +222,18 @@ export class WorkerAgent {
   async #run(job: RunJob): Promise<void> {
     const ac = new AbortController();
     this.#running.set(job.runId, ac);
+    // 화면 중계 — 서버에서 누가 볼 때만 보낸다(못 따라오면 버린다)
+    const fid = runFrameId(job.runId);
+    const relay = new ScreenRelay({
+      frame: (jpeg) => { const ws = this.#ws; if (ws?.readyState === WebSocket.OPEN && ws.bufferedAmount < MAX_BUFFERED) ws.send(packFrame(fid, jpeg), { binary: true }); },
+      meta: (m) => this.#send({ t: "screen-out", runId: job.runId, m }),
+    });
+    this.#screens.set(job.runId, relay);
     this.#log(`실행 시작 — ${job.flow.name} (${job.runId.slice(0, 8)})`);
     try {
       const result = await this.#o.worker.run(job, (e) => this.#send({ t: "event", runId: job.runId, e }), {
         signal: ac.signal,
+        onPage: (page) => relay.setPage(page),
         fileOps: this.#files(job.runId),
         callFlow: async (req) => (await this.#ask(job.runId, { op: "callFlow", req })) as CallFlowResult,
         approval: async ({ signal: _signal, ...req }) => (await this.#ask(job.runId, { op: "approval", req })) as ApprovalAnswer,
@@ -226,6 +244,8 @@ export class WorkerAgent {
       this.#send({ t: "fail", runId: job.runId, message: e instanceof Error ? e.message.split("\n")[0]! : String(e) });
     } finally {
       this.#running.delete(job.runId);
+      this.#screens.delete(job.runId);
+      await relay.stop();
     }
   }
 
@@ -241,10 +261,12 @@ export class WorkerAgent {
     };
     this.#log(`녹화 시작 — ${req.draft?.name ?? req.flowId}`);
     try {
-      // 사람의 크롬에 붙는 플로우면 이 PC의 크롬 · 지갑 브라우저면 이 PC의 MetaMask 크롬 · 아니면 이 PC에서 브라우저를 띄운다
+      // 사람의 크롬에 붙는 플로우면 이 PC의 크롬 · 지갑 브라우저면 이 PC의 MetaMask 크롬 · 앱 안 브라우저면 이 PC의 앱 ·
+      // 아니면 이 PC에서 브라우저를 띄운다(데스크톱 앱이면 앱 안 브라우저로 — 사람이 바로 만진다)
       const browser = req.draft?.settings?.browser;
       const src = browser === "attach" ? { cdpUrl: this.#o.worker.cdpUrl ?? DEFAULT_CDP_URL }
         : browser === "wallet" ? await this.#o.worker.walletSource(req.draft, secrets, (text) => io.send({ t: "progress", text }))
+        : browser === "app" || ((browser ?? "launch") === "launch" && !req.draft?.settings?.wallet && this.#o.worker.launchInApp) ? this.#o.worker.appSource(req.draft)
         : await this.#browser();
       // 재생 전에 세션을 받아 둔다 — 재생 중 사람 기다리기(로그인)의 입력이 닿게
       const s = await RecorderSession.open(src, req, secrets, io, (x) => { if (!rec.closed) rec.session = x; });
@@ -281,6 +303,8 @@ export class WorkerAgent {
     for (const a of this.#asks.values()) a.fail(new Error(why));
     this.#asks.clear();
     for (const ac of this.#running.values()) ac.abort();
+    for (const r of this.#screens.values()) void r.stop();
+    this.#screens.clear();
     // 녹화도 닫는다 — Studio 쪽은 서버가 «연결이 끊겼습니다»로 닫았다
     for (const sid of [...this.#recs.keys()]) void this.#recClose(sid);
   }

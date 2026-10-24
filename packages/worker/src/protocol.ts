@@ -11,6 +11,10 @@
  *   서버 → 워커   plugins(id · 버전 · 해시) · plugin-data(달라는 묶음, base64)
  *   워커 → 서버   plugin-get(이 묶음을 달라) · extensions(다 싣고 난 뒤 — 실은 확장 · 버전 · 못 실은 까닭)
  *
+ * 실행 화면 중계(2026-10-24, PLAN §44 · 4단계) — 이 PC에서 도는 실행도 «실제 화면 보기» · 사람 기다리기가 된다.
+ *   서버 → 워커   screen(보는 사람이 생겼다 · 없어졌다) · screen-input(사람 기다리기 동안의 손 — 서버가 거른 것)
+ *   워커 → 서버   screen-out(크기 · 주소) · 이진 = 화면 한 장(앞에 «r:실행 id»)
+ *
  * 녹화(2026-10-17, PLAN §28) — 이 PC의 크롬에서 녹화한다. 서버는 Studio(/api/live)와 여기 사이를 잇기만 한다.
  *   서버 → 워커   rec-open(녹화 세션 열기 · 풀린 시크릿) · rec-input(Studio의 입력) · rec-close
  *   워커 → 서버   rec-out(세션이 Studio에 보내는 말) · rec-ended(세션이 닫혔다) · 이진 = 화면 한 장(앞에 세션 id)
@@ -18,7 +22,7 @@
 import type { SecretValue } from "@flowsmith/core";
 import type { CallFlowRequest, RunEvent, RunResult } from "@flowsmith/engine";
 import type { ClientMessage, OpenRequest, ServerMessage } from "@flowsmith/recorder/protocol";
-import type { RunJob } from "./job.ts";
+import type { RunJob, ScreenInput, ScreenMeta } from "./job.ts";
 import type { PluginRef } from "./plugin-cache.ts";
 
 export const PROTOCOL = 1;
@@ -42,6 +46,8 @@ export type ToWorker =
   | { t: "rec-open"; sid: string; req: OpenRequest; secrets: Record<string, SecretValue> }
   | { t: "rec-input"; sid: string; m: ClientMessage }
   | { t: "rec-close"; sid: string }
+  | { t: "screen"; runId: string; on: boolean }
+  | { t: "screen-input"; runId: string; m: ScreenInput }
   | { t: "plugins"; list: PluginRef[] }
   | { t: "plugin-data"; id: string; version: string; ok: true; data: string }
   | { t: "plugin-data"; id: string; version: string; ok: false; error: string };
@@ -63,8 +69,12 @@ export type FromWorker =
   | { t: "ask"; id: number; runId: string; op: "approval"; req: ApprovalRequest }
   | { t: "rec-out"; sid: string; m: ServerMessage }
   | { t: "rec-ended"; sid: string }
+  | { t: "screen-out"; runId: string; m: ScreenMeta }
   | { t: "plugin-get"; id: string; version: string }
   | { t: "extensions"; extensions: string[]; plugins: Record<string, string>; errors: Record<string, string> };
+
+/** 실행 화면의 이진 앞머리 — 녹화 세션 id와 섞이지 않게(녹화 id는 16진수) */
+export const runFrameId = (runId: string): string => `r:${runId}`;
 
 /** 화면 한 장(이진) — [세션 id 길이 1바이트][세션 id][JPEG] */
 export function packFrame(sid: string, jpeg: Buffer): Buffer {

@@ -141,7 +141,7 @@ export async function startApp(opts: {
   const walletSource = inProc.capabilities?.includes("wallet") && inProc.walletSource ? inProc.walletSource.bind(opts.worker) : undefined;
   const appSource = inProc.capabilities?.includes("app") && inProc.appSource ? inProc.appSource.bind(opts.worker) : undefined;
   const live = new LiveHub(store, secrets, { workers, ...(opts.cdpUrl ? { cdpUrl: opts.cdpUrl } : {}), ...(walletSource ? { walletSource } : {}), ...(appSource ? { appSource } : {}) });
-  live.attach(upgrades, (req) => auth.checkUpgrade(req, "editor"), (req, flowId) => auth.canSeeFlowReq(req, flowId));
+  live.attach(upgrades, (req) => auth.checkUpgrade(req, "editor"), (req, flowId) => auth.canSeeFlowReq(req, flowId), (req) => auth.upgradeUser(req)?.email ?? null);
   // 실행 화면 보기 — 보는 사람이 있을 때만 화면을 보낸다
   const screens = new RunScreens();
   screens.attach(upgrades, (req) => auth.checkUpgrade(req, "viewer"), (req, runId) => auth.canSeeRunReq(req, runId), (req) => auth.checkUpgrade(req, "runner"));

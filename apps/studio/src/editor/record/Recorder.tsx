@@ -16,6 +16,7 @@ import type { Phase, Recorded, RecordMode } from "@flowsmith/recorder/protocol";
 import { describeAction, josa, suggestionsFor, urlDone } from "../../model/index.ts";
 import { IconX } from "../../icons.tsx";
 import { LiveView } from "../../live/LiveView.tsx";
+import { desktopNow, myPc, useDesktop } from "../../live/desktop.ts";
 import { WsTransport, type LiveTransport } from "../../live/transport.ts";
 import { TemplateInput } from "../widgets.tsx";
 import { rememberedRecordOn, rememberRecordOn, useWorkers } from "../../shell/workers.ts";
@@ -165,7 +166,10 @@ export function Recorder({ flow, start, onCommit, onRepick, onCancel }: {
       ...(start.repick ? { stopBeforeAction: start.repick.actionId, startMode: "read" as const } : {}),
       viewport,
       // 사람의 크롬에 붙는 플로우 — 그 크롬이 있는 PC(워커 프로그램)에서. 다시 지정처럼 폼을 거치지 않으면 이 브라우저가 기억한 PC
-      ...(flow.settings.browser === "attach" && (start.on ?? rememberedRecordOn()) ? { on: (start.on ?? rememberedRecordOn())! } : {}),
+      // 데스크톱 앱(회사 서버 모드) — 고른 곳(start.on) · 폼을 거치지 않으면 내 PC(앱 안 브라우저 — 사람이 바로 만진다)
+      ...(flow.settings.browser === "attach" && (start.on ?? rememberedRecordOn()) ? { on: (start.on ?? rememberedRecordOn())! }
+        : start.on ? { on: start.on }
+        : (() => { const pc = myPc(desktopNow()); return pc?.online && start.on === undefined ? { on: `worker:${pc.id}` } : {}; })()),
     });
     return () => { offs.forEach((f) => f()); transport.close(); };
     // 세션은 한 번만 연다 — 초안이 바뀌어도 다시 열지 않는다
@@ -534,6 +538,11 @@ export function RecordStartForm({ flow, node, onStart, onCancel }: {
   const workers = useWorkers(attach);
   const [on, setOn] = useState<string>(() => rememberedRecordOn() ?? "");
   const chosen = on ? workers?.workers.find((w) => `worker:${w.id}` === on) : undefined;
+  // 데스크톱 앱(회사 서버 모드) — 녹화할 곳: 내 PC(앱 안 브라우저 · 기본) · 서버(화면 전송). 화면이 있어야 하는 워크플로우는 내 PC만
+  const pc = myPc(useDesktop());
+  const needsScreen = flow.settings.browser === "app" || flow.settings.browser === "wallet";
+  const [where, setWhere] = useState<"mine" | "server">("mine");
+  const onMine = !attach && pc !== null && (needsScreen || where === "mine");
   return (
     <div className="subcard">
       <strong>녹화 준비</strong>
@@ -545,6 +554,15 @@ export function RecordStartForm({ flow, node, onStart, onCancel }: {
           </select>
         </label>
       )}
+      {!attach && pc && (
+        <label className="field"><span>녹화할 곳</span>
+          <select value={onMine ? "mine" : "server"} disabled={needsScreen} onChange={(e) => setWhere(e.target.value === "server" ? "server" : "mine")}>
+            <option value="mine">내 PC «{pc.name}» — 앱 안 브라우저(페이지를 직접 누릅니다){pc.online ? "" : " · 연결 안 됨"}</option>
+            <option value="server">서버 — 화면 전송으로</option>
+          </select>
+        </label>
+      )}
+      {onMine && pc && !pc.online && <div className="banner warn small">이 PC가 회사 서버에 붙어 있지 않습니다({pc.state}) — 잠시 뒤 다시 하거나 «서버»를 고르세요.</div>}
       {attach && on && workers && !chosen && <div className="banner warn small">기억해 둔 PC가 없습니다. 다시 고르세요.</div>}
       {chosen && !chosen.online && <div className="banner warn small">«{chosen.name}»가 연결돼 있지 않습니다.</div>}
       <label className="check"><input type="checkbox" disabled={!hasAncestors} checked={replay} onChange={(e) => setReplay(e.target.checked)} />
@@ -566,7 +584,11 @@ export function RecordStartForm({ flow, node, onStart, onCancel }: {
       <div className="banner warn small">녹화 중에 누르는 것은 실제 사이트에서 실제로 일어납니다. 금지 버튼은 누르지 않습니다.</div>
       <div className="row"><span className="grow" />
         <button onClick={onCancel}>닫기</button>
-        <button className="primary" disabled={Boolean(chosen && !chosen.online)} onClick={() => { if (attach) rememberRecordOn(on || null); onStart({ nodeId: node.id, params, replay, replayExisting, ...(attach && on ? { on } : {}) }); }}>● 녹화 시작</button>
+        <button className="primary" disabled={Boolean(chosen && !chosen.online) || (onMine && pc !== null && !pc.online)} onClick={() => {
+          if (attach) rememberRecordOn(on || null);
+          // 내 PC가 아니면 on: "" — 녹화기가 내 PC로 바꾸지 않게(서버를 고른 것)
+          onStart({ nodeId: node.id, params, replay, replayExisting, ...(attach && on ? { on } : onMine && pc ? { on: `worker:${pc.id}` } : pc ? { on: "" } : {}) });
+        }}>● 녹화 시작</button>
       </div>
     </div>
   );

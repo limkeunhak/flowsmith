@@ -37,22 +37,37 @@ export interface RunJob {
   pins?: Record<string, Record<string, unknown>>;
 }
 
+/** 실행 화면의 크기 · 주소(화면 중계 — 원격 워커가 서버로) */
+export type ScreenMeta = { t: "page"; url: string; title: string } | { t: "viewport"; width: number; height: number };
+/** 실행 화면에서 오는 사람의 손 — 사람 기다리기 동안만(서버가 거른다) */
+export type ScreenInput =
+  | { t: "mouse"; type: "move" | "down" | "up"; x: number; y: number; button: "left" | "right" | "middle"; clickCount: number }
+  | { t: "wheel"; x: number; y: number; dx: number; dy: number }
+  | { t: "key"; type: "down" | "up"; key: string }
+  | { t: "text"; text: string };
+/** 원격 워커의 실행 화면 — 서버가 «보는 사람이 있다 · 없다» · 사람의 손을 보낸다 */
+export interface ScreenControl { watch(on: boolean): void; input(m: ScreenInput): void }
+/** 원격 워커의 실행 화면이 서버로 — 화면 한 장 · 크기 · 주소 */
+export interface ScreenSink { frame(jpeg: Buffer): void; meta(m: ScreenMeta): void }
+
 /** 실행 중에 워커가 서버에 부탁하는 것 · 서버가 알고 싶은 것 */
 export interface RunHooks {
   /** 다른 플로우 실행 */
   callFlow?: CallFlow;
   /** 파일 — 없으면 워커의 파일 뿌리(디스크). 원격 워커는 서버에 맡긴다(파일은 늘 서버에) */
   fileOps?: FileOps;
-  /** 실행의 지금 페이지가 바뀌면 — 실행 화면 보기(RunScreens)가 따라간다. ★같은 프로세스 워커만 */
+  /** 실행의 지금 페이지가 바뀌면 — 실행 화면 보기(RunScreens)가 따라간다. 원격 워커는 그 PC에서 받아 화면을 중계한다(screen-relay.ts) */
   onPage?: (page: Page) => void;
+  /** 원격 워커로 간 실행의 화면이 오는 곳(WorkerHub → RunScreens) */
+  screen?: ScreenSink;
   /** 멈추기 */
   signal?: AbortSignal;
   /** 승인 기다리기 — 서버가 묻고 답을 기다린다(run/runs.ts). 원격 워커는 서버에 묻는다(ask) */
   approval?: AskApproval;
   /** 워커 자리를 기다린다 — 앞에 몇 개 */
   onQueued?: (ahead: number) => void;
-  /** 어디에 갔나 — 워커 이름(서버면 null). 기록에 남긴다 */
-  onPlaced?: (worker: { id: string; name: string } | null) => void;
+  /** 어디에 갔나 — 워커 이름(서버면 null). 기록에 남긴다 · 원격이면 그 실행 화면을 켜고 끄는 길(screen) */
+  onPlaced?: (worker: { id: string; name: string; screen?: ScreenControl } | null) => void;
 }
 
 export interface WorkerClient {
