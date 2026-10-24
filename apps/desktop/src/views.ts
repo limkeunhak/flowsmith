@@ -5,9 +5,13 @@
  *   녹화(record) 편집 화면 창 위 — 편집 화면이 라이브 패널 자리를 알려 주면(preload의 placeView) 그 자리에 놓는다. 알려 주지 않으면 숨긴다
  *
  * ★뷰마다 따로 세션(메모리 — 끄면 사라진다) — 실행 사이에 쿠키가 새지 않는다(지금 실행마다 새 컨텍스트를 쓰는 것과 같은 결).
+ * 파일 받기는 묻지 않고 그 뷰의 임시 폴더에 받는다(뷰를 닫으면 지운다 — 띄우는 브라우저와 같다).
  * ★뷰는 처음에 표시 주소를 연다 — 워커는 그 주소로 자기 뷰만 고른다(packages/worker app-views.ts의 viewMarkUrl과 같게).
  */
 import { BaseWindow, ipcMain, WebContentsView, type BrowserWindow, type UtilityProcess } from "electron";
+import { mkdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { basename, join } from "node:path";
 
 type ViewRequest = { t: "view:open"; id: string; purpose: "run" | "record"; title: string } | { t: "view:close"; id: string } | { t: "view:focus"; id: string };
 interface Rect { x: number; y: number; width: number; height: number }
@@ -66,6 +70,14 @@ export class Views {
       this.#views.set(id, entry);
       // 줄여 보이는 비율은 주소가 바뀌면(다른 사이트) 처음으로 돌아간다 — 다시 맞춘다
       view.webContents.on("did-navigate", () => { if (entry.zoom !== 1) view.webContents.setZoomFactor(entry.zoom); });
+      // 파일 받기 — Electron은 «다른 이름으로 저장» 창을 띄운다(실행이 그 창 앞에서 멈춘 채 사람을 기다린다).
+      //  띄우는 브라우저처럼 묻지 않고 받는다 — 이 뷰의 임시 폴더에(뷰를 닫으면 지운다)
+      view.webContents.session.on("will-download", (_e, item) => {
+        const dir = join(tmpdir(), "flowsmith-downloads", id);
+        mkdirSync(dir, { recursive: true });
+        item.setSavePath(join(dir, basename(item.getFilename()) || "download"));
+        this.#log(`파일 받기(${purpose === "run" ? "실행" : "녹화"}): ${item.getFilename()}`);
+      });
       if (purpose === "run") {
         const host = new BaseWindow({ width: 1280, height: 860, title: `Flowsmith 실행 — ${title || "앱 안 브라우저"}`, show: false, backgroundColor: "#ffffff" });
         entry.host = host;
@@ -107,6 +119,7 @@ export class Views {
     if (v.purpose === "record") this.#editor()?.contentView.removeChildView(v.view);
     if (!v.view.webContents.isDestroyed()) v.view.webContents.close();
     if (v.host && !v.host.isDestroyed()) v.host.destroy();
+    rmSync(join(tmpdir(), "flowsmith-downloads", id), { recursive: true, force: true });
   }
 }
 

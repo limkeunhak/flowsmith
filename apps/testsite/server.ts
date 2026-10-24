@@ -139,6 +139,29 @@ export function startTestSite(port = 0): Promise<TestSite> {
       return;
     }
     if (url.pathname === "/dapp") { send(res, 200, DAPP); return; }
+    // 팝업 · 파일 받기(앱 안 브라우저 확인 · 2026-10-25) — 로그인 없이
+    if (url.pathname === "/popup-demo") {
+      send(res, 200, page("팝업 열기", `<p>품목을 새 창으로 봅니다.</p><button id="open-items" type="button" onclick="window.open('/popup-items', 'items', 'width=520,height=420')">품목 창 열기</button>
+        <p id="picked">고른 품목 없음</p>
+        <script>window.addEventListener("message", (e) => { if (e.data && e.data.item) document.getElementById("picked").textContent = "고른 품목: " + e.data.item; });</script>`));
+      return;
+    }
+    if (url.pathname === "/popup-items") {
+      send(res, 200, page("품목", `<ul><li><button type="button" class="pick" data-item="연필">연필</button></li><li><button type="button" class="pick" data-item="공책">공책</button></li></ul>
+        <p id="count">품목 2개</p>
+        <script>document.querySelectorAll(".pick").forEach((b) => b.onclick = () => { window.opener && window.opener.postMessage({ item: b.dataset.item }, "*"); window.close(); });</script>`));
+      return;
+    }
+    if (url.pathname === "/download-demo") {
+      send(res, 200, page("보고서", `<p>이번 달 보고서입니다.</p><a id="dl" href="/files/report.csv">보고서 받기(CSV)</a><p id="after">받기 전</p>
+        <script>document.getElementById("dl").addEventListener("click", () => setTimeout(() => { document.getElementById("after").textContent = "받기를 눌렀습니다"; }, 300));</script>`));
+      return;
+    }
+    if (url.pathname === "/files/report.csv") {
+      res.writeHead(200, { "content-type": "text/csv; charset=utf-8", "content-disposition": "attachment; filename=\"report.csv\"" });
+      res.end("월,건수\n10월,42\n");
+      return;
+    }
 
     if (url.pathname === "/login" && req.method === "POST") {
       const f = await body(req);

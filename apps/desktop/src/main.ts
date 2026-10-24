@@ -210,6 +210,12 @@ function createWindow(): BrowserWindow {
     webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, preload: fileURLToPath(new URL("./preload.cjs", import.meta.url)) },
   });
   w.once("ready-to-show", () => w.show());
+  // 저장하지 않은 변경이 있으면 편집 화면이 떠나기를 막는다(beforeunload) — Electron은 묻지 않고 그냥 안 닫는다(창을 닫아도 아무 일이 없다).
+  //  브라우저처럼 묻는다
+  w.webContents.on("will-prevent-unload", (e) => {
+    const choice = dialog.showMessageBoxSync(w, { type: "question", buttons: ["나가기", "머무르기"], defaultId: 1, cancelId: 1, title: "Flowsmith", message: "저장하지 않은 변경이 있습니다", detail: "나가면 저장하지 않은 변경은 사라집니다." });
+    if (choice === 0) e.preventDefault();
+  });
   // 새 창 — 이 서버의 화면은 앱 창으로 · 밖의 주소는 기본 브라우저로
   w.webContents.setWindowOpenHandler(({ url }) => {
     if (serverUrl && url.startsWith(serverUrl)) return { action: "allow" };
