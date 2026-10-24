@@ -12,6 +12,7 @@
 | [docs/PLAN.md](docs/PLAN.md) | 계획과 결정 — 왜 이렇게 만들었나 |
 | [docs/RECORDING.md](docs/RECORDING.md) | 녹화로 플로우 만들기 — 사람의 크롬 · CDP 브리지 · 행 고르기 · 확인 · 팝업 |
 | [docs/DOCKER.md](docs/DOCKER.md) | 도커 컴포즈로 이 PC에서 master/worker 띄우기(서버 하나 · 워커 둘) |
+| [docs/DESKTOP.md](docs/DESKTOP.md) | 데스크톱 앱 · 지갑 브라우저 설계 — 앱 하나 브라우저 둘(앱 안 · MetaMask 크롬) · 단계 |
 | `packages/*/README.md` · `apps/studio/README.md` | 패키지마다의 모듈 지도 |
 
 ## 구성
