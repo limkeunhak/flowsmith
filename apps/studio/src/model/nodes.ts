@@ -93,6 +93,8 @@ export function newAction(kind: WebAction["kind"], taken: Iterable<string>): Web
     case "assert": return { ...base, kind, target: emptyTarget(), strategy: "auto", equals: "" };
     // 사람 기다리기 — 끝났다는 표시는 녹화로 고르는 것이 쉽다(로그인 화면이 사라지면). 손으로 넣으면 주소부터
     case "human": return { ...base, kind, prompt: "로그인해 주세요", appears: null, done: { kind: "url", pattern: "" } };
+    // MetaMask 승인 — 끝났다는 표시(로그인 뒤에만 보이는 것)는 녹화로 고르는 것이 쉽다. 손으로 넣으면 주소부터
+    case "walletApprove": return { ...base, kind, done: { kind: "url", pattern: "" } };
   }
 }
 

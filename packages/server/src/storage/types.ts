@@ -129,7 +129,8 @@ export interface StatRun {
 }
 
 /** plugins · pluginErrors — 서버가 나눠 준 플러그인을 그 PC가 실은 버전 · 못 실은 까닭(PLAN §41) */
-export interface WorkerInfo { host: string; version: string; extensions: string[]; plugins?: Record<string, string>; pluginErrors?: Record<string, string> }
+/** capabilities — 할 수 있는 일(wallet: 지갑 브라우저 · PLAN §44) */
+export interface WorkerInfo { host: string; version: string; extensions: string[]; capabilities?: string[]; plugins?: Record<string, string>; pluginErrors?: Record<string, string> }
 
 export interface WorkerRow {
   id: string;

@@ -51,7 +51,8 @@ export interface ApprovalRequest { nodeId: string; message: string; minRole: "ru
 
 export type FromWorker =
   /** plugins — 플러그인을 받을 줄 아는 워커(옛 워커는 없다 — 그 PC의 확장만 쓴다) */
-  | { t: "hello"; protocol: number; host: string; version: string; extensions: string[]; plugins?: boolean }
+  /** capabilities — 이 워커가 할 수 있는 일(wallet: 지갑 브라우저 · PLAN §44). 옛 워커는 보내지 않는다 */
+  | { t: "hello"; protocol: number; host: string; version: string; extensions: string[]; plugins?: boolean; capabilities?: string[] }
   | { t: "event"; runId: string; e: RunEvent }
   | { t: "done"; runId: string; result: RunResult }
   /** 엔진 밖의 사고 — 브라우저가 못 뜬다 등 */

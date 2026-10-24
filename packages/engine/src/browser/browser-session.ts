@@ -22,6 +22,15 @@ export class BrowserSessionError extends Error {
 
 export const DEFAULT_CDP_URL = "http://127.0.0.1:9222";
 
+export interface SessionOptions {
+  browser?: Browser;
+  page?: Page;
+  headless?: boolean;
+  cdpUrl?: string;
+  /** 지갑 브라우저(wallet)를 연다 — 실행기가 준다(키 · MetaMask 폴더를 안다). 없으면 그 모드는 멈춘다 */
+  openWallet?: () => Promise<{ context: BrowserContext; close: () => Promise<void> }>;
+}
+
 export class BrowserSession {
   readonly mode: BrowserMode;
   #browser: Browser | null = null;
@@ -36,11 +45,13 @@ export class BrowserSession {
   readonly #popups: Page[] = [];
   /** launch의 하나뿐인 페이지 · 받은 페이지(녹화기) — 팝업에 머물다 끝나도 «주소로 가서»는 여기서 */
   #main: Page | null = null;
-  readonly #opts: { browser?: Browser; page?: Page; headless?: boolean; cdpUrl?: string };
+  readonly #opts: SessionOptions;
+  /** 지갑 브라우저를 닫는다(프로필 잠금도 푼다) */
+  #walletClose: (() => Promise<void>) | null = null;
   /** 우리가 컨텍스트를 만들었을 때(launch) — 테스트 지갑을 단다(run.ts). 받은 페이지 · 사람의 크롬에는 부르지 않는다 */
   onContext: ((ctx: BrowserContext) => Promise<void>) | null = null;
 
-  constructor(mode: BrowserMode, opts: { browser?: Browser; page?: Page; headless?: boolean; cdpUrl?: string }) {
+  constructor(mode: BrowserMode, opts: SessionOptions) {
     this.mode = mode;
     this.#opts = opts;
     if (opts.page) {
@@ -77,7 +88,14 @@ export class BrowserSession {
       this.#context = ctx;
       return ctx;
     }
-    const browser = this.#opts.browser ?? (this.#ownBrowser = true, await chromium.launch({ headless: this.#opts.headless ?? true }));
+    if (this.mode === "wallet") {
+      if (!this.#opts.openWallet) throw new BrowserSessionError("이 워커는 지갑 브라우저(MetaMask)를 열 수 없습니다 — 화면이 있는 워커(데스크톱 · --headed)에서 돌리세요");
+      const w = await this.#opts.openWallet();
+      this.#context = w.context;
+      this.#walletClose = w.close;
+      return w.context;
+    }
+    const browser =this.#opts.browser ?? (this.#ownBrowser = true, await chromium.launch({ headless: this.#opts.headless ?? true }));
     this.#browser = browser;
     this.#context = await browser.newContext({ locale: "ko-KR" });
     this.#ownContext = true;
@@ -133,12 +151,15 @@ export class BrowserSession {
   async interrupt(): Promise<void> {
     for (const p of [...this.#opened, ...this.#popups]) await p.close().catch(() => undefined);
     if (this.#ownContext) await this.#context?.close().catch(() => undefined);
+    await this.#walletClose?.();
   }
 
   async close(): Promise<void> {
     for (const p of this.#popups) await p.close().catch(() => undefined);
     for (const p of this.#opened) await p.close().catch(() => undefined);
     if (this.#ownContext) await this.#context?.close().catch(() => undefined);
+    // 지갑 브라우저 — 크롬을 닫고 프로필 잠금을 푼다(프로필은 남는다)
+    await this.#walletClose?.();
     if (this.#ownBrowser) await this.#browser?.close().catch(() => undefined);
     // ★attach: 연결만 놓는다. connectOverCDP의 close()는 우리가 만든 컨텍스트만 치우고 끊는다 —
     //  사람의 기본 컨텍스트 · 탭은 그대로 남는다(시험으로 확인)

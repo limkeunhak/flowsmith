@@ -91,7 +91,7 @@ export class WorkerAgent {
     const url = new URL(CONNECT_PATH, this.#o.server.replace(/^http/, "ws"));
     const ws = new WebSocket(url, { headers: { authorization: `Bearer ${this.#o.token}` } });
     this.#ws = ws;
-    ws.on("open", () => this.#send({ t: "hello", protocol: PROTOCOL, host: hostname(), version: process.version, extensions: this.#o.worker.extensions.list().map((e) => e.id), plugins: true }));
+    ws.on("open", () => this.#send({ t: "hello", protocol: PROTOCOL, host: hostname(), version: process.version, extensions: this.#o.worker.extensions.list().map((e) => e.id), plugins: true, capabilities: this.#o.worker.capabilities }));
     ws.on("message", (d) => {
       let m: ToWorker;
       try { m = JSON.parse(String(d)) as ToWorker; } catch { return; }

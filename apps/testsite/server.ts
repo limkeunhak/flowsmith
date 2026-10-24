@@ -7,6 +7,8 @@
  *                   ★「주문 취소」 버튼 — 금지 버튼 시험용. 눌리면 /__stats의 cancelPosts가 는다
  *   /frame          iframe 안의 입력 칸과 값
  *   /news           네이버 뉴스 검색 결과 같은 되풀이 목록(표 아님) — 로그인 없이
+ *   /dapp           지갑 로그인(«지갑 연결» → 연결 → 서명 → 주소) · «다른 체인 넣기»(목록 밖 체인) — 지갑 브라우저 시험용
+ *   /__rpc?chain=N  가짜 체인 JSON-RPC(체인 id · 블록 · 잔고만) — MetaMask에 체인을 넣는 시험용
  *   /__stats        시험이 «정말 안 눌렸나»를 확인하는 곳
  *   /__layout?v=2   사이트가 바뀐 척 — 주문 상태의 id가 바뀌고 「조회」가 「검색」이 된다(변경 감시 시험용)
  *
@@ -14,6 +16,7 @@
  */
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
+import { pathToFileURL } from "node:url";
 
 interface Order { status: string; amount: string; items: { name: string; qty: number; price: string }[] }
 
@@ -62,6 +65,45 @@ function send(res: ServerResponse, status: number, html: string, headers: Record
   res.end(html);
 }
 
+/** 가짜 체인의 답 — 지갑이 체인을 확인하고 잔고를 그리는 데 쓰는 것만 */
+function rpcAnswer(m: unknown, chain: number): unknown {
+  const { id = null, method = "" } = (m ?? {}) as { id?: unknown; method?: string };
+  const hex = (n: number) => `0x${n.toString(16)}`;
+  const result: Record<string, unknown> = {
+    eth_chainId: hex(chain), net_version: String(chain), eth_blockNumber: "0x1", eth_getBalance: "0x0", eth_gasPrice: "0x1",
+    eth_maxPriorityFeePerGas: "0x1", eth_getTransactionCount: "0x0", eth_getCode: "0x", eth_call: "0x", eth_estimateGas: "0x5208",
+    eth_getBlockByNumber: { number: "0x1", hash: `0x${"1".repeat(64)}`, parentHash: `0x${"0".repeat(64)}`, timestamp: hex(Math.floor(Date.now() / 1000)), baseFeePerGas: "0x1", gasLimit: "0x1c9c380", gasUsed: "0x0", transactions: [] },
+  };
+  return { jsonrpc: "2.0", id, result: method in result ? result[method] : null };
+}
+
+/**
+ * **dApp** — 지갑 브라우저 시험용. «지갑 연결» → 계정 연결(eth_requestAccounts) → 로그인 서명(personal_sign) → 주소를 보인다.
+ * «다른 체인 넣기»는 목록에 없는 체인(99999)을 넣자고 한다 — «MetaMask 승인»이 누르지 않아야 한다
+ */
+const DAPP = page("지갑 로그인", `
+  <p><button id="connect">지갑 연결</button> <button id="bad-chain">다른 체인 넣기</button></p>
+  <p id="status">연결 안 됨</p>
+  <p>주소: <span id="address" data-testid="dapp-address"></span></p>
+  <p id="signed" hidden>로그인됨</p>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const hex = (s) => "0x" + Array.from(new TextEncoder().encode(s), (b) => b.toString(16).padStart(2, "0")).join("");
+    $("connect").onclick = async () => {
+      const eth = window.ethereum;
+      if (!eth) { $("status").textContent = "지갑 없음"; return; }
+      try {
+        const [a] = await eth.request({ method: "eth_requestAccounts" });
+        $("status").textContent = "서명을 기다립니다";
+        await eth.request({ method: "personal_sign", params: [hex("Flowsmith 시험 로그인\\nnonce: " + Math.random().toString(36).slice(2)), a] });
+        $("address").textContent = a;
+        $("status").textContent = "로그인됨";
+        $("signed").hidden = false;
+      } catch (e) { $("status").textContent = "거절됨: " + (e && e.message); }
+    };
+    $("bad-chain").onclick = () => window.ethereum.request({ method: "wallet_addEthereumChain", params: [{ chainId: "0x1869f", chainName: "목록 밖 체인", rpcUrls: [location.origin + "/__rpc?chain=99999"], nativeCurrency: { name: "BAD", symbol: "BAD", decimals: 18 } }] }).catch(() => {});
+  </script>`);
+
 export function startTestSite(port = 0): Promise<TestSite> {
   const stats = { cancelPosts: 0, logins: 0 };
   let layout: 1 | 2 = 1;
@@ -84,6 +126,19 @@ export function startTestSite(port = 0): Promise<TestSite> {
       res.end(JSON.stringify(stats));
       return;
     }
+    // 가짜 체인 RPC — MetaMask가 체인을 넣을 때 묻는 것에만 답한다(지갑 브라우저 시험 · ?chain=31337)
+    if (url.pathname === "/__rpc") {
+      const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type", "access-control-allow-methods": "POST, OPTIONS" };
+      if (req.method === "OPTIONS") { res.writeHead(204, cors); res.end(); return; }
+      let raw = "";
+      for await (const c of req) raw += c;
+      const chain = Number(url.searchParams.get("chain") ?? "31337");
+      res.writeHead(200, { "content-type": "application/json", ...cors });
+      try { const j = JSON.parse(raw) as unknown; res.end(JSON.stringify(Array.isArray(j) ? j.map((x) => rpcAnswer(x, chain)) : rpcAnswer(j, chain))); }
+      catch { res.end(JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "parse error" } })); }
+      return;
+    }
+    if (url.pathname === "/dapp") { send(res, 200, DAPP); return; }
 
     if (url.pathname === "/login" && req.method === "POST") {
       const f = await body(req);
@@ -204,7 +259,8 @@ function loginForm(error: string | null): string {
   </form>`;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// ★Windows에서는 argv[1]이 C:\…라 «file://» + 경로로 견주면 늘 틀린다 — import.meta.main(Node 24.2+)을 먼저 본다
+if (import.meta.main ?? import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   const site = await startTestSite(Number(process.argv[2] ?? 4300));
   console.log(`시험 사이트: ${site.url}  (계정 kim / p@ss)`);
 }

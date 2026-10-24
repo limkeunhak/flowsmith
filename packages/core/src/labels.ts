@@ -10,8 +10,11 @@ export const NODE_TYPE_LABEL: Record<NodeType, string> = { web: "웹페이지", 
 export const ACTION_LABEL: Record<WebAction["kind"], string> = {
   goto: "주소로 가기", click: "누르기", fill: "넣기", select: "고르기", check: "체크",
   press: "키 누르기", wait: "기다리기", read: "읽기", readTable: "표 읽기",
-  closeWindow: "창 닫기", pickRow: "행 고르기", assert: "확인", human: "사람 기다리기",
+  closeWindow: "창 닫기", pickRow: "행 고르기", assert: "확인", human: "사람 기다리기", walletApprove: "MetaMask 승인",
 };
+
+/** 어느 브라우저에서 도나(settings.browser) */
+export const BROWSER_MODE_LABEL = { launch: "띄우기", attach: "사람의 크롬에 붙기", wallet: "지갑 브라우저(MetaMask)" } as const;
 
 /** 실행을 시작한 길 */
 export const TRIGGER_LABEL: Record<string, string> = { manual: "손으로", api: "API", schedule: "일정", webhook: "웹훅", flow: "다른 워크플로우", after: "다른 워크플로우가 끝나서", file: "파일이 생겨서", suite: "Suite(테스트)" };

@@ -1,7 +1,7 @@
 /** 웹페이지 노드 — 시작 · 동작 목록 · 동작마다의 칸 (레코더가 채운 것을 다듬는 자리) */
 import { useState } from "react";
 import {
-  ACTION_KINDS, CONDITION_OPS, HUMAN_TIMEOUT, READ_STRATEGIES, UNARY_OPS, WAIT_KINDS, type ConditionOp, type HumanDone, type Flow, type ProbeFinding, type Rule, type Wait, type WebAction, type WebNode,
+  ACTION_KINDS, CONDITION_OPS, HUMAN_TIMEOUT, WALLET_APPROVE_TIMEOUT, READ_STRATEGIES, UNARY_OPS, WAIT_KINDS, type ConditionOp, type HumanDone, type Flow, type ProbeFinding, type Rule, type Wait, type WebAction, type WebNode,
 } from "@flowsmith/core";
 import { FindingCard } from "../monitor/Monitor.tsx";
 import { ACTION_LABEL, describeAction, emptyTarget, newAction } from "../../model/index.ts";
@@ -77,7 +77,8 @@ export function WebInspector({ flow, node, update, findings, onRepick, onSplitAt
       </div>
       <div className="row">
         <select value={addKind} onChange={(e) => setAddKind(e.target.value as WebAction["kind"])} style={{ width: 160 }}>
-          {ACTION_KINDS.map((k) => <option key={k} value={k}>{ACTION_LABEL[k]}</option>)}
+          {/* MetaMask 승인은 지갑 브라우저에서만 — 다른 브라우저에는 보이지 않게 */}
+          {ACTION_KINDS.filter((k) => k !== "walletApprove" || flow.settings.browser === "wallet").map((k) => <option key={k} value={k}>{ACTION_LABEL[k]}</option>)}
         </select>
         <button onClick={() => {
           const a = newAction(addKind, node.config.actions.map((x) => x.id));
@@ -90,7 +91,7 @@ export function WebInspector({ flow, node, update, findings, onRepick, onSplitAt
 }
 
 function ActionForm({ flow, nodeId, action: a, onChange }: { flow: Flow; nodeId: string; action: WebAction; onChange: (a: WebAction) => void }) {
-  const canBeOptional = a.kind !== "goto" && a.kind !== "wait" && a.kind !== "closeWindow" && a.kind !== "readTable" && a.kind !== "pickRow" && a.kind !== "human";
+  const canBeOptional = a.kind !== "goto" && a.kind !== "wait" && a.kind !== "closeWindow" && a.kind !== "readTable" && a.kind !== "pickRow" && a.kind !== "human" && a.kind !== "walletApprove";
   const setWhen = (when: Rule | null) => { const { when: _drop, ...rest } = a; onChange((when ? { ...rest, when } : rest) as WebAction); };
   const common = (
     <>
@@ -112,7 +113,7 @@ function ActionForm({ flow, nodeId, action: a, onChange }: { flow: Flow; nodeId:
       <label className="check"><input type="checkbox" checked={a.optional} onChange={(e) => onChange({ ...a, optional: e.target.checked })} />
         있을 때만 — 2초 안에 안 보이면 건너뜁니다(처음만 뜨는 안내창 같은 것)</label>
     )}
-    {a.kind !== "human" && <div className="row">
+    {a.kind !== "human" && a.kind !== "walletApprove" && <div className="row">
       <label className="check grow"><input type="checkbox" checked={a.risk === "unsafe"} onChange={(e) => onChange({ ...a, risk: e.target.checked ? "unsafe" : "safe" })} />
         되돌릴 수 없는 동작(제출 · 저장 · 결제 등) — 점검 실행이 누르지 않습니다</label>
       <Field label="시간 제한(ms)">
@@ -265,6 +266,9 @@ function ActionForm({ flow, nodeId, action: a, onChange }: { flow: Flow; nodeId:
     case "human":
       body = <HumanForm action={a} onChange={onChange} />;
       break;
+    case "walletApprove":
+      body = <WalletApproveForm flow={flow} action={a} onChange={onChange} />;
+      break;
     case "readTable":
       body = (
         <>
@@ -302,7 +306,6 @@ const DONE_LABEL: Record<HumanDone["kind"], string> = { hidden: "이 요소가 �
 /** 사람 기다리기 — 안내 문구 · 이 화면일 때만 · 끝났다는 표시 · 기다리는 시간(분) */
 function HumanForm({ action: a, onChange }: { action: Extract<WebAction, { kind: "human" }>; onChange: (a: WebAction) => void }) {
   const minutes = Math.round((a.timeoutMs ?? HUMAN_TIMEOUT.defaultMs) / 6_000) / 10;
-  const setDone = (k: HumanDone["kind"]) => onChange({ ...a, done: k === "url" ? { kind: k, pattern: a.done.kind === "url" ? a.done.pattern : "" } : { kind: k, target: a.done.kind === "url" ? emptyTarget() : a.done.target } });
   return (
     <>
       <div className="banner info small">실행이 여기서 멈춰 사람을 기다립니다. 사람의 크롬이면 그 크롬 창에서, 서버 브라우저면 «실제 화면 보기»에서 직접 합니다. 사람이 넣은 것(아이디 · 비밀번호)은 녹화하지도 기록하지도 않습니다.</div>
@@ -312,17 +315,48 @@ function HumanForm({ action: a, onChange }: { action: Extract<WebAction, { kind:
       <label className="check"><input type="checkbox" checked={a.appears !== null} onChange={(e) => onChange({ ...a, appears: e.target.checked ? emptyTarget() : null })} />
         이 화면일 때만 — 이 요소가 보일 때만 기다립니다(이미 로그인돼 있으면 건너뜁니다)</label>
       {a.appears && <TargetEditor target={a.appears} onChange={(appears) => onChange({ ...a, appears })} title="로그인 화면의 표시(예: 「로그인」 단추)" />}
-      <Field label="끝났다는 표시 — 이게 되면 다음 동작으로">
-        <select value={a.done.kind} onChange={(e) => setDone(e.target.value as HumanDone["kind"])}>
-          {(Object.keys(DONE_LABEL) as HumanDone["kind"][]).map((k) => <option key={k} value={k}>{DONE_LABEL[k]}</option>)}
-        </select>
-      </Field>
-      {a.done.kind === "url"
-        ? <Field label="주소 정규식" hint="예: /main 또는 portal\.example\.com/home"><input className="mono" value={a.done.pattern} onChange={(e) => onChange({ ...a, done: { kind: "url", pattern: e.target.value } })} /></Field>
-        : (() => { const d = a.done; return <TargetEditor target={d.target} onChange={(target) => onChange({ ...a, done: { ...d, target } })} />; })()}
+      <DoneEditor done={a.done} onChange={(done) => onChange({ ...a, done })} />
       <Field label="기다리는 시간(분)" hint={`${HUMAN_TIMEOUT.minMs / 1000}초~${HUMAN_TIMEOUT.maxMs / 60_000}분 · 넘으면 실행이 실패합니다`}>
         <input type="number" min={0.5} max={30} step={0.5} style={{ width: 90 }} value={minutes}
           onChange={(e) => { const m = Number(e.target.value); onChange({ ...a, timeoutMs: Number.isFinite(m) && m > 0 ? Math.round(Math.min(HUMAN_TIMEOUT.maxMs, Math.max(HUMAN_TIMEOUT.minMs, m * 60_000))) : null }); }} />
+      </Field>
+    </>
+  );
+}
+
+/** 끝났다는 표시 — 사람 기다리기 · MetaMask 승인이 함께 쓴다 */
+function DoneEditor({ done, onChange, labels = DONE_LABEL }: { done: HumanDone; onChange: (d: HumanDone) => void; labels?: Record<HumanDone["kind"], string> }) {
+  const setKind = (k: HumanDone["kind"]) => onChange(k === "url" ? { kind: k, pattern: done.kind === "url" ? done.pattern : "" } : { kind: k, target: done.kind === "url" ? emptyTarget() : done.target });
+  return (
+    <>
+      <Field label="끝났다는 표시 — 이게 되면 다음 동작으로">
+        <select value={done.kind} onChange={(e) => setKind(e.target.value as HumanDone["kind"])}>
+          {(Object.keys(labels) as HumanDone["kind"][]).map((k) => <option key={k} value={k}>{labels[k]}</option>)}
+        </select>
+      </Field>
+      {done.kind === "url"
+        ? <Field label="주소 정규식" hint="예: /main 또는 portal\.example\.com/home"><input className="mono" value={done.pattern} onChange={(e) => onChange({ kind: "url", pattern: e.target.value })} /></Field>
+        : <TargetEditor target={done.target} onChange={(target) => onChange({ ...done, target })} />}
+    </>
+  );
+}
+
+const WALLET_DONE_LABEL: Record<HumanDone["kind"], string> = { visible: "이 요소가 보이면(로그인 뒤 화면 — 지갑 주소 · 내 정보)", hidden: "이 요소가 사라지면(«지갑 연결» 단추가 사라지면)", url: "주소가 이렇게 되면" };
+
+/** MetaMask 승인 — 끝났다는 표시 · 기다리는 시간(분) */
+function WalletApproveForm({ flow, action: a, onChange }: { flow: Flow; action: Extract<WebAction, { kind: "walletApprove" }>; onChange: (a: WebAction) => void }) {
+  const minutes = Math.round((a.timeoutMs ?? WALLET_APPROVE_TIMEOUT.defaultMs) / 6_000) / 10;
+  return (
+    <>
+      {flow.settings.browser !== "wallet" && <div className="banner warn small">이 동작은 지갑 브라우저(MetaMask)에서만 돕니다 — 워크플로우 설정의 «브라우저»에서 고르세요</div>}
+      <div className="banner info small">
+        사이트의 «지갑 연결»을 누른 뒤에 둡니다. MetaMask 화면을 읽어 연결 · 로그인 서명은 누르고, 체인은 설정의 목록 안만, 거래는 «거래 허용»을 켠 체인만 누릅니다.
+        모르는 화면은 누르지 않고 멈춥니다. 이미 끝났다는 표시가 보이면(연결돼 있으면) 아무것도 누르지 않고 지나갑니다.
+      </div>
+      <DoneEditor done={a.done} labels={WALLET_DONE_LABEL} onChange={(done) => onChange({ ...a, done })} />
+      <Field label="기다리는 시간(분)" hint={`${WALLET_APPROVE_TIMEOUT.minMs / 1000}초~${WALLET_APPROVE_TIMEOUT.maxMs / 60_000}분 · 넘으면 실행이 실패합니다`}>
+        <input type="number" min={0.5} max={10} step={0.5} style={{ width: 90 }} value={minutes}
+          onChange={(e) => { const m = Number(e.target.value); onChange({ ...a, timeoutMs: Number.isFinite(m) && m > 0 ? Math.round(Math.min(WALLET_APPROVE_TIMEOUT.maxMs, Math.max(WALLET_APPROVE_TIMEOUT.minMs, m * 60_000))) : null }); }} />
       </Field>
     </>
   );

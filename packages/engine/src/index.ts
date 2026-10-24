@@ -13,6 +13,8 @@ export { runWebNode, type StepLog } from "./nodes/web-node.ts";
 export { build, rootOf, locateOne, describeLocator } from "./browser/locate.ts";
 export { BrowserSession, BrowserSessionError, DEFAULT_CDP_URL } from "./browser/browser-session.ts";
 export { installWallet, WalletError } from "./browser/wallet.ts";
+export { openWalletBrowser, resetWalletProfile, profilePathProblem, walletFingerprint, addressOf, type MetaMaskEnv, type WalletBrowser } from "./browser/metamask/wallet-browser.ts";
+export { readScreen, approveUntil, ensureChain, chainIdOf } from "./browser/metamask/approve.ts";
 export { startScreencast, type Screencast, type CastSize } from "./browser/screencast.ts";
 export { inspectTarget, probeTargets, ProbeStop } from "./probe.ts";
 export { ExtensionRegistry, type Extension, type ExtensionContext, type ExtensionMeta, type ExtensionModule, type ExtensionOption } from "./extensions.ts";

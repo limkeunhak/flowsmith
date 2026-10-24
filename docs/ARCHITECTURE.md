@@ -470,6 +470,8 @@ FLOWSMITH_WORKER_TOKEN=fsw_… node packages/worker/src/main.ts --server https:/
 | `FLOWSMITH_MASTER_KEY_FILE` · `FLOWSMITH_MASTER_KEY` | 시크릿 마스터 키(★필수) |
 | `FLOWSMITH_FILES_DIR` | 파일 뿌리(기본 `<데이터 폴더>/files`) |
 | `FLOWSMITH_CDP_URL` | 사람의 크롬 CDP 주소(기본 `http://127.0.0.1:9222`) — attach 실행 · 녹화 |
+| `FLOWSMITH_WALLET_DIR` | 지갑 브라우저 폴더(PLAN §44) — `mm/<판>`(MetaMask) · `w/`(지갑마다의 크롬 프로필). 기본 Windows `%LOCALAPPDATA%\Flowsmith` · 그 밖 `~/.cache/flowsmith`. ★Windows는 짧게(260자 제한) |
+| `FLOWSMITH_METAMASK_ZIP` | 받아 둔 MetaMask 묶음(사내망에서 GitHub가 막혔을 때) — SHA256은 똑같이 본다 |
 | `FLOWSMITH_EXTENSIONS` | 확장 모듈(쉼표로) |
 | `FLOWSMITH_MAX_RUNS` | 서버 전체에서 동시에 도는 실행 수(기본 3) — 넘으면 차례를 기다린다. 다른 플로우가 부른 실행은 부른 실행의 자리를 함께 쓴다 |
 | `FLOWSMITH_KEEP_RUNS` · `FLOWSMITH_KEEP_DAYS` | 실행 기록 보관 — 플로우마다 n개(기본 500) · n일(기본 90). 0이면 그 기준은 끈다 |

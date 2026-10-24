@@ -2,7 +2,7 @@
  * 사람 말로 옮기기 — 동작 · 위치 · 노드 한 줄 요약. HTML을 몰라도 읽히게.
  */
 import { humanTemplate } from "./graph.ts";
-import { FORMAT_LABEL, HUMAN_TIMEOUT, fileNameFor, readFileName, type ConditionOp, type Flow, type FlowNode, type Locator, type TransformStep, type WebAction } from "@flowsmith/core";
+import { FORMAT_LABEL, HUMAN_TIMEOUT, WALLET_APPROVE_TIMEOUT, fileNameFor, readFileName, type ConditionOp, type Flow, type FlowNode, type Locator, type TransformStep, type WebAction } from "@flowsmith/core";
 
 /** 동작의 이름 — core에 하나(문제 문장도 같은 말을 쓴다) */
 export { ACTION_LABEL } from "@flowsmith/core";
@@ -78,6 +78,12 @@ function describeBare(a: WebAction, h: H): string {
       const until = d.kind === "hidden" ? `${josa(q(d.target.label), "이가")} 사라지면` : d.kind === "visible" ? `${josa(q(d.target.label), "이가")} 보이면` : `주소가 /${d.pattern}/ 에 맞으면`;
       const minutes = Math.round((a.timeoutMs ?? HUMAN_TIMEOUT.defaultMs) / 60_000 * 10) / 10;
       return `${a.appears ? `${josa(q(a.appears.label), "이가")} 보일 때만 ` : ""}사람을 기다립니다 — «${a.prompt}» · ${until} 이어 갑니다(${minutes}분까지)`;
+    }
+    case "walletApprove": {
+      const d = a.done;
+      const until = d.kind === "hidden" ? `${josa(q(d.target.label), "이가")} 사라질` : d.kind === "visible" ? `${josa(q(d.target.label), "이가")} 보일` : `주소가 /${d.pattern}/ 에 맞을`;
+      const minutes = Math.round((a.timeoutMs ?? WALLET_APPROVE_TIMEOUT.defaultMs) / 60_000 * 10) / 10;
+      return `MetaMask 화면(연결 · 서명 · 목록 안 체인)을 승인합니다 — ${until} 때까지(${minutes}분까지)`;
     }
   }
 }

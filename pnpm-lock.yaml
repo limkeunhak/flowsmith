@@ -42,15 +42,6 @@ importers:
         specifier: 5.27.1
         version: 5.27.1
     devDependencies:
-      '@types/react':
-        specifier: ^19.3.0
-        version: 19.3.0
-      '@types/react-dom':
-        specifier: ^19.3.0
-        version: 19.3.0(@types/react@19.3.0)
-      '@vitejs/plugin-react':
-        specifier: ^6.1.2
-        version: 6.1.2(vite@8.3.4(@types/node@24.19.2))
       '@flowsmith/server':
         specifier: workspace:*
         version: link:../../packages/server
@@ -60,6 +51,15 @@ importers:
       '@flowsmith/worker':
         specifier: workspace:*
         version: link:../../packages/worker
+      '@types/react':
+        specifier: ^19.3.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.3.0
+        version: 19.3.0(@types/react@19.3.0)
+      '@vitejs/plugin-react':
+        specifier: ^6.1.2
+        version: 6.1.2(vite@8.3.4(@types/node@24.19.2))
       playwright:
         specifier: 1.63.0
         version: 1.63.0
@@ -139,15 +139,15 @@ importers:
         specifier: ^8.22.0
         version: 8.22.0
     devDependencies:
+      '@flowsmith/testsite':
+        specifier: workspace:*
+        version: link:../../apps/testsite
       '@types/nodemailer':
         specifier: 6.4.17
         version: 6.4.17
       '@types/ws':
         specifier: ^8.18.2
         version: 8.18.2
-      '@flowsmith/testsite':
-        specifier: workspace:*
-        version: link:../../apps/testsite
 
   packages/worker:
     dependencies:
@@ -170,6 +170,9 @@ importers:
         specifier: ^8.22.0
         version: 8.22.0
     devDependencies:
+      '@flowsmith/testsite':
+        specifier: workspace:*
+        version: link:../../apps/testsite
       '@types/adm-zip':
         specifier: 0.5.7
         version: 0.5.7

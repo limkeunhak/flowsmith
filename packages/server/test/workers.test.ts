@@ -131,6 +131,25 @@ describe("못 갈 때 · 자리 · 멈추기 · 끊김", () => {
     expect((await runOf("w-off")).message).toMatch(/잠시 꺼 두었습니다/);
   }, 30_000);
 
+  it("★지갑 브라우저(MetaMask)는 창이 보이는 워커만 — 창 없는 워커 · 서버는 이유와 함께 바로 실패", async () => {
+    const { token } = await newWorker("창 없는 PC", { labels: ["지갑"] });
+    await agentFor(token);
+    const draft = {
+      schemaVersion: 1, id: "w-wallet", name: "지갑 로그인", secrets: [{ name: "wk", kind: "text" }],
+      settings: { browser: "wallet", wallet: { mode: "metamask", secret: "wk", chains: [] } },
+      nodes: [{ id: "w", type: "web", name: "열기", position: pos, config: { start: { kind: "url", url: "https://example.com" }, actions: [] } }], edges: [],
+    };
+    expect((await call("POST", "/api/flows", { draft })).status).toBe(201);
+    await call("PUT", "/api/flows/w-wallet/secrets/wk", { value: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80" });
+    const onLabel = await runOf("w-wallet", { on: "label:지갑" });
+    expect(onLabel.status).toBe("failure");
+    expect(onLabel.message).toMatch(/워커 «창 없는 PC»는 지갑 브라우저\(MetaMask\)를 열 수 없습니다 — 화면이 있는 PC에서 워커를 --headed로/);
+    // 서버 안의 워커(창 없음) — 엔진이 브라우저를 열 때 멈춘다
+    const onServer = await runOf("w-wallet", { on: "server" });
+    expect(onServer.status).toBe("failure");
+    expect(JSON.stringify(onServer)).toMatch(/지갑 브라우저\(MetaMask\)를 열 수 없습니다/);
+  }, 30_000);
+
   it("★자리가 차면 줄을 선다 — 동시 실행 수만큼 · 줄 선 것도 멈출 수 있다", async () => {
     const { worker, token } = await newWorker("느린 PC", { slots: 1 });
     const a = await agentFor(token);

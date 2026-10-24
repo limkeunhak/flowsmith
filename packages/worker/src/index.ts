@@ -1,5 +1,6 @@
 export { notRun, type RunJob, type RunHooks, type WorkerClient } from "./job.ts";
 export { InProcessWorker } from "./local.ts";
+export { ensureMetaMask, hasDisplay, walletDirs } from "./metamask.ts";
 export { WorkerAgent, type AgentOptions, type AgentState } from "./agent.ts";
 export { loadExtensions } from "./extensions.ts";
 export {

@@ -12,7 +12,7 @@ import { Field, ListInput } from "../widgets.tsx";
 import { useMe } from "../../shell/me.ts";
 import { placeLabel, useWorkers } from "../../shell/workers.ts";
 import { SharedVarsSection, useShared } from "./SharedVarsSection.tsx";
-import { WalletSection } from "./WalletSection.tsx";
+import { newMetaMaskWallet, WalletSection } from "./WalletSection.tsx";
 
 /** team · onMoveTeam — 사내 서버형: 이 플로우의 팀과 옮기기(null이면 공용) · runOn · onRunOn — 어디서 돌리나(워커) */
 export function SettingsPanel({ flow, update, dirty, onToast, team, onMoveTeam, runOn = null, onRunOn }: {
@@ -41,8 +41,16 @@ export function SettingsPanel({ flow, update, dirty, onToast, team, onMoveTeam, 
 
       <h3>브라우저</h3>
       <div className="stack" style={{ gap: 6 }}>
-        <label className="check"><input type="radio" checked={s.browser === "launch"} onChange={() => setSettings({ browser: "launch" })} />Flowsmith가 브라우저를 띄웁니다(기본) — 로그인은 시크릿으로</label>
-        <label className="check"><input type="radio" checked={s.browser === "attach"} onChange={() => setSettings({ browser: "attach" })} />사람이 로그인한 크롬에 붙습니다 — 보안 프로그램 · OTP 사이트</label>
+        {/* ★MetaMask 지갑은 지갑 브라우저에만 실린다 — 브라우저를 바꾸면 지갑 설정도 함께 맞춘다(검문소 graph.ts와 같은 규칙) */}
+        <label className="check"><input type="radio" checked={s.browser === "launch"} onChange={() => setSettings({ browser: "launch", ...(s.wallet?.mode === "metamask" ? { wallet: null } : {}) })} />Flowsmith가 브라우저를 띄웁니다(기본) — 로그인은 시크릿으로</label>
+        <label className="check"><input type="radio" checked={s.browser === "attach"} onChange={() => setSettings({ browser: "attach", ...(s.wallet ? { wallet: null } : {}) })} />사람이 로그인한 크롬에 붙습니다 — 보안 프로그램 · OTP 사이트</label>
+        <label className="check"><input type="radio" checked={s.browser === "wallet"} onChange={() => setSettings({ browser: "wallet", wallet: s.wallet?.mode === "metamask" ? s.wallet : newMetaMaskWallet(flow) })} />지갑 브라우저(MetaMask) — MetaMask 확장으로 로그인하는 블록체인 사이트</label>
+        {s.browser === "wallet" && (
+          <div className="banner info small">
+            진짜 MetaMask를 실은 크롬을 <b>창을 띄워</b> 엽니다 — 화면이 있는 PC의 워커(데스크톱 앱 · <code>--headed</code>)에서만 돕니다.
+            지갑마다 프로필을 하나 두고 계속 씁니다(처음 한 번 지갑을 준비 · 다음부터 잠금만 풉니다). 승인은 웹페이지 노드의 «MetaMask 승인» 동작이 합니다.
+          </div>
+        )}
         {s.browser === "attach" && (
           <div className="banner info small">
             크롬을 <code>--remote-debugging-port=9222</code>로 띄우고 사이트에 로그인해 두세요. 서버는 <code>FLOWSMITH_CDP_URL</code>(기본 http://127.0.0.1:9222)로 붙습니다.

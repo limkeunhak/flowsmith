@@ -118,6 +118,9 @@ function targetsOf(n: FlowNode): { where: string; target: Target; click: boolean
         if (a.appears) out.push({ where: `${w} 이 화면일 때만`, target: a.appears, click: false });
         if (a.done.kind !== "url") out.push({ where: `${w} 끝났다는 표시`, target: a.done.target, click: false });
         break;
+      case "walletApprove":
+        if (a.done.kind !== "url") out.push({ where: `${w} 끝났다는 표시`, target: a.done.target, click: false });
+        break;
       case "goto": case "closeWindow": break;
     }
   });
@@ -233,13 +236,25 @@ export function compile(flow: Flow): CompiledFlow {
   const hasVar = (name: string) => name in flow.vars || shared.has(name);
   for (const name of shared) if (name in flow.vars) problems.push(`변수 "${name}": 이 워크플로우의 변수와 공용 변수에 함께 있습니다 — 하나만 쓰세요`);
 
-  // ── 테스트 지갑 — 개인키 시크릿(글자) · 브라우저를 띄우는 플로우만 ──
+  // ── 지갑 — 키 시크릿(글자) · 방식과 브라우저가 맞나(테스트 지갑은 띄우는 브라우저 · MetaMask는 지갑 브라우저) ──
   const wallet = flow.settings.wallet;
+  const browser = flow.settings.browser;
   if (wallet) {
+    const what = wallet.mode === "metamask" ? "MetaMask 지갑" : "테스트 지갑";
+    const keyWord = wallet.mode === "metamask" ? "개인키 또는 복구 문구" : "개인키";
     const sec = flow.secrets.find((s) => s.name === wallet.secret);
-    if (!sec) problems.push(`테스트 지갑: 시크릿 "${wallet.secret}"이(가) 정의되지 않았습니다 — 개인키를 담을 글자 시크릿을 만드세요`);
-    else if (sec.kind !== "text") problems.push(`테스트 지갑: 시크릿 "${wallet.secret}"은(는) 글자 하나(개인키)여야 합니다`);
-    if (flow.settings.browser === "attach") problems.push("테스트 지갑: 사람의 크롬에 붙는 워크플로우에는 넣지 않습니다 — 그 크롬의 메타마스크를 쓰고 «사람 기다리기»로 승인하세요");
+    if (!sec) problems.push(`${what}: 시크릿 "${wallet.secret}"이(가) 정의되지 않았습니다 — ${keyWord}를 담을 글자 시크릿을 만드세요`);
+    else if (sec.kind !== "text") problems.push(`${what}: 시크릿 "${wallet.secret}"은(는) 글자 하나(${keyWord})여야 합니다`);
+    if (wallet.mode === "inject" && browser === "attach") problems.push("테스트 지갑: 사람의 크롬에 붙는 워크플로우에는 넣지 않습니다 — 그 크롬의 메타마스크를 쓰고 «사람 기다리기»로 승인하세요");
+    if (wallet.mode === "inject" && browser === "wallet") problems.push("테스트 지갑: 지갑 브라우저(MetaMask)에는 페이지에 넣는 테스트 지갑을 쓰지 않습니다 — 지갑 방식을 «MetaMask 확장»으로 바꾸세요");
+    if (wallet.mode === "metamask" && browser !== "wallet") problems.push("MetaMask 지갑: 브라우저를 «지갑 브라우저(MetaMask)»로 고르세요 — MetaMask는 그 브라우저에만 실립니다");
+  }
+  if (browser === "wallet" && wallet?.mode !== "metamask") problems.push("지갑 브라우저: 워크플로우 설정의 지갑을 «MetaMask 확장» 방식으로 정하세요(키 시크릿 · 체인)");
+  for (const n of flow.nodes) {
+    if (n.type !== "web" || browser === "wallet") continue;
+    n.config.actions.forEach((a, i) => {
+      if (a.kind === "walletApprove") problems.push(`${nodeLabel(n)} 동작 ${i + 1}(${a.id}): MetaMask 승인은 지갑 브라우저(MetaMask)에서만 씁니다 — 사람의 크롬이면 «사람 기다리기»로 승인하세요`);
+    });
   }
 
   // ── 다른 플로우가 끝나면 · 파일이 생기면 — 실행 입력이 맞나 ──

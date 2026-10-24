@@ -10,7 +10,7 @@
  *  모양이 틀리면 의미는 안 본다. 틀린 모양 위에서 낸 의미 오류는 대개 헛소리다.
  */
 import {
-  BROWSER_MODES, EMAIL_RE, HUMAN_TIMEOUT, NODE_TYPES, NOTE_COLORS, PARAM_TYPES, paramProblem, type FlowNote, NOTIFY_CHANNELS, NOTIFY_EVENTS, recipientsOf, SCHEMA_VERSION, SECRET_KINDS, type Edge, type Flow, type FlowNode, type FlowSettings, type NotifyRule, type ParamDef, type SecretDef, WALLET_ANNOUNCE, type WalletSettings } from "../model.ts";
+  BROWSER_MODES, EMAIL_RE, HUMAN_TIMEOUT, WALLET_APPROVE_TIMEOUT, WALLET_MODES, NODE_TYPES, NOTE_COLORS, PARAM_TYPES, paramProblem, type FlowNote, NOTIFY_CHANNELS, NOTIFY_EVENTS, recipientsOf, SCHEMA_VERSION, SECRET_KINDS, type Edge, type Flow, type FlowNode, type FlowSettings, type NotifyRule, type ParamDef, type SecretDef, WALLET_ANNOUNCE, type WalletSettings } from "../model.ts";
 import { compile } from "../graph.ts";
 import { parseCron } from "../cron.ts";
 import { Checker, FlowError, isObj } from "./checker.ts";
@@ -147,7 +147,8 @@ function settings(c: Checker, v: unknown): FlowSettings {
   if (o["wallet"] !== undefined && o["wallet"] !== null) {
     const w = "settings.wallet";
     const x = c.obj(o["wallet"], w);
-    const chains = c.arr(x, "chains", w).map((y, i) => {
+    const mode = c.oneOf(WALLET_MODES, x, "mode", w, "inject");
+    const chains = c.arr(x, "chains", w, mode === "metamask").map((y, i) => {
       const cw = `${w}.chains[${i}]`;
       const k = c.obj(y, cw);
       const chainId = c.int(k, "chainId", cw, 0, 1);
@@ -155,13 +156,16 @@ function settings(c: Checker, v: unknown): FlowSettings {
       if (rpcUrl !== "" && !/^https?:\/\//i.test(rpcUrl)) c.fail(cw, "RPC 주소는 http:// 또는 https://로 시작합니다(비우면 서명만)");
       const allowTx = c.bool(k, "allowTx", cw, false);
       if (allowTx && rpcUrl === "") c.fail(cw, "거래를 허용하려면 RPC 주소가 있어야 합니다");
-      return { chainId, name: c.str(k, "name", cw, `체인 ${chainId}`), rpcUrl, allowTx };
+      const symbol = c.str(k, "symbol", cw, "").trim();
+      if (symbol !== "" && !/^[A-Za-z0-9]{1,11}$/.test(symbol)) c.fail(cw, "화폐 기호는 영문 · 숫자 1~11자입니다(예: ETH · NXPC)");
+      return { chainId, name: c.str(k, "name", cw, `체인 ${chainId}`), rpcUrl, allowTx, ...(symbol ? { symbol } : {}) };
     });
-    if (Array.isArray(x["chains"]) && chains.length === 0) c.fail(w, "체인을 하나 이상 정하세요");
+    // MetaMask는 체인 없이도 된다(기본 체인에서 연결 · 서명만) — 페이지 주입 지갑은 체인이 있어야 답할 수 있다
+    if (mode === "inject" && Array.isArray(x["chains"]) && chains.length === 0) c.fail(w, "체인을 하나 이상 정하세요");
     c.noDup(chains.map((k) => String(k.chainId)), "체인 id", w);
     const defaultChainId = c.int(x, "defaultChainId", w, chains[0]?.chainId ?? 1, 1);
     if (chains.length && !chains.some((k) => k.chainId === defaultChainId)) c.fail(w, `처음 체인 ${defaultChainId}이(가) 체인 목록에 없습니다`);
-    wallet = { secret: c.text(x, "secret", w), announceAs: c.oneOf(WALLET_ANNOUNCE, x, "announceAs", w, "MetaMask"), chains, defaultChainId };
+    wallet = { mode, secret: c.text(x, "secret", w), announceAs: c.oneOf(WALLET_ANNOUNCE, x, "announceAs", w, "MetaMask"), chains, defaultChainId };
   }
   return {
     wallet,
@@ -257,8 +261,8 @@ function readShape(json: unknown): { flow: Flow; problems: string[] } {
     for (const n of nodes) {
       if (n.type !== "web") continue;
       n.config.actions.forEach((a, i) => {
-        const wait = a.kind === "human" ? (a.timeoutMs ?? HUMAN_TIMEOUT.defaultMs) : 0;
-        if (wait > limit * 60_000) c.fail(`노드 '${n.name}'(${n.id}) 동작 ${i + 1}`, `사람을 ${Math.round(wait / 60_000)}분 기다리는데 전체 시간 제한이 ${limit}분입니다 — 시간 제한을 늘리거나 기다리는 시간을 줄이세요`);
+        const wait = a.kind === "human" ? (a.timeoutMs ?? HUMAN_TIMEOUT.defaultMs) : a.kind === "walletApprove" ? (a.timeoutMs ?? WALLET_APPROVE_TIMEOUT.defaultMs) : 0;
+        if (wait > limit * 60_000) c.fail(`노드 '${n.name}'(${n.id}) 동작 ${i + 1}`, `${a.kind === "human" ? "사람을" : "MetaMask 승인을"} ${Math.round(wait / 60_000)}분 기다리는데 전체 시간 제한이 ${limit}분입니다 — 시간 제한을 늘리거나 기다리는 시간을 줄이세요`);
       });
     }
   }

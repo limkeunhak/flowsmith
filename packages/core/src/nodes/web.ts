@@ -115,9 +115,18 @@ export type WebAction =
    *   timeoutMs 기다리는 시간(ActionBase) — 없으면 5분. 넘으면 실패
    * ★사람이 넣은 것(아이디 · 비밀번호)은 녹화하지도 기록하지도 않는다. 점검 실행은 이 동작 앞에서 멈춘다
    */
-  | (ActionBase & { kind: "human"; prompt: string; appears: Target | null; done: HumanDone });
+  | (ActionBase & { kind: "human"; prompt: string; appears: Target | null; done: HumanDone })
+  /**
+   * **MetaMask 승인**(PLAN §44) — 지갑 브라우저(browser: "wallet")에서. MetaMask 화면(새 창이든 열린 탭 안이든)을 읽고
+   * 누를 만한 것(core approvalDecision)만 누르며, 끝났다는 표시(done — 로그인 뒤에만 보이는 것)가 오면 멈춘다.
+   *   timeoutMs 기다리는 시간(ActionBase) — 없으면 2분. 넘으면 실패
+   * 처음부터 끝 표시가 맞으면(이미 연결됨) 아무것도 누르지 않는다. 점검 실행은 이 동작 앞에서 멈춘다
+   */
+  | (ActionBase & { kind: "walletApprove"; done: HumanDone });
 
-export const ACTION_KINDS = ["goto", "click", "fill", "select", "check", "press", "wait", "read", "readTable", "closeWindow", "pickRow", "assert", "human"] as const;
+export const ACTION_KINDS = ["goto", "click", "fill", "select", "check", "press", "wait", "read", "readTable", "closeWindow", "pickRow", "assert", "human", "walletApprove"] as const;
+/** MetaMask 승인을 기다리는 시간 — 기본 2분 · 10초~10분 */
+export const WALLET_APPROVE_TIMEOUT = { defaultMs: 2 * 60_000, minMs: 10_000, maxMs: 10 * 60_000 } as const;
 export type ActionKind = WebAction["kind"];
 
 export interface TableTarget {

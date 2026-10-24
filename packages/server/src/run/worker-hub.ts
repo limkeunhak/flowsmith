@@ -55,6 +55,9 @@ interface Conn {
 
 /** 이 실행에 필요한 확장 */
 const needsOf = (job: RunJob): string[] => [...new Set(job.flow.nodes.flatMap((n) => (n.type === "extension" ? [n.config.extension] : [])))];
+/** 이 실행이 워커에게 바라는 일 — 지갑 브라우저(창이 보이는 워커만 연다 · PLAN §44) */
+const capsOf = (job: RunJob): string[] => (job.flow.settings.browser === "wallet" ? ["wallet"] : []);
+const hasCaps = (c: { info: WorkerInfo }, caps: string[]): boolean => caps.every((x) => c.info.capabilities?.includes(x));
 
 /** 녹화의 Studio 쪽 — 세션이 보내는 말 · 화면 */
 export interface RecIO { send(m: ServerMessage): void; frame(jpeg: Buffer): void }
@@ -119,7 +122,10 @@ export class WorkerHub implements WorkerClient {
       if (m.t !== "hello") return;
       clearTimeout(hello);
       if (m.protocol !== PROTOCOL) { ws.close(CLOSE.protocol, `워커 프로그램의 버전이 서버와 다릅니다(서버 ${PROTOCOL} · 워커 ${m.protocol}) — 워커를 새로 받으세요`); return; }
-      const info: WorkerInfo = { host: String(m.host).slice(0, 120), version: String(m.version).slice(0, 40), extensions: Array.isArray(m.extensions) ? m.extensions.map(String).slice(0, 100) : [] };
+      const info: WorkerInfo = {
+        host: String(m.host).slice(0, 120), version: String(m.version).slice(0, 40), extensions: Array.isArray(m.extensions) ? m.extensions.map(String).slice(0, 100) : [],
+        capabilities: Array.isArray(m.capabilities) ? m.capabilities.map(String).slice(0, 20) : [],
+      };
       // ★같은 워커가 다른 곳에서 붙었으면 옛 연결을 끊는다(PC를 다시 켰는데 옛 연결이 반쯤 살아 있을 때)
       const old = this.#conns.get(w.id);
       if (old) { old.ws.close(CLOSE.replaced, "같은 워커가 다른 곳에서 붙었습니다"); this.#drop(old); }
@@ -314,9 +320,16 @@ export class WorkerHub implements WorkerClient {
    */
   #lacking(job: RunJob, on: string, snap: Snap = this.#snapshot()): string | null {
     const need = needsOf(job);
-    if (need.length === 0) return null;
+    const caps = capsOf(job);
+    if (need.length === 0 && caps.length === 0) return null;
     const can = [...this.#conns.values()].filter((c) => { const w = snap.byId.get(c.id); return w !== undefined && this.#fits(w, job.flow.id, on, snap); });
-    if (can.length === 0 || can.some((c) => c.syncing || need.every((x) => c.info.extensions.includes(x)))) return null;
+    if (can.length === 0) return null;
+    // 지갑 브라우저 — 창이 보이는 워커가 하나도 없으면 기다리지 않고 바로(§26 «못 가면 바로 실패»)
+    if (caps.length > 0 && !can.some((c) => hasCaps(c, caps))) {
+      return `워커 «${can.map((c) => c.name).join(", ")}»는 지갑 브라우저(MetaMask)를 열 수 없습니다 — 화면이 있는 PC에서 워커를 --headed로 켜세요(데스크톱 앱이면 그대로 됩니다)`;
+    }
+    if (need.length === 0) return null;
+    if (can.some((c) => c.syncing || need.every((x) => c.info.extensions.includes(x)))) return null;
     const missing = need.filter((x) => !can.some((c) => c.info.extensions.includes(x)));
     return `워커 «${can.map((c) => c.name).join(", ")}»에 확장 ${(missing.length ? missing : need).map((x) => `«${x}»`).join(", ")}이(가) 없습니다 — «확장» 화면에서 켜 두었는지, «워커» 화면에서 그 PC가 실었는지 보세요`;
   }
@@ -343,7 +356,8 @@ export class WorkerHub implements WorkerClient {
   #pick(task: Task, snap: Snap): Conn | null {
     // ★받는 중인 워커 · 필요한 확장이 없는 워커는 빼고
     const need = needsOf(task.job);
-    const seats = [...this.#conns.values()].filter((c) => !(need.length > 0 && (c.syncing || !need.every((x) => c.info.extensions.includes(x)))))
+    const caps = capsOf(task.job);
+    const seats = [...this.#conns.values()].filter((c) => hasCaps(c, caps) && !(need.length > 0 && (c.syncing || !need.every((x) => c.info.extensions.includes(x)))))
       .map((c) => ({ id: c.id, running: c.running.size, has: (runId: string) => c.running.has(runId) }));
     const id = pick(task.job.on, snap.teamOf(task.job.flow.id), task.job.parentRunId, seats, snap.byId);
     return id ? this.#conns.get(id) ?? null : null;

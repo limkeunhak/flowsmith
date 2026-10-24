@@ -32,6 +32,8 @@ import { runTransformNode } from "./nodes/transform-node.ts";
 import { runApprovalNode, type ApprovalState, type AskApproval } from "./nodes/approval-node.ts";
 import { enginePolicy } from "./policy.ts";
 import { installWallet } from "./browser/wallet.ts";
+import { openWalletBrowser, type MetaMaskEnv } from "./browser/metamask/wallet-browser.ts";
+import { approveUntil, ensureChain } from "./browser/metamask/approve.ts";
 
 export interface RunOptions {
   /** 서버가 실행 기록의 id를 먼저 정했으면 그것을 쓴다 */
@@ -49,6 +51,11 @@ export interface RunOptions {
   headless?: boolean;
   /** 사람의 크롬 CDP 주소 — 플로우가 attach일 때 · 확장이 붙을 때 (기본 http://127.0.0.1:9222) */
   cdpUrl?: string;
+  /**
+   * 지갑 브라우저(browser: "wallet")에 쓸 것 — 워커가 준다: MetaMask를 풀어 둔 폴더 · 지갑 프로필 뿌리(PLAN §44).
+   * 없으면 지갑 브라우저 플로우는 브라우저를 열 때 멈춘다(화면이 없는 워커)
+   */
+  metamask?: MetaMaskEnv;
   /** 이 워커에 설치된 확장들 */
   extensions?: ExtensionRegistry;
   /** 점검 실행 — 요소를 녹화 때와 견주고, 되돌릴 수 없는 동작 앞에서 멈춘다. 결과에 `probe` 보고서가 붙는다 */
@@ -183,22 +190,45 @@ export async function runFlow(flow: Flow, opts: RunOptions = {}): Promise<RunRes
     id: n.id, name: n.name, type: n.type, status: "pending", input: null, output: null, branch: null, steps: [], logs: [], failure: null, ms: 0, startedAt: null,
   }]));
 
-  // 브라우저는 처음 필요할 때 마련한다 — 띄우거나(launch) 사람의 크롬에 붙는다(attach)
+  // 지갑이 한 일은 그때 도는 노드의 기록에 남는다
+  let walletNode: string | null = null;
+  const walletLog = (text: string) => { const r = walletNode ? records.get(walletNode) : undefined; if (r) { r.logs.push(text); emit({ kind: "log", nodeId: r.id, text }); } };
+  const wallet = flow.settings.wallet;
+  // 지갑 브라우저(MetaMask) — 처음 필요할 때 연다. 키는 여기서만 풀린다
+  const mm = flow.settings.browser === "wallet" && wallet?.mode === "metamask" ? wallet : null;
+  const mmEnv = opts.metamask;
+  const openWallet = mm && mmEnv ? async () => {
+    const key = secrets[mm.secret];
+    if (typeof key !== "string") throw new Error(`MetaMask 지갑: 시크릿 "${mm.secret}"에 키가 없습니다`);
+    return openWalletBrowser(mmEnv, key, { log: walletLog });
+  } : undefined;
+  // 브라우저는 처음 필요할 때 마련한다 — 띄우거나(launch) 사람의 크롬에 붙거나(attach) 지갑 브라우저를 연다(wallet)
   const session = new BrowserSession(flow.settings.browser, {
     ...(opts.browser ? { browser: opts.browser } : {}), ...(opts.page ? { page: opts.page } : {}),
     ...(opts.headless !== undefined ? { headless: opts.headless } : {}), ...(opts.cdpUrl ? { cdpUrl: opts.cdpUrl } : {}),
+    ...(openWallet ? { openWallet } : {}),
   });
-  // 테스트 지갑 — 우리가 띄운 브라우저에만(core wallet.ts). 지갑이 한 일은 그때 도는 노드의 기록에 남는다
-  let walletNode: string | null = null;
-  const wallet = flow.settings.wallet;
-  if (wallet) {
+  let chainReady = false;
+  const walletBase = (page: Page) => {
+    const context = session.context;
+    if (!context) throw new Error("지갑 브라우저가 열려 있지 않습니다");
+    return { context, dapp: page, wallet: mm!, probe: opts.probe ?? false, signal: stop.signal, log: walletLog };
+  };
+  // 처음 한 번 — 워크플로우의 처음 체인으로(사이트 페이지에 지갑이 들어온 뒤에야 부를 수 있다)
+  const prepareChain = async (page: Page) => { if (!chainReady) { await ensureChain(walletBase(page)); chainReady = true; } };
+  const walletHook = mm ? {
+    prepare: prepareChain,
+    approve: async (page: Page, done: () => Promise<boolean>, timeoutMs: number) => {
+      await prepareChain(page);   // «앞 페이지에서 이어서»로만 시작했으면 여기서
+      return (await approveUntil({ ...walletBase(page), done, timeoutMs })).length;
+    },
+  } : null;
+  // 테스트 지갑(페이지에 넣는 것) — 우리가 띄운 브라우저에만(core wallet.ts)
+  if (wallet && wallet.mode === "inject") {
     const key = secrets[wallet.secret];
     session.onContext = async (ctx) => {
       if (typeof key !== "string") throw new Error(`테스트 지갑: 시크릿 "${wallet.secret}"에 개인키가 없습니다`);
-      await installWallet(ctx, wallet, key, {
-        probe: opts.probe ?? false,
-        log: (text) => { const r = walletNode ? records.get(walletNode) : undefined; if (r) { r.logs.push(text); emit({ kind: "log", nodeId: r.id, text }); } },
-      });
+      await installWallet(ctx, wallet, key, { probe: opts.probe ?? false, log: walletLog });
     };
   }
   if (opts.onPage) {
@@ -277,6 +307,7 @@ export async function runFlow(flow: Flow, opts: RunOptions = {}): Promise<RunRes
               signal: stop.signal, retry: { count: flow.settings.retries, delayMs: flow.settings.retryDelayMs },
               ...(opts.probe ? { probe: { report: (f) => { findings.push(f); } } } : {}),
               step: (s) => { rec.steps.push(s); emit({ kind: "step", nodeId: node.id, step: s }); },
+              ...(walletHook ? { wallet: walletHook } : {}),
               ...(humanOk ? { human: {
                 waiting: (w) => emit({ kind: "human", nodeId: node.id, actionId: w.actionId, index: w.index, state: "waiting", prompt: w.prompt, deadline: w.deadline }),
                 finished: (w) => emit({ kind: "human", nodeId: node.id, actionId: w.actionId, index: w.index, state: w.outcome, prompt: w.prompt, deadline: null }),

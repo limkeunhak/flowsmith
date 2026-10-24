@@ -1,6 +1,6 @@
 /** 검문소 — 웹페이지 노드(위치 · 지문 · 기다리기 · 표 · 행 고르기 · 동작) */
 import {
-  ACTION_KINDS, HUMAN_DONE_KINDS, HUMAN_TIMEOUT, type HumanDone, LOCATOR_KINDS, READ_STRATEGIES, READ_TRANSFORMS, RISKS, ROW_PICK_BY, WAIT_KINDS, type Fingerprint, type Locator, type RowPick, type TableColumn, type TableTarget, type Target, type Wait, type WebAction, type WebConfig,
+  ACTION_KINDS, HUMAN_DONE_KINDS, HUMAN_TIMEOUT, type HumanDone, LOCATOR_KINDS, READ_STRATEGIES, READ_TRANSFORMS, RISKS, ROW_PICK_BY, WAIT_KINDS, WALLET_APPROVE_TIMEOUT, type Fingerprint, type Locator, type RowPick, type TableColumn, type TableTarget, type Target, type Wait, type WebAction, type WebConfig,
 } from "../model.ts";
 import { Checker, type Obj } from "./checker.ts";
 import { rule } from "./condition.ts";
@@ -103,6 +103,14 @@ function rowPick(c: Checker, v: unknown, where: string): RowPick {
   };
 }
 
+/** 끝났다는 표시 — 사람 기다리기 · MetaMask 승인이 함께 쓴다 */
+function doneMark(c: Checker, v: unknown, where: string): HumanDone {
+  const d = c.obj(v, where);
+  const dk = c.oneOf(HUMAN_DONE_KINDS, d, "kind", where);
+  if (dk === "url") { const pattern = c.text(d, "pattern", where); c.regex(pattern, `${where}.pattern`); return { kind: dk, pattern }; }
+  return { kind: dk, target: target(c, d["target"], `${where}.target`) };
+}
+
 function action(c: Checker, v: unknown, where: string): WebAction {
   const o = c.obj(v, where);
   const base = {
@@ -138,13 +146,17 @@ function action(c: Checker, v: unknown, where: string): WebAction {
     case "human": {
       const t = base.timeoutMs;
       if (t !== null && (t < HUMAN_TIMEOUT.minMs || t > HUMAN_TIMEOUT.maxMs)) c.fail(where, `사람을 기다리는 시간(timeoutMs)은 ${HUMAN_TIMEOUT.minMs / 1000}초~${HUMAN_TIMEOUT.maxMs / 60_000}분입니다`);
-      const d = c.obj(o["done"], `${where}.done`);
-      const dk = c.oneOf(HUMAN_DONE_KINDS, d, "kind", `${where}.done`);
-      const done: HumanDone = dk === "url" ? (() => { const pattern = c.text(d, "pattern", `${where}.done`); c.regex(pattern, `${where}.done.pattern`); return { kind: dk, pattern }; })()
-        : { kind: dk, target: target(c, d["target"], `${where}.done.target`) };
+      const done = doneMark(c, o["done"], `${where}.done`);
       // ★«있을 때만»은 이 동작에서 «이 화면일 때만»(appears)이 맡는다 — 둘을 같이 켜지 않는다
       if (base.optional) c.fail(where, "사람 기다리기는 «있을 때만» 대신 «이 화면일 때만»(appears)을 씁니다");
       return { ...base, kind, prompt: c.text(o, "prompt", where), appears: o["appears"] == null ? null : target(c, o["appears"], `${where}.appears`), done };
+    }
+    case "walletApprove": {
+      const t = base.timeoutMs;
+      if (t !== null && (t < WALLET_APPROVE_TIMEOUT.minMs || t > WALLET_APPROVE_TIMEOUT.maxMs)) c.fail(where, `MetaMask 승인을 기다리는 시간(timeoutMs)은 ${WALLET_APPROVE_TIMEOUT.minMs / 1000}초~${WALLET_APPROVE_TIMEOUT.maxMs / 60_000}분입니다`);
+      // ★이미 끝 표시가 맞으면(연결돼 있으면) 아무것도 누르지 않고 지나간다 — «있을 때만»이 따로 필요 없다
+      if (base.optional) c.fail(where, "MetaMask 승인에는 «있을 때만»을 켜지 않습니다 — 이미 끝났다는 표시가 보이면 저절로 지나갑니다");
+      return { ...base, kind, done: doneMark(c, o["done"], `${where}.done`) };
     }
   }
 }

@@ -7,7 +7,7 @@
  *  노드가 끝날 때 머문 창을 실행기에 알린다 — 다음 노드의 «이어서»가 거기서 시작한다.
  */
 import type { Page } from "playwright";
-import { checkRule, durationText, evaluate, HUMAN_TIMEOUT, type HumanDone, type Output, type ProbeFinding, type Scope, type Target, type WebAction, type WebNode } from "@flowsmith/core";
+import { checkRule, durationText, evaluate, HUMAN_TIMEOUT, WALLET_APPROVE_TIMEOUT, type HumanDone, type Output, type ProbeFinding, type Scope, type Target, type WebAction, type WebNode } from "@flowsmith/core";
 import { describeLocator, locateAll } from "../browser/locate.ts";
 import { pause, PROBLEMS, retryable, RunStopped, StepError, toFailure } from "../errors.ts";
 import type { Primitives } from "../browser/primitives.ts";
@@ -87,9 +87,18 @@ export interface NodeEnv {
    * 없으면 «사람 기다리기»는 기다리지 않고 바로 멈춘다(아무도 로그인할 수 없다)
    */
   human?: HumanHooks;
+  /**
+   * 지갑 브라우저(browser: "wallet")이면 — «MetaMask 승인»이 쓴다. 사이트 페이지에서 체인을 맞추고, 끝 표시가 올 때까지
+   * MetaMask 화면을 누른다(누른 화면 수를 돌려준다). 없으면 그 동작은 멈춘다
+   */
+  wallet?: {
+    /** 시작 주소를 연 직후 — 사이트가 지갑을 부르기 전에 처음 체인으로 맞춘다(승인이 겹치지 않게) */
+    prepare(page: Page): Promise<void>;
+    approve(page: Page, done: () => Promise<boolean>, timeoutMs: number): Promise<number>;
+  };
 }
 
-const str = (v: unknown, what: string): string => {
+const str =(v: unknown, what: string): string => {
   if (v === undefined || v === null) throw new Error(`${what} 값이 없습니다`);
   return typeof v === "object" ? JSON.stringify(v) : String(v);
 };
@@ -131,6 +140,8 @@ export async function runWebNode(node: WebNode, env: NodeEnv): Promise<Output> {
   if (node.config.start.kind === "url") {
     const url = str(evaluate(node.config.start.url, noSecrets).value, "시작 주소");
     await prim.goto(url, env.defaultTimeoutMs);
+    // 지갑 브라우저 — 사이트가 «지갑 연결»을 부르기 전에 체인부터(연결 · 체인 승인이 한꺼번에 겹치면 MetaMask가 넘어가지 않는다)
+    if (env.wallet && !env.probe) await env.wallet.prepare(prim.page);
     env.step({ index: 0, id: "start", kind: "start", label: "시작", ms: Date.now() - t0, note: `${url}로 갔습니다` });
   } else if (node.config.start.kind === "tab") {
     // 탭은 실행기가 이미 골라 줬다 — 주소를 옮기지 않는다
@@ -176,6 +187,7 @@ export async function runWebNode(node: WebNode, env: NodeEnv): Promise<Output> {
     if (env.probe) {
       // ★점검 실행에는 사람이 없다 — 로그인 같은 일 앞에서 멈춘다(그 뒤는 사람이 있을 때만 갈 수 있다)
       if (a.kind === "human") throw new ProbeStop(node.id, a.id, "사람 기다리기 앞에서 멈췄습니다 — 점검 실행에는 로그인할 사람이 없습니다");
+      if (a.kind === "walletApprove") throw new ProbeStop(node.id, a.id, "MetaMask 승인 앞에서 멈췄습니다 — 점검은 지갑으로 연결 · 서명하지 않습니다");
       for (const t of probeTargets(a)) {
         const f = await inspectTarget(prim.page, t, timeout);
         env.probe.report({ ...f, nodeId: node.id, actionId: a.id });
@@ -187,7 +199,7 @@ export async function runWebNode(node: WebNode, env: NodeEnv): Promise<Output> {
     let label = "";
     let note = "";
     // ★다시 해 보기는 «되돌릴 수 있는» 동작만 — 제출 · 저장을 두 번 하지 않게
-    const tries = a.risk === "safe" && a.kind !== "human" ? (a.retries ?? env.retry?.count ?? 0) : 0;
+    const tries = a.risk === "safe" && a.kind !== "human" && a.kind !== "walletApprove" ? (a.retries ?? env.retry?.count ?? 0) : 0;
     for (let attempt = 0; ; attempt++) {
     try {
       switch (a.kind) {
@@ -319,6 +331,17 @@ export async function runWebNode(node: WebNode, env: NodeEnv): Promise<Output> {
             env.human.finished({ index, actionId: a.id, prompt: a.prompt, outcome });
           }
           note = `사람이 끝냈습니다 — ${durationText(Date.now() - started)} 기다림`;
+          break;
+        }
+        case "walletApprove": {
+          label = "MetaMask 승인";
+          const page = prim.page;
+          if (await humanDone(page, a.done)) { note = "이미 끝나 있어 승인하지 않았습니다"; break; }
+          if (!env.wallet) {
+            throw new StepError({ problem: "other", label, locator: null, candidates: [], message: "MetaMask 승인은 지갑 브라우저(MetaMask)에서만 됩니다 — 워크플로우 설정의 브라우저를 확인하세요" });
+          }
+          const n = await env.wallet.approve(page, () => humanDone(page, a.done), a.timeoutMs ?? WALLET_APPROVE_TIMEOUT.defaultMs);
+          note = n > 0 ? `MetaMask 화면 ${n}개를 승인했습니다 — ${durationText(Date.now() - started)}` : "승인할 화면 없이 끝났다는 표시가 왔습니다";
           break;
         }
         case "assert": {

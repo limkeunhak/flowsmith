@@ -14,10 +14,10 @@ afterAll(() => { for (const d of dirs) rmSync(d, { recursive: true, force: true 
 
 const CODE = (v: string) => `
 import { ExtensionRegistry } from "@flowsmith/engine";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 export const extensions = [{
   id: "demo.hello", title: "인사", description: "", options: [], outputs: ["v", "host"], browser: "none", risk: "safe",
-  async run() { return { v: "${v}", host: typeof ExtensionRegistry === "function" && join("a", "b") === "a/b" }; },
+  async run() { return { v: "${v}", host: typeof ExtensionRegistry === "function" && join("a", "b") === "a" + sep + "b" }; },
 }];
 `;
 const META = { id: "demo", name: "데모", version: "1.0.0", description: "시험", main: "index.mjs", nodes: ["demo.hello"] };

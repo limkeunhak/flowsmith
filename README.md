@@ -68,7 +68,7 @@ FLOWSMITH_MASTER_KEY_FILE=~/.flowsmith.key node packages/server/src/main.ts --po
 ```
 
 API 목록은 편집 화면의 **API**(Swagger) 또는 `GET /api/openapi.json` — 설명은 [packages/server/src/http/docs.ts](packages/server/src/http/docs.ts). 밖에서 부를 때는 API 토큰(`Authorization: Bearer fsa_…`).
-환경변수: `FLOWSMITH_MASTER_KEY_FILE`(필수) · `FLOWSMITH_EXTENSIONS`(서버에 고정할 확장) · `FLOWSMITH_PLUGIN_KEYS` · `FLOWSMITH_PLUGIN_SIGNING` · `FLOWSMITH_PLUGIN_SOURCE`(확장 플러그인 — 믿는 서명 키 · 서명 끄기 · 사내 저장소) · `FLOWSMITH_ANTHROPIC_KEY` · `FLOWSMITH_GEMINI_KEY`(AI 도우미를 서버 키로 — 지금은 사람마다 «내 설정») · `FLOWSMITH_CDP_URL`(사람의 크롬) · `FLOWSMITH_MAX_RUNS`(동시 실행 · 기본 3) · `FLOWSMITH_KEEP_RUNS` · `FLOWSMITH_KEEP_DAYS`(기록 보관) · `FLOWSMITH_FILES_DIR`(파일 쓰기 · 읽기 노드의 파일 뿌리 — 기본 데이터 폴더/files) · `FLOWSMITH_PUBLIC_URL`(알림 속 링크 — 밖에서 열 주소) · `FLOWSMITH_SMTP_URL` · `FLOWSMITH_MAIL_FROM`(메일 알림) · `HOST`.
+환경변수: `FLOWSMITH_MASTER_KEY_FILE`(필수) · `FLOWSMITH_EXTENSIONS`(서버에 고정할 확장) · `FLOWSMITH_PLUGIN_KEYS` · `FLOWSMITH_PLUGIN_SIGNING` · `FLOWSMITH_PLUGIN_SOURCE`(확장 플러그인 — 믿는 서명 키 · 서명 끄기 · 사내 저장소) · `FLOWSMITH_ANTHROPIC_KEY` · `FLOWSMITH_GEMINI_KEY`(AI 도우미를 서버 키로 — 지금은 사람마다 «내 설정») · `FLOWSMITH_CDP_URL`(사람의 크롬) · `FLOWSMITH_WALLET_DIR` · `FLOWSMITH_METAMASK_ZIP`(지갑 브라우저 — MetaMask · 지갑 프로필 폴더 · 사내망용 묶음) · `FLOWSMITH_MAX_RUNS`(동시 실행 · 기본 3) · `FLOWSMITH_KEEP_RUNS` · `FLOWSMITH_KEEP_DAYS`(기록 보관) · `FLOWSMITH_FILES_DIR`(파일 쓰기 · 읽기 노드의 파일 뿌리 — 기본 데이터 폴더/files) · `FLOWSMITH_PUBLIC_URL`(알림 속 링크 — 밖에서 열 주소) · `FLOWSMITH_SMTP_URL` · `FLOWSMITH_MAIL_FROM`(메일 알림) · `HOST`.
 흐름: 플로우 만들기(초안) → 시크릿 넣기 → 버전 만들기(검문소 통과 필수) → 배포 → 실행(202 + SSE로 진행).
 
 빌드 단계가 없다 — Node의 type stripping으로 `.ts`를 그대로 돌린다.
