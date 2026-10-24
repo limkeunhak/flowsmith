@@ -19,13 +19,17 @@ export class InProcessWorker implements WorkerClient {
   readonly #wallet: MetaMaskEnv | null;
   #browser: Promise<Browser> | null = null;
 
-  constructor(opts: { headless?: boolean; cdpUrl?: string; extensions?: ExtensionRegistry; /** 파일 쓰기 노드의 파일 뿌리 */ filesDir?: string; /** 지갑 폴더(시험) — 없으면 이 PC의 것 */ wallet?: MetaMaskEnv } = {}) {
+  constructor(opts: {
+    headless?: boolean; cdpUrl?: string; extensions?: ExtensionRegistry; /** 파일 쓰기 노드의 파일 뿌리 */ filesDir?: string; /** 지갑 폴더(시험) — 없으면 이 PC의 것 */ wallet?: MetaMaskEnv;
+    /** 띄우는 브라우저는 창 없이 두고 지갑 브라우저만 창을 띄운다(데스크톱 앱 — FLOWSMITH_WALLET_BROWSER=on) */
+    walletWindow?: boolean;
+  } = {}) {
     this.#headless = opts.headless ?? true;
     this.#filesDir = opts.filesDir;
     this.#cdpUrl = opts.cdpUrl;
     this.#extensions = opts.extensions ?? new ExtensionRegistry();
     // ★창을 띄울 수 있을 때만 — 창 없는 크롬은 MetaMask 승인 창을 열지 않는다
-    this.#wallet = !this.#headless && hasDisplay() ? opts.wallet ?? walletDirs() : null;
+    this.#wallet = (!this.#headless || opts.walletWindow === true) && hasDisplay() ? opts.wallet ?? walletDirs() : null;
   }
 
   /** 이 워커가 할 수 있는 일 — 서버가 실행을 보낼 곳을 고를 때 본다(wallet: 지갑 브라우저) */

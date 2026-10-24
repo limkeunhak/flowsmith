@@ -137,7 +137,7 @@ Flowsmith 데스크톱 앱 (Electron · Windows)
 |---|---|---|
 | **0. 확인** ✅ | ① Electron의 Node에서 서버 · 워커가 도나(type stripping · `node:sqlite` · Playwright) ② WebContentsView를 Playwright로 조종 · 녹화(connectOverCDP) ③ CDP 포트 위험을 줄이는 길 ④ Windows에서 지갑 브라우저로 로그인까지(qa.msu.io — 사내망) | 넷 다 «된다 / 이렇게 바꾼다»가 정해짐 — §9. ④의 서명 · 로그인 완료만 사내망에서 남음 |
 | **1. 지갑 브라우저** 🔶 | `wallet` 모드 · 프로필 · MetaMask 받기 · «MetaMask 승인» 동작 · 설정 화면 · 가이드. **앱 없이** 화면 있는 워커(`--headed`)에서 먼저 쓴다 | 사람 PC 워커에서 qa.msu.io 로그인 시나리오가 무인으로 돈다 — 실행 · 녹화 · 지갑 다시 준비는 됨(§10) · qa.msu.io 확인(사내망)만 남음 |
-| **2. 앱 껍데기** | `apps/desktop` · 로컬 모드(서버 · 워커 내장) · 편집 화면 · Windows 설치본 | 설치하고 켜면 편집 화면이 뜨고 `launch` · `wallet` 실행이 돈다 |
+| **2. 앱 껍데기** ✅ | `apps/desktop` · 로컬 모드(서버 · 워커 내장) · 편집 화면 · Windows 설치본 | 설치하고 켜면 편집 화면이 뜨고 `launch` · `wallet` 실행이 돈다 — Windows 설치본으로 확인(§11) |
 | **3. 앱 안 브라우저** | `app` 모드 · `ElectronTransport` · 녹화 · 실행 화면 · 사람 기다리기 | 일반 사이트를 앱 안에서 녹화 → 실행 |
 | **4. 회사 서버 모드** | 서버 주소 + 워커 토큰으로 붙기 · `capabilities` · 실행 단추의 «이번만 어디서» | 회사 서버의 워크플로우가 이 PC의 앱 안 · 지갑 브라우저에서 돈다 |
 | **5. 배포** | 코드 서명 · 자동 업데이트 · macOS | — |
@@ -217,6 +217,48 @@ MetaMask의 체인 추가 화면에는 체인 id가 숫자로 안 나올 수 있
 - 진짜 MetaMask 시험에 둘 더: 다시 준비(워커 경로) · 녹화(MetaMask 창의 누르기는 안 남음 · «MetaMask 승인» 재생).
 
 **Windows에서 확인(2026-10-24)** — Electron 44의 Node로 지갑 시험 39개(진짜 MetaMask 5개 포함 · Windows 크롬 창) 모두 통과. MetaMask는 `%LOCALAPPDATA%\Flowsmith\mm\13.0.0`에 받혔다.
-★**개발 · 설치 폴더도 짧게** — 긴 폴더(139자)에 저장소를 두면 pnpm의 깊은 파일(253자~)이 260자를 넘어 **만들어지지 않는다**(vitest · Electron 바이너리가 조용히 빠졌다). 2단계의 설치본은 짧은 경로(`%LOCALAPPDATA%\Programs\Flowsmith`)에 깔고, 앱 안의 서버 · 워커 파일 경로 길이를 빌드 때 잰다.
+★**개발 · 설치 폴더도 짧게** — 긴 폴더(139자)에 저장소를 두면 pnpm의 깊은 파일(253자~)이 260자를 넘어 **만들어지지 않는다**(vitest · Electron 바이너리가 조용히 빠졌다). 2단계의 설치본은 짧은 경로(`%LOCALAPPDATA%\Programs\flowsmith`)에 깐다(§11).
 
 남은 것(1단계): 사내망에서 qa.msu.io 로그인 확인.
+
+## 11. 2단계 — 앱 껍데기 · 로컬 모드 (2026-10-24)
+
+| 어디 | 무엇 |
+|---|---|
+| `apps/desktop/src/main.ts` | Electron 앱 — 시작 화면 → (처음이면) 브라우저 받기 → 서버 띄우기 → 편집 화면. 창 하나 · 같은 앱은 하나만 · 창을 닫으면 서버에 «stop»을 보내고 끝낸다(5초 안에 안 꺼지면 죽인다) · 바깥 주소는 기본 브라우저로 |
+| `apps/desktop/src/boot.ts` | 서버를 띄우는 입구(`utilityProcess`) — 설치본에는 워크스페이스 링크가 없어 `@flowsmith/*`를 `packages/`로 잇는다 |
+| `apps/desktop/scripts/stage.ts` | 설치본에 넣을 것을 모은다(저장소와 같은 모양 · `.ts` 그대로 · 외부 의존성 판이 다르면 멈춘다) + electron-builder 설정 |
+| server `main.ts` | `parentPort`가 있으면(앱이 띄웠으면) 준비되면 `{t:"ready", url}`을 알리고 «stop»에 끈다 · `FLOWSMITH_WALLET_BROWSER=on` |
+| worker `local.ts` | `walletWindow` — 띄우는 브라우저는 창 없이, 지갑 브라우저만 창을 띄운다 |
+
+자리(Windows):
+
+| 무엇 | 어디 |
+|---|---|
+| 앱 | `%LOCALAPPDATA%\Programs\flowsmith` — 사람마다 설치(관리자 권한 없이 · NSIS oneClick) · ★폴더 이름은 `package.json`의 `name` |
+| 데이터 · 로그 | `%APPDATA%\Flowsmith\{data,logs}` — 지울 때 남긴다 |
+| 마스터 키 | `%APPDATA%\Flowsmith\master.key.enc` — Windows 사용자 암호화(DPAPI · `safeStorage`) · 서버에는 환경변수(`FLOWSMITH_MASTER_KEY`)로만 넘긴다 |
+| 브라우저 | `%LOCALAPPDATA%\Flowsmith\browsers` — 처음 켤 때 Playwright가 받는다(약 300MB · 30초 남짓) |
+| MetaMask · 지갑 프로필 | `%LOCALAPPDATA%\Flowsmith\{mm,w}` (§5.2 · §10) |
+
+만들기(Windows · ★짧은 폴더):
+
+```
+pnpm studio:build
+node apps/desktop/scripts/stage.ts /mnt/c/Users/<나>/AppData/Local/fsb/app     # WSL에서 — Windows의 짧은 폴더로
+# Windows PowerShell, 그 폴더에서
+npm install
+npx electron-builder --win nsis        # → dist\Flowsmith-Setup-<판>.exe (약 130MB · 6분)
+```
+
+**Windows에서 확인(2026-10-24)** — 설치본을 조용히 깔고(`/S`) 켜서: 편집 화면 · `launch` 실행(example.com 읽기) ·
+`wallet` 실행(운영 msu.io — 지갑 준비 → 키 불러오기 → Henesys 체인 → Connect → «MetaMask Installed» → 연결 승인 → 회원가입 화면, 약 60초) · 창 닫기로 끝내기(서버까지 1초 안).
+
+겪은 것:
+
+- ★**VS Code 안에서 띄우면 `ELECTRON_RUN_AS_NODE=1`이 따라온다** — `Flowsmith.exe`가 Electron이 아니라 Node로 떠 «bad option»으로 끝난다. 지우고 띄운다. 앱이 띄우는 서버에는 앱이 지운다.
+- **브라우저 받기는 «다 받았다» 표시로 본다** — 폴더는 풀기 시작할 때 생긴다. 폴더만 보고 넘어가면 반쯤 풀린 실행 파일이 남아 실행이 `spawn EFTYPE`로 실패했다. → 브라우저마다 `INSTALLATION_COMPLETE` · `__dirlock`이 없을 때.
+- pnpm 11은 Electron의 설치 스크립트를 막는다 — `pnpm-workspace.yaml`의 `allowBuilds: electron: true`.
+- 설치본은 서명이 없다 — SmartScreen이 경고한다(5단계). 아이콘은 Electron 기본.
+
+남은 것: 앱 안 브라우저(3단계) · 회사 서버 모드(4단계).

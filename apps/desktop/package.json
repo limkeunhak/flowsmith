@@ -1,0 +1,18 @@
+{
+  "name": "@flowsmith/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "데스크톱 앱 — 편집 화면 + 이 PC의 서버 · 워커(로컬 모드) · Windows 설치본 (PLAN §44 · docs/DESKTOP.md)",
+  "main": "src/main.ts",
+  "scripts": {
+    "dev": "electron .",
+    "stage": "node scripts/stage.ts"
+  },
+  "dependencies": {
+    "@flowsmith/server": "workspace:*"
+  },
+  "devDependencies": {
+    "electron": "44.9.3"
+  }
+}

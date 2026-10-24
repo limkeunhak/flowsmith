@@ -5,3 +5,4 @@ out/
 .env
 data/
 apps/studio/dist/
+apps/desktop/stage/

@@ -4,3 +4,4 @@ packages:
   - "extensions/*"
 allowBuilds:
   '@scarf/scarf': false   # swagger-ui-dist의 사용 통계 — 돌리지 않는다
+  electron: true          # 데스크톱 앱(apps/desktop) — 설치 스크립트가 Electron 바이너리를 받는다(checksums.json으로 확인)

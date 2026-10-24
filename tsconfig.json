@@ -15,6 +15,6 @@
     "erasableSyntaxOnly": true,
     "skipLibCheck": true
   },
-  "include": ["packages/*/src", "packages/*/test", "apps/testsite", "apps/studio/test", "extensions/*/src", "extensions/*/test"],
+  "include": ["packages/*/src", "packages/*/test", "apps/testsite", "apps/studio/test", "apps/desktop/src", "apps/desktop/scripts", "extensions/*/src", "extensions/*/test"],
   "exclude": ["packages/recorder/src/inject.js"]
 }
