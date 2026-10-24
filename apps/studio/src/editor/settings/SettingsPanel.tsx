@@ -4,6 +4,7 @@
  * ★시크릿 **값**은 초안에 들어가지 않는다. 정의(이름 · 종류)만 초안에 있고, 값은 서버의 잠긴 저장소로
  *  바로 간다. 한 번 넣은 값은 다시 보이지 않는다 — 보이는 건 «저장됨»과 시각뿐이다.
  */
+import { desktop } from "../../live/desktop.ts";
 import { useEffect, useState } from "react";
 import { NAME_RE, PARAM_TYPES, type Flow, type ParamDef, type ParamType, type SecretKind } from "@flowsmith/core";
 import { newParam } from "../../model/index.ts";
@@ -50,6 +51,7 @@ export function SettingsPanel({ flow, update, dirty, onToast, team, onMoveTeam, 
           <div className="banner info small">
             데스크톱 앱 안에 브라우저를 엽니다 — 녹화는 이 화면의 라이브 패널 자리에, 실행은 따로 창에 뜹니다. 실행마다 새 세션(쿠키가 이어지지 않습니다)이라 로그인은 시크릿이나 «사람 기다리기»로 합니다.
             <b> 데스크톱 앱에서만 돕니다</b> — 서버 · 다른 워커에서 돌리려면 «띄우기»로 바꾸세요(워크플로우는 그대로 됩니다).
+            {!desktop() && " 지금은 웹에서 열었습니다 — 데스크톱 앱을 켠 사람이 «내 PC에서 실행하기»로 돌릴 때만 돕니다."}
           </div>
         )}
         {s.browser === "wallet" && (

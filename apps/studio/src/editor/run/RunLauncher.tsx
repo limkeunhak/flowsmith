@@ -1,8 +1,9 @@
 /**
  * 캔버스 아래 가운데의 실행 버튼 (n8n의 「Test workflow」 자리).
  * 실행 입력이 있으면 위로 작은 창이 열려 받는다. 지난번 입력은 이 브라우저에 기억한다(편의).
- * 데스크톱 앱이 회사 서버에 붙어 있으면(PLAN §44 · 4단계) **«내 PC에서 실행하기»** — 이 PC(개인 워커)에서 돌려 눈으로 본다.
- *  끄면 워크플로우 설정대로(공용 워커 · 서버). 앱 안 · 지갑 브라우저 워크플로우는 화면이 있어야 해서 늘 내 PC에서.
+ * **«내 PC에서 실행하기»**(PLAN §44 · 4단계) — 내 개인 워커에서 돌려 눈으로 본다. 끄면 워크플로우 설정대로(공용 워커 · 서버).
+ *  데스크톱 앱(회사 서버 모드)이면 이 앱 — 앱 안 · 지갑 브라우저 워크플로우는 화면이 있어야 해서 늘 켜짐.
+ *  웹이면 내가 주인인 개인 워커(내 PC의 워커 프로그램 · 앱)가 있을 때만 — 여럿이면 고른다(shell/workers.ts useMyPcs).
  */
 import { useEffect, useRef, useState } from "react";
 import { paramProblem, type Flow } from "@flowsmith/core";
@@ -12,7 +13,7 @@ import { placeLabel, useWorkers } from "../../shell/workers.ts";
 import { IconChevronUp, IconPlay } from "../../icons.tsx";
 import type { RunTarget } from "./useRun.ts";
 import { recallParams, rememberParams } from "../../shell/remember.ts";
-import { myPc, useDesktop } from "../../live/desktop.ts";
+import { pcCannot, useMyPcs } from "../../shell/workers.ts";
 
 const MINE_KEY = "flowsmith.runMine";
 const readMine = (): boolean => { try { return localStorage.getItem(MINE_KEY) === "1"; } catch { return false; } };
@@ -36,10 +37,13 @@ export function RunLauncher({ flow, detail, running, error, onRun, onlyPublished
   /** 지갑 브라우저 — 이번만 지갑 프로필을 지우고 처음부터 준비한다(한 번 쓰면 다시 끈다) */
   const [resetWallet, setResetWallet] = useState(false);
   // 내 PC — 데스크톱 앱(회사 서버 모드)일 때만. 화면이 있어야 하는 워크플로우는 늘 켠다
-  const pc = myPc(useDesktop());
-  const needsScreen = flow.settings.browser === "app" || flow.settings.browser === "wallet";
+  const pcs = useMyPcs();
+  const [pcId, setPcId] = useState<string | null>(null);
+  const pc = pcs.find((p) => p.id === pcId) ?? pcs.find((p) => p.online) ?? pcs[0] ?? null;
+  const needsScreen = pc?.here === true && (flow.settings.browser === "app" || flow.settings.browser === "wallet");
   const [mineWanted, setMineWanted] = useState(readMine);
   const mine = pc !== null && (needsScreen || mineWanted);
+  const cannot = pc && mine ? pcCannot(pc, flow.settings.browser) : null;
 
   useEffect(() => { if (error) setOpen(true); }, [error]);
   useEffect(() => {
@@ -100,12 +104,20 @@ export function RunLauncher({ flow, detail, running, error, onRun, onlyPublished
       )}
       <div className="launcher-bar">
         {pc && (
-          <label className={`run-mine${mine ? " on" : ""}`} title={needsScreen ? "화면이 있어야 하는 워크플로우(앱 안 · 지갑 브라우저)라 늘 이 PC에서 돕니다" : pc.online ? `«${pc.name}»(이 PC)에서 돌려 실행 창으로 봅니다. 끄면 워크플로우 설정대로(공용 워커 · 서버)` : `이 PC가 회사 서버에 붙어 있지 않습니다(${pc.state})`}>
+          <label className={`run-mine${mine ? " on" : ""}`} title={cannot ?? (needsScreen ? "화면이 있어야 하는 워크플로우(앱 안 · 지갑 브라우저)라 늘 이 PC에서 돕니다"
+            : !pc.online ? `«${pc.name}»가 연결돼 있지 않습니다(${pc.state}) — 그 PC에서 ${pc.here ? "앱" : "워커 프로그램"}을 켜세요`
+            : pc.here ? `«${pc.name}»(이 PC)에서 돌려 실행 창으로 봅니다. 끄면 워크플로우 설정대로(공용 워커 · 서버)`
+            : `«${pc.name}»(내 개인 워커)에서 돌립니다 — 그 PC에 창이 뜨면 거기서, 아니면 «실제 화면 보기»로 봅니다. 끄면 워크플로우 설정대로`)}>
             <input type="checkbox" checked={mine} disabled={needsScreen} onChange={(e) => { setMineWanted(e.target.checked); writeMine(e.target.checked); }} />
-            내 PC에서 실행하기{mine && !pc.online ? " · 연결 안 됨" : ""}
+            내 PC에서 실행하기{mine && !pc.online ? " · 연결 안 됨" : mine && cannot ? " · 못 돌림" : ""}
+            {mine && pcs.length > 1 && (
+              <select value={pc.id} aria-label="내 PC 고르기" onClick={(e) => e.stopPropagation()} onChange={(e) => setPcId(e.target.value)}>
+                {pcs.map((p) => <option key={p.id} value={p.id}>{p.name}{p.online ? "" : " — 꺼짐"}</option>)}
+              </select>
+            )}
           </label>
         )}
-        <button className="run-btn" disabled={running || (mine && pc !== null && !pc.online)} onClick={() => void go()}>
+        <button className="run-btn" disabled={running || (mine && pc !== null && (!pc.online || cannot !== null))} onClick={() => void go()}>
           {running ? <span className="spinner" /> : <IconPlay size={14} />}
           {running ? "도는 중…" : `워크플로우 실행 · ${targetLabel}`}
         </button>

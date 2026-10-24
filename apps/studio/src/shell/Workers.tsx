@@ -169,6 +169,9 @@ function TokenBanner({ name, token, personal, onClose }: { name: string; token: 
       <div className="row"><b className="grow">«{name}» 토큰 — 지금 한 번만 표시됩니다</b><button className="icon-btn" onClick={onClose}><IconX /></button></div>
       <div className="row"><code className="token grow">{token}</code><button className="small" type="button" onClick={() => { void navigator.clipboard?.writeText(token).catch(() => undefined); }}><IconCopy size={13} /> 복사</button></div>
       <div className="small">그 사람에게 전하세요 — Flowsmith 앱을 깔고 첫 화면에서 <b>회사 서버에 붙기</b>를 골라 서버 주소 <code>{server}</code>와 이 토큰을 넣습니다. 그 PC에 한 번만 넣으면 됩니다.</div>
+      <div className="small">앱 없이 웹으로만 쓴다면 — 그 PC의 Flowsmith 폴더에서 워커 프로그램을 켭니다(<code>--headed</code>면 실행할 때 그 PC에 브라우저 창이 떠 눈으로 봅니다 · 지갑 브라우저도 됩니다). 그러면 웹 편집 화면의 실행 단추에 <b>내 PC에서 실행하기</b>가 나옵니다.</div>
+      <div className="row"><code className="cmd grow">{`$env:FLOWSMITH_WORKER_TOKEN="${token}"; node packages/worker/src/main.ts --server ${server} --headed`}</code><button className="small" type="button" onClick={() => { void navigator.clipboard?.writeText(`$env:FLOWSMITH_WORKER_TOKEN="${token}"; node packages/worker/src/main.ts --server ${server} --headed`).catch(() => undefined); }}><IconCopy size={13} /> Windows</button></div>
+      <div className="row"><code className="cmd grow">{`FLOWSMITH_WORKER_TOKEN=${token} node packages/worker/src/main.ts --server ${server} --headed`}</code><button className="small" type="button" onClick={() => { void navigator.clipboard?.writeText(`FLOWSMITH_WORKER_TOKEN=${token} node packages/worker/src/main.ts --server ${server} --headed`).catch(() => undefined); }}><IconCopy size={13} /> macOS · Linux</button></div>
       {insecure && <div className="small"><b>https 주소가 아니라 앱이 붙지 않습니다.</b> 서버에 https를 설정하세요.</div>}
     </div>
   );

@@ -16,7 +16,8 @@ import type { Phase, Recorded, RecordMode } from "@flowsmith/recorder/protocol";
 import { describeAction, josa, suggestionsFor, urlDone } from "../../model/index.ts";
 import { IconX } from "../../icons.tsx";
 import { LiveView } from "../../live/LiveView.tsx";
-import { desktopNow, myPc, useDesktop } from "../../live/desktop.ts";
+import { desktopNow, myPc } from "../../live/desktop.ts";
+import { pcCannot, useMyPcs } from "../../shell/workers.ts";
 import { WsTransport, type LiveTransport } from "../../live/transport.ts";
 import { TemplateInput } from "../widgets.tsx";
 import { rememberedRecordOn, rememberRecordOn, useWorkers } from "../../shell/workers.ts";
@@ -539,10 +540,13 @@ export function RecordStartForm({ flow, node, onStart, onCancel }: {
   const [on, setOn] = useState<string>(() => rememberedRecordOn() ?? "");
   const chosen = on ? workers?.workers.find((w) => `worker:${w.id}` === on) : undefined;
   // 데스크톱 앱(회사 서버 모드) — 녹화할 곳: 내 PC(앱 안 브라우저 · 기본) · 서버(화면 전송). 화면이 있어야 하는 워크플로우는 내 PC만
-  const pc = myPc(useDesktop());
-  const needsScreen = flow.settings.browser === "app" || flow.settings.browser === "wallet";
-  const [where, setWhere] = useState<"mine" | "server">("mine");
-  const onMine = !attach && pc !== null && (needsScreen || where === "mine");
+  // 웹이면 내가 주인인 개인 워커(내 PC의 워커 프로그램 · 앱) — 기본은 서버(화면 전송) · 데스크톱 앱이면 이 앱(기본)
+  const pcs = useMyPcs();
+  const pc = pcs.find((p) => p.online) ?? pcs[0] ?? null;
+  const needsScreen = pc?.here === true && (flow.settings.browser === "app" || flow.settings.browser === "wallet");
+  const [where, setWhere] = useState<"mine" | "server" | null>(null);
+  const onMine = !attach && pc !== null && (needsScreen || (where ?? (pc.here ? "mine" : "server")) === "mine");
+  const cannot = onMine && pc ? pcCannot(pc, flow.settings.browser) : null;
   return (
     <div className="subcard">
       <strong>녹화 준비</strong>
@@ -557,12 +561,13 @@ export function RecordStartForm({ flow, node, onStart, onCancel }: {
       {!attach && pc && (
         <label className="field"><span>녹화할 곳</span>
           <select value={onMine ? "mine" : "server"} disabled={needsScreen} onChange={(e) => setWhere(e.target.value === "server" ? "server" : "mine")}>
-            <option value="mine">내 PC «{pc.name}» — 앱 안 브라우저(페이지를 직접 누릅니다){pc.online ? "" : " · 연결 안 됨"}</option>
+            <option value="mine">내 PC «{pc.name}» — {pc.here ? "앱 안 브라우저(페이지를 직접 누릅니다)" : "그 PC의 브라우저에서(창이 뜨면 거기서 직접 해도 됩니다)"}{pc.online ? "" : " · 연결 안 됨"}</option>
             <option value="server">서버 — 화면 전송으로</option>
           </select>
         </label>
       )}
-      {onMine && pc && !pc.online && <div className="banner warn small">이 PC가 회사 서버에 붙어 있지 않습니다({pc.state}) — 잠시 뒤 다시 하거나 «서버»를 고르세요.</div>}
+      {onMine && pc && !pc.online && <div className="banner warn small">«{pc.name}»가 회사 서버에 붙어 있지 않습니다({pc.state}) — 잠시 뒤 다시 하거나 «서버»를 고르세요.</div>}
+      {cannot && <div className="banner warn small">{cannot}</div>}
       {attach && on && workers && !chosen && <div className="banner warn small">기억해 둔 PC가 없습니다. 다시 고르세요.</div>}
       {chosen && !chosen.online && <div className="banner warn small">«{chosen.name}»가 연결돼 있지 않습니다.</div>}
       <label className="check"><input type="checkbox" disabled={!hasAncestors} checked={replay} onChange={(e) => setReplay(e.target.checked)} />
@@ -584,7 +589,7 @@ export function RecordStartForm({ flow, node, onStart, onCancel }: {
       <div className="banner warn small">녹화 중에 누르는 것은 실제 사이트에서 실제로 일어납니다. 금지 버튼은 누르지 않습니다.</div>
       <div className="row"><span className="grow" />
         <button onClick={onCancel}>닫기</button>
-        <button className="primary" disabled={Boolean(chosen && !chosen.online) || (onMine && pc !== null && !pc.online)} onClick={() => {
+        <button className="primary" disabled={Boolean(chosen && !chosen.online) || (onMine && pc !== null && (!pc.online || cannot !== null))} onClick={() => {
           if (attach) rememberRecordOn(on || null);
           // 내 PC가 아니면 on: "" — 녹화기가 내 PC로 바꾸지 않게(서버를 고른 것)
           onStart({ nodeId: node.id, params, replay, replayExisting, ...(attach && on ? { on } : onMine && pc ? { on: `worker:${pc.id}` } : pc ? { on: "" } : {}) });

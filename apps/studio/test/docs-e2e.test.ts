@@ -39,7 +39,8 @@ describe("가이드", () => {
     await page.locator(".docs-group a", { hasText: "워커" }).click();
     await expect.poll(() => page.locator(".doc h1").innerText()).toBe("워커");
     expect(page.url()).toContain("#/docs/workers");
-    expect(await page.locator(".doc pre.doc-code").innerText()).toContain("packages/worker/src/main.ts");
+    // 코드 블록 둘 — 개인 워커(웹에서 내 PC) · 공용 워커 켜는 명령
+    expect(await page.locator(".doc pre.doc-code").allInnerTexts()).toEqual([expect.stringContaining("packages/worker/src/main.ts"), expect.stringContaining("packages/worker/src/main.ts")]);
     await page.locator(".docs-toc .toc-item", { hasText: "실행 위치 고르기" }).click();
     await expect.poll(() => page.locator("#실행-위치-고르기").evaluate((el) => el.getBoundingClientRect().top), { timeout: 5000 }).toBeLessThan(200);   // 부드럽게 내려간다
 

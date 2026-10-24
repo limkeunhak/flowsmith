@@ -3,6 +3,10 @@
 웹 자동화 플로우 엔진. 웹 페이지에서 하는 일을 **노드**로, 데이터 흐름을 **엣지**로 그린
 비순환 그래프를 만들고, 배포하고, 돌린다.
 
+**기본은 웹이다** — 서버(사내 · 도커)를 띄우고 브라우저로 편집 화면을 연다. 실행은 서버 · 공용 워커(도커)에서,
+«내 PC에서» 돌리려면 그 PC에 워커 프로그램을 개인 워커로 켠다. **데스크톱 앱(Windows · macOS)은 골라 쓴다** —
+설치 파일 하나로 같은 일(로컬 모드 · 회사 서버에 붙기)을 하고, 앱 안 브라우저(진짜 페이지에서 녹화 · 실행 창)가 더 있다([docs/DESKTOP.md](docs/DESKTOP.md) §15).
+
 ## 문서
 
 | 문서 | 무엇 |
@@ -12,7 +16,7 @@
 | [docs/PLAN.md](docs/PLAN.md) | 계획과 결정 — 왜 이렇게 만들었나 |
 | [docs/RECORDING.md](docs/RECORDING.md) | 녹화로 플로우 만들기 — 사람의 크롬 · CDP 브리지 · 행 고르기 · 확인 · 팝업 |
 | [docs/DOCKER.md](docs/DOCKER.md) | 도커 컴포즈로 이 PC에서 master/worker 띄우기(서버 하나 · 워커 둘) |
-| [docs/DESKTOP.md](docs/DESKTOP.md) | 데스크톱 앱 · 지갑 브라우저 설계 — 앱 하나 브라우저 둘(앱 안 · MetaMask 크롬) · 단계 |
+| [docs/DESKTOP.md](docs/DESKTOP.md) | 데스크톱 앱(선택) · 지갑 브라우저 설계 — 앱 하나 브라우저 둘(앱 안 · MetaMask 크롬) · 단계 · 웹과 앱에서 되는 것(§15) |
 | `packages/*/README.md` · `apps/studio/README.md` | 패키지마다의 모듈 지도 |
 
 ## 구성
