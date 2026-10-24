@@ -260,7 +260,8 @@ async function startCompany(origin: string): Promise<void> {
 }
 
 async function boot(): Promise<void> {
-  Menu.setApplicationMenu(null);
+  // ★macOS는 메뉴가 없으면 ⌘C · ⌘V · ⌘A · ⌘Q가 먹지 않는다 — 기본 메뉴(앱 · 편집 · 창)만 둔다. Windows는 메뉴 없이
+  Menu.setApplicationMenu(process.platform === "darwin" ? Menu.buildFromTemplate([{ role: "appMenu" }, { role: "editMenu" }, { role: "windowMenu" }]) : null);
   win = createWindow();
   win.on("closed", () => { win = null; });
   await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(SPLASH)}`);
@@ -321,6 +322,7 @@ if (!app.requestSingleInstanceLock()) app.quit();
 else {
   app.on("second-instance", () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
   app.whenReady().then(boot, (e) => log(`whenReady: ${String(e)}`));
+  // 창을 닫으면 끝 — macOS도(앱이 서버 · 워커를 쥐고 있어 남겨 두지 않는다 · 다시 켜면 그대로 이어진다)
   app.on("window-all-closed", () => app.quit());
   // 끄기 — 서버(또는 워커)에 «stop»을 보내 정리하게 하고(5초) 그래도 안 꺼지면 끝낸다
   app.on("before-quit", (e) => {

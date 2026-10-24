@@ -8,6 +8,10 @@
  *   <폴더>/package.json   외부 의존성(위 패키지들의 것을 모은다 · 판이 다르면 멈춘다) + electron-builder 설정(NSIS · asar 끔)
  *
  * 그다음 Windows에서(★짧은 폴더 — 260자):  npm install  →  npx electron-builder --win nsis   → <폴더>/dist/Flowsmith-Setup-<판>.exe
+ * macOS(5단계 · ★Mac에서만 — codesign이 있어야 한다):  npm install  →  npx electron-builder --mac --arm64 --x64
+ *   → <폴더>/dist/Flowsmith-<판>-mac-{arm64,x64}.dmg  (apps/desktop/scripts/build-mac.sh · CI desktop-mac.yml)
+ *   ☆인증서 서명 · 공증은 하지 않는다(사용자 결정 2026-10-24) — ad-hoc 서명(identity "-")만: Apple 실리콘은 서명이 아예 없으면 뜨지 않는다.
+ *    그래서 받은 사람은 처음 한 번 «그래도 열기»(시스템 설정 › 개인정보 보호 및 보안)나 `xattr -cr`을 해야 한다
  * `@flowsmith/*`는 boot.ts가 packages/로 잇는다(설치본에는 워크스페이스 링크가 없다).
  */
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -69,6 +73,14 @@ writeFileSync(join(out, "package.json"), `${JSON.stringify({
     win: { target: [{ target: "nsis", arch: ["x64"] }], artifactName: "Flowsmith-Setup-${version}.${ext}" },
     // 사람마다 설치(관리자 권한 없이) — %LOCALAPPDATA%\Programs\flowsmith(짧은 경로 · 이름은 위 name)
     nsis: { oneClick: true, perMachine: false, shortcutName: "Flowsmith", deleteAppDataOnUninstall: false },
+    // macOS — dmg(끌어다 «응용 프로그램»에) · 인증서 서명 · 공증 없이 ad-hoc 서명만(Apple 실리콘은 서명이 아예 없으면 뜨지 않는다)
+    mac: {
+      target: [{ target: "dmg", arch: ["arm64", "x64"] }],
+      category: "public.app-category.developer-tools",
+      identity: "-", hardenedRuntime: false, gatekeeperAssess: false, notarize: false,
+      artifactName: "Flowsmith-${version}-mac-${arch}.${ext}",
+    },
+    dmg: { title: "Flowsmith ${version}" },
   },
 }, null, 2)}\n`);
 

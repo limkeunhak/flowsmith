@@ -140,7 +140,7 @@ Flowsmith 데스크톱 앱 (Electron · Windows)
 | **2. 앱 껍데기** ✅ | `apps/desktop` · 로컬 모드(서버 · 워커 내장) · 편집 화면 · Windows 설치본 | 설치하고 켜면 편집 화면이 뜨고 `launch` · `wallet` 실행이 돈다 — Windows 설치본으로 확인(§11) |
 | **3. 앱 안 브라우저** ✅ | `app` 모드 · `ElectronTransport` · 녹화 · 실행 화면 · 사람 기다리기 | 일반 사이트를 앱 안에서 녹화 → 실행 — Windows의 Electron에서 확인(§12) |
 | **4. 회사 서버 모드** ✅ | 서버 주소 + 워커 토큰으로 붙기 · `capabilities` · 실행 단추의 «이번만 어디서» | 회사 서버의 워크플로우가 이 PC의 앱 안 · 지갑 브라우저에서 돈다 — 개인 워커 · «내 PC에서 실행하기» · 워커 화면 중계로 Windows에서 확인(§13) |
-| **5. 배포** | 코드 서명 · 자동 업데이트 · macOS | — |
+| **5. 배포** 🔶 | 코드 서명 · 자동 업데이트 · macOS | 코드 서명 · 자동 업데이트는 하지 않는다(2026-10-24 사용자 결정 — 미룸) · **macOS 앱**만(§14 — Mac에서 빌드) |
 
 1단계를 앞에 둔 까닭: 지금 바로 쓸모가 있고(사람 PC 워커에서 지갑 시나리오), 앱이 없어도 되며, 2~4단계는 그 위에 얹기만 한다.
 
@@ -356,3 +356,21 @@ npx electron-builder --win nsis        # → dist\Flowsmith-Setup-<판>.exe (약
   «내 PC에서 실행하기» 켜고 실행 → **대표 PC(앱 실행 창)에서 성공** → 끄고 실행 → **도커 워커 1에서 성공** →
   도커 워커에서 사람 기다리기 → 편집 화면이 실제 화면을 저절로 열고 **중계된 화면에서 링크를 눌러 이어 가 성공**.
 - ☆확인 중에 회사 서버(WSL)가 한 번 끝 코드 1로 꺼졌다 — 로그가 남지 않아 까닭을 못 찾았고, 같은 상황(사람 기다리기 시간 넘김 · 보던 화면 닫힘)을 시험 · 실제 서버로 다시 해 봤지만 재현되지 않았다. 더 지켜본다.
+
+## 14. 5단계 — macOS 앱 (2026-10-24)
+
+사용자: «서명은 하지 말자» · «자동 업데이트도 미루자(Mac · Windows 둘 다)» · «Mac 앱만 만들어줘».
+
+| 무엇 | 어떻게 |
+|---|---|
+| 만드는 곳 | ★**Mac에서만** — dmg와 서명(ad-hoc)에 macOS의 `codesign` · `hdiutil`이 있어야 한다. Windows · WSL에서는 못 만든다 |
+| 만드는 법 | Mac에서 `bash apps/desktop/scripts/build-mac.sh [--smoke]` → `apps/desktop/stage/dist/Flowsmith-<판>-mac-{arm64,x64}.dmg` · 또는 GitHub Actions «Desktop macOS»(손으로만 돌림 · `.github/workflows/desktop-mac.yml` · 결과는 아티팩트) |
+| 서명 | 인증서 서명 · 공증은 **하지 않는다** — `identity: "-"`(ad-hoc)만. Apple 실리콘은 서명이 아예 없으면 앱이 뜨지 않아서다 · `hardenedRuntime: false` |
+| 받은 사람이 할 일 | dmg를 열어 «응용 프로그램»으로 끈 뒤 처음 한 번: 열면 막힌다 → **시스템 설정 › 개인정보 보호 및 보안 › «그래도 열기»**. 또는 터미널에서 `xattr -cr /Applications/Flowsmith.app` |
+| 확인 | `apps/desktop/scripts/smoke.ts <앱 실행 파일>` — 새 사용자 폴더(«이 PC에서만»)로 켜서 서버 · 편집 화면 · 띄우기 실행 · 앱 안 브라우저 실행을 본다(CI는 `--smoke`로 이것까지) |
+
+고친 것: macOS는 앱 메뉴가 없으면 ⌘C · ⌘V · ⌘A · ⌘Q가 먹지 않는다 → macOS에만 기본 메뉴(앱 · 편집 · 창) · 창을 닫으면 끝(macOS도 — 서버 · 워커를 쥐고 있다).
+그대로 맞는 것: 지갑 · 브라우저 폴더는 `~/.cache/flowsmith`(워커 metamask.ts와 같다) · 데이터 · 로그는 `~/Library/Application Support/Flowsmith` · 마스터 키 · 워커 토큰은 키체인(safeStorage — 처음에 «키체인 접근»을 물을 수 있다) · 창이 있는 PC라 지갑 브라우저가 된다(hasDisplay).
+
+**확인한 것 · 못 한 것** — `smoke.ts`는 Windows 설치본으로 돌려 됐다(서버 3초 · 띄우기 · 앱 안 브라우저 실행 성공). **macOS에서는 아직 한 번도 켜 보지 못했다**(이 PC에 Mac이 없다) — Actions «Desktop macOS»나 Mac에서 `build-mac.sh --smoke`로 확인한다.
+미룬 것: 코드 서명 · 공증 · 자동 업데이트(Windows · macOS) — macOS 자동 업데이트는 서명이 있어야만 된다(Squirrel.Mac).

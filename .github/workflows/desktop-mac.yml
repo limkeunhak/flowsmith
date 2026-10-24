@@ -1,0 +1,32 @@
+# macOS 앱 만들기 — 손으로만 돌린다(Actions › Desktop macOS › Run workflow). ★Mac 러너가 있어야 한다(codesign · dmg)
+# 인증서 서명 · 공증 없이 ad-hoc 서명만(사용자 결정 2026-10-24) — 결과(dmg · 확인 캡쳐)는 아티팩트로
+name: Desktop macOS
+
+on:
+  workflow_dispatch:
+
+jobs:
+  mac:
+    runs-on: macos-14          # Apple 실리콘 — arm64 · x64 dmg를 함께 만든다
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: 만들기 · 켜 보기
+        run: bash apps/desktop/scripts/build-mac.sh --smoke
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: flowsmith-mac
+          path: |
+            apps/desktop/stage/dist/*.dmg
+            apps/desktop/stage/dist/smoke/
+          if-no-files-found: warn
