@@ -5,7 +5,9 @@
  * 지갑 브라우저(PLAN §44)는 **창이 보이는 워커**(--headed · 화면이 있는 PC)만 연다 — MetaMask는 처음 쓸 때 받는다(metamask.ts).
  */
 import { chromium, type Browser } from "playwright";
-import { ExtensionRegistry, runFlow, type MetaMaskEnv, type RunEvent, type RunResult } from "@flowsmith/engine";
+import type { SecretValue } from "@flowsmith/core";
+import { ExtensionRegistry, openWalletBrowser, runFlow, type MetaMaskEnv, type RunEvent, type RunResult } from "@flowsmith/engine";
+import type { WalletSource } from "@flowsmith/recorder";
 import type { RunHooks, RunJob, WorkerClient } from "./job.ts";
 import { ensureMetaMask, hasDisplay, walletDirs } from "./metamask.ts";
 
@@ -28,6 +30,20 @@ export class InProcessWorker implements WorkerClient {
 
   /** 이 워커가 할 수 있는 일 — 서버가 실행을 보낼 곳을 고를 때 본다(wallet: 지갑 브라우저) */
   get capabilities(): string[] { return this.#wallet ? ["wallet"] : []; }
+
+  /**
+   * 녹화를 지갑 브라우저에서 — 이 PC의 MetaMask(처음이면 받는다)와 그 지갑의 프로필로. 못 열면 까닭을 던진다.
+   * ★키는 이 PC 안에서만 풀린다(서버가 녹화에 보낸 시크릿)
+   */
+  async walletSource(draft: { settings?: { wallet?: { mode?: string; secret?: string } | null } }, secrets: Record<string, SecretValue>, log: (text: string) => void = () => undefined): Promise<WalletSource> {
+    if (!this.#wallet) throw new Error("이 PC는 지갑 브라우저(MetaMask)를 열 수 없습니다 — 화면이 있는 PC의 워커(데스크톱 앱 · --headed)에서 녹화하세요");
+    const w = draft.settings?.wallet;
+    if (w?.mode !== "metamask" || !w.secret) throw new Error("워크플로우 설정의 지갑을 «MetaMask 확장» 방식으로 정하세요(키 시크릿)");
+    const key = secrets[w.secret];
+    if (typeof key !== "string") throw new Error(`MetaMask 지갑: 시크릿 "${w.secret}"의 값이 저장되지 않았습니다`);
+    const env = { ...this.#wallet, extensionDir: await ensureMetaMask(this.#wallet, log) };
+    return { wallet: () => openWalletBrowser(env, key, { log }) };
+  }
 
   /** 이 워커에 깔린 확장 — 원격 워커가 서버에 알린다 */
   get extensions(): ExtensionRegistry { return this.#extensions; }
@@ -55,7 +71,7 @@ export class InProcessWorker implements WorkerClient {
     // 지갑 브라우저 — MetaMask를 (처음이면 받아) 넘긴다. 못 여는 워커면 넘기지 않는다(엔진이 이유와 함께 멈춘다)
     const metamask = job.flow.settings.browser === "wallet" && this.#wallet ? { ...this.#wallet, extensionDir: await ensureMetaMask(this.#wallet) } : null;
     return runFlow(job.flow, {
-      ...(metamask ? { metamask } : {}),
+      ...(metamask ? { metamask: job.resetWallet ? { ...metamask, reset: true } : metamask } : {}),
       // ★시작할 때의 확장으로 끝까지 — 도중에 플러그인이 바뀌어도(PLAN §41)
       runId: job.runId, params: job.params, secrets: job.secrets, onEvent, extensions: this.#extensions.snapshot(), probe: job.probe ?? false,
       ...(browser ? { browser } : {}), ...(this.#cdpUrl ? { cdpUrl: this.#cdpUrl } : {}),

@@ -15,8 +15,8 @@ import { recallParams, rememberParams } from "../../shell/remember.ts";
 /** onlyPublished — 실행자(편집자 아래): 초안은 못 돌린다 · 게시된 버전만 */
 export function RunLauncher({ flow, detail, running, error, onRun, onlyPublished = false }: {
   flow: Flow; detail: FlowDetail; running: boolean; error: string[] | null;
-  /** on — 이번만 어디서(없으면 플로우 설정대로) */
-  onRun: (target: RunTarget, params: Record<string, string>, on?: string) => Promise<boolean>;
+  /** on — 이번만 어디서(없으면 플로우 설정대로) · resetWallet — 지갑을 다시 준비하고 돈다(지갑 브라우저) */
+  onRun: (target: RunTarget, params: Record<string, string>, opts?: { on?: string; resetWallet?: boolean }) => Promise<boolean>;
   onlyPublished?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -26,6 +26,8 @@ export function RunLauncher({ flow, detail, running, error, onRun, onlyPublished
   // 어디서 — 워커가 하나라도 있을 때만 고르게 한다(없으면 늘 서버)
   const workers = useWorkers(open);
   const [on, setOn] = useState("");
+  /** 지갑 브라우저 — 이번만 지갑 프로필을 지우고 처음부터 준비한다(한 번 쓰면 다시 끈다) */
+  const [resetWallet, setResetWallet] = useState(false);
 
   useEffect(() => { if (error) setOpen(true); }, [error]);
   useEffect(() => {
@@ -40,9 +42,10 @@ export function RunLauncher({ flow, detail, running, error, onRun, onlyPublished
   const go = async () => {
     if (missing.length > 0) { setOpen(true); return; }
     rememberParams(flow.id, params);
-    if (await onRun(target, params, on || undefined)) setOpen(false);
+    const wantReset = resetWallet && flow.settings.browser === "wallet";
+    if (await onRun(target, params, { ...(on ? { on } : {}), ...(wantReset ? { resetWallet: true } : {}) })) { setOpen(false); setResetWallet(false); }
   };
-  const targetLabel = (target === "draft" ? "초안" : target === "active" ? `배포 v${detail.activeVersion}` : `v${target}`) + (on ? ` · ${placeLabel(on, workers)}` : "");
+  const targetLabel = (target === "draft" ? "초안" : target === "active" ? `배포 v${detail.activeVersion}` : `v${target}`) + (on ? ` · ${placeLabel(on, workers)}` : "") + (resetWallet && flow.settings.browser === "wallet" ? " · 지갑 다시 준비" : "");
 
   return (
     <div className="launcher" ref={box}>
@@ -72,6 +75,12 @@ export function RunLauncher({ flow, detail, running, error, onRun, onlyPublished
           {flow.params.map((p) => (
             <ParamInput key={p.name} def={p} value={params[p.name] ?? ""} onChange={(v) => setParams((x) => ({ ...x, [p.name]: v }))} onEnter={() => void go()} />
           ))}
+          {flow.settings.browser === "wallet" && (
+            <label className="check small" title="MetaMask가 잠금을 풀지 못하거나 화면이 이상할 때 — 그 PC에 있는 이 지갑의 프로필을 지우고 처음부터 준비합니다(30초쯤). 이메일 재인증 같은 사람 몫은 다시 해야 합니다">
+              <input type="checkbox" checked={resetWallet} onChange={(e) => setResetWallet(e.target.checked)} />
+              지갑 다시 준비 — 이번 실행은 MetaMask 프로필을 지우고 처음부터
+            </label>
+          )}
           {error && <div className="banner bad small">{error.map((x, i) => <div key={i}>{x}</div>)}</div>}
         </div>
       )}

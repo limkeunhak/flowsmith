@@ -198,7 +198,8 @@ export const api = {
   putSecret: (id: string, name: string, value: unknown) => call<{ stored: boolean }>("PUT", `/flows/${encodeURIComponent(id)}/secrets/${encodeURIComponent(name)}`, { value }),
   deleteSecret: (id: string, name: string) => call<null>("DELETE", `/flows/${encodeURIComponent(id)}/secrets/${encodeURIComponent(name)}`),
   /** part — 초안을 일부만(그 노드 앞까지 · 그 노드까지) · on — 이번만 어디서(「server」 · 「worker:<id>」 · 「label:<라벨>」) */
-  startRun: (id: string, version: number | "draft" | undefined, params: Record<string, string>, part?: { stopBefore?: string; stopAfter?: string; on?: string }) =>
+  /** part.resetWallet — 지갑 브라우저: 그 지갑의 프로필을 지우고 처음부터 준비한 뒤 돈다 */
+  startRun: (id: string, version: number | "draft" | undefined, params: Record<string, string>, part?: { stopBefore?: string; stopAfter?: string; on?: string; resetWallet?: boolean }) =>
     call<{ runId: string }>("POST", `/flows/${encodeURIComponent(id)}/runs`, { ...(version === undefined ? {} : { version }), params, ...(part ?? {}) }),
   listRuns: (id: string) => call<RunRow[]>("GET", `/flows/${encodeURIComponent(id)}/runs?limit=20`),
   getRun: (runId: string) => call<RunRow>("GET", `/runs/${encodeURIComponent(runId)}`),

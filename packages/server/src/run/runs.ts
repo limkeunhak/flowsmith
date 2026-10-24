@@ -58,6 +58,8 @@ export interface StartRequest {
   /** 일부만 돌린다(초안만) — 이 노드 앞에서 · 이 노드까지 */
   stopBefore?: string;
   stopAfter?: string;
+  /** 지갑 브라우저 — 그 지갑의 프로필을 지우고 처음부터 준비한 뒤 돈다(«지갑 다시 준비») */
+  resetWallet?: boolean;
   /** 손으로 · API로 돌린 사람(메일) — 기록에 남긴다 */
   startedBy?: string | null;
   /** 이번만 어디서 — 「server」 · 「worker:<id>」 · 「label:<라벨>」. 없으면 플로우 설정대로 */
@@ -321,6 +323,7 @@ export class Runs {
           runId, flow, params, secrets, flowUid: this.store.flowUid(flowId), flowUids: flowUidsFor(this.store, flow), on, parentRunId: req.parentRunId ?? null,
           ...(Object.keys(pins).length ? { pins } : {}),
           ...(req.stopBefore ? { stopBefore: req.stopBefore } : {}), ...(req.stopAfter ? { stopAfter: req.stopAfter } : {}),
+          ...(req.resetWallet ? { resetWallet: true } : {}),
         }, push, {
           callFlow, approval, signal: abort.signal, ...(onPage ? { onPage } : {}),
           onQueued: (ahead) => push({ kind: "run:queued", ahead }),

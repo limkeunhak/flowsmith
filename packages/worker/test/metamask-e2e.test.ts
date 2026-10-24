@@ -11,8 +11,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { parseFlow } from "@flowsmith/core";
-import { addressOf, runFlow, type RunResult } from "@flowsmith/engine";
+import { addressOf, approveUntil, runFlow, type RunResult } from "@flowsmith/engine";
+import { RecorderSession } from "@flowsmith/recorder";
+import type { ServerMessage } from "@flowsmith/recorder/protocol";
 import { startTestSite, type TestSite } from "@flowsmith/testsite";
+import { InProcessWorker } from "../src/index.ts";
 import { ensureMetaMask, hasDisplay, walletDirs } from "../src/metamask.ts";
 
 const on = process.env["FLOWSMITH_MM_E2E"] === "1" && hasDisplay();
@@ -81,4 +84,41 @@ describe.skipIf(!on)("지갑 브라우저 — 진짜 MetaMask", () => {
     // 화면에 체인 id가 안 나오면 «알 수 없음» — 어느 쪽이든 목록에 없어 누르지 않는다
     expect(failOf(r)).toMatch(/체인 추가 화면을 승인하지 않았습니다 — 체인 (99999|\(알 수 없음\)).*목록에 없습니다/);
   }, 180_000);
+
+  it("★지갑 다시 준비 — 워커가 프로필을 지우고 처음부터(resetWallet)", async () => {
+    const worker = new InProcessWorker({ headless: false, wallet: { extensionDir, profilesRoot } });
+    try {
+      const r = await worker.run({ runId: "reset-1", flow: flowOf(login), params: {}, secrets: { wk: KEY }, resetWallet: true }, () => undefined);
+      expect(r.status, failOf(r)).toBe("success");
+      expect(logsOf(r)).toMatch(/지갑 프로필을 지우고 다시 준비합니다/);
+      expect(logsOf(r)).toMatch(/처음 준비합니다/);
+    } finally { await worker.close(); }
+  }, 240_000);
+
+  it("★녹화 — 지갑 브라우저로 열고 · MetaMask 창에서 누른 것은 녹화하지 않는다 · 이 노드의 «MetaMask 승인»은 재생된다", async () => {
+    const worker = new InProcessWorker({ headless: false, wallet: { extensionDir, profilesRoot } });
+    const raw = { ...JSON.parse(JSON.stringify(flowOf([]))), nodes: [{ id: "w", type: "web", name: "dApp 로그인", position: { x: 0, y: 0 }, config: { start: { kind: "url", url: `${site.url}/dapp` }, actions: [] } }] };
+    const msgs: ServerMessage[] = [];
+    const io = { send: (m: ServerMessage) => msgs.push(m), frame: () => undefined };
+    // ① 빈 노드를 녹화 — «지갑 연결»을 누르고, 사람 대신 MetaMask 창에서 승인한다
+    const s = await RecorderSession.open(await worker.walletSource(raw, { wk: KEY }), { t: "open", flowId: raw.id, nodeId: "w", draft: raw, params: {}, replay: false, replayExisting: false, startMode: "record", viewport: { width: 1200, height: 800 } }, { wk: KEY }, io);
+    try {
+      expect(msgs.filter((m) => m.t === "phase").map((m) => (m as { phase: string }).phase)).toContain("ready");
+      await s.page.locator("#connect").click();
+      await s.settle();
+      await approveUntil({ context: s.page.context(), dapp: s.page, wallet: { chains: raw.settings.wallet.chains }, done: () => s.page.locator("#signed").isVisible(), timeoutMs: 90_000, log: () => undefined });
+      await s.settle();
+      const recorded = msgs.filter((m) => m.t === "recorded").map((m) => (m as { item: { action: { kind: string; target?: { label: string } } } }).item.action);
+      expect(recorded.map((a) => a.kind)).toEqual(["click"]);   // ★MetaMask 창의 «Connect» · «Confirm»은 들어오지 않는다
+      expect(recorded[0]!.target!.label).toMatch(/지갑 연결/);
+    } finally { await s.close(); }
+    // ② 이 노드에 동작이 있으면 녹화 전에 재생한다 — «MetaMask 승인»이 저절로 누른다
+    raw.nodes[0].config.actions = login.slice(0, 2);
+    msgs.length = 0;
+    const s2 = await RecorderSession.open(await worker.walletSource(raw, { wk: KEY }), { t: "open", flowId: raw.id, nodeId: "w", draft: raw, params: {}, replay: false, replayExisting: true, startMode: "record", viewport: { width: 1200, height: 800 } }, { wk: KEY }, io);
+    try {
+      expect(await s2.page.locator("#signed").isVisible()).toBe(true);
+      expect(msgs.filter((m) => m.t === "notice" && (m as { level: string }).level === "error")).toEqual([]);
+    } finally { await s2.close(); await worker.close(); }
+  }, 300_000);
 });

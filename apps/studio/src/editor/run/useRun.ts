@@ -78,7 +78,7 @@ export function useRun(flow: Flow | null, activeVersion: number | null) {
   useEffect(() => { reloadHistory(); return () => stop.current?.(); }, [reloadHistory]);
 
   /** part — 일부만 · on — 이번만 어디서(워커) */
-  const start = useCallback(async (target: RunTarget, params: Record<string, string>, part?: { stopBefore?: string; stopAfter?: string; on?: string }): Promise<boolean> => {
+  const start = useCallback(async (target: RunTarget, params: Record<string, string>, part?: { stopBefore?: string; stopAfter?: string; on?: string; resetWallet?: boolean }): Promise<boolean> => {
     if (!flowId) return false;
     setError(null);
     const version = target === "draft" ? "draft" as const : target === "active" ? undefined : target;

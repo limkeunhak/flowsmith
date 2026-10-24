@@ -17,7 +17,7 @@ import {
   evaluate, FlowError, parseFlow,
   type Flow, type Locator, type Output, type SecretValue, type Target, type WebAction, type WebNode,
 } from "@flowsmith/core";
-import { build, Primitives, rootOf, RunInputError, runFlow, runWebNode, startScreencast, toFailure, type Screencast, installWallet } from "@flowsmith/engine";
+import { approveUntil, build, ensureChain, Primitives, rootOf, RunInputError, runFlow, runWebNode, startScreencast, toFailure, type Screencast, installWallet } from "@flowsmith/engine";
 import { keyColumnOf, readLabel, toName, withoutContentLocators } from "./suggest.ts";
 import { replayDraft } from "./replay.ts";
 import type { ClientMessage, OpenRequest, Recorded, RecordMode, ServerMessage } from "./protocol.ts";
@@ -72,6 +72,11 @@ interface Attached {
   ownPage: Page | null;
 }
 
+/** 지갑 브라우저(PLAN §44) — 워커가 MetaMask를 실은 크롬을 열어 준다. 닫으면 프로필 잠금도 풀린다 */
+export interface WalletSource {
+  wallet: () => Promise<{ context: BrowserContext; close(): Promise<void> }>;
+}
+
 export class RecorderSession {
   /** 지금 보이는 창 — 팝업이 열리면 그 창, 닫히면 연 창 */
   #page: Page;
@@ -99,8 +104,14 @@ export class RecorderSession {
   readonly #attached: Attached | null;
   /** 레코더를 심은 창들 — 끝날 때 끈다 */
   readonly #installed = new Set<Page>();
+  /**
+   * 지갑 브라우저면 그것을 닫는 법. ★MetaMask 창(승인 · 지갑 화면)도 이 컨텍스트의 페이지다 —
+   *  그리로 옮겨 가지 않고(사이트가 연 팝업만 따라간다) 그 안의 누르기는 녹화하지 않는다(사람이 승인한 것이 사이트 동작으로 남지 않게)
+   */
+  readonly #walletClose: (() => Promise<void>) | null;
 
-  private constructor(context: BrowserContext, page: Page, io: SessionIO, forbidden: string[], viewport: { width: number; height: number }, attached: Attached | null = null) {
+  private constructor(context: BrowserContext, page: Page, io: SessionIO, forbidden: string[], viewport: { width: number; height: number }, attached: Attached | null = null, walletClose: (() => Promise<void>) | null = null) {
+    this.#walletClose = walletClose;
     this.#attached = attached;
     this.#context = context;
     this.#page = page;
@@ -125,14 +136,23 @@ export class RecorderSession {
    * created — 페이지가 생기자마자(재생 **전에**) 세션을 알린다. 재생 중 «사람 기다리기»(로그인)에서 사람의 입력이 이 세션으로 가야 한다
    *  (준비가 끝난 뒤에야 세션을 받으면 그동안의 입력은 버려진다)
    */
-  static async open(src: Browser | { cdpUrl: string }, req: OpenRequest, secrets: Record<string, SecretValue>, io: SessionIO, created?: (s: RecorderSession) => void): Promise<RecorderSession> {
+  static async open(src: Browser | { cdpUrl: string } | WalletSource, req: OpenRequest, secrets: Record<string, SecretValue>, io: SessionIO, created?: (s: RecorderSession) => void): Promise<RecorderSession> {
     const attach = "cdpUrl" in src;
-    io.send({ t: "phase", phase: "starting", message: attach ? "사람의 크롬에 붙는 중" : "브라우저를 띄우는 중" });
+    io.send({ t: "phase", phase: "starting", message: attach ? "사람의 크롬에 붙는 중" : "wallet" in src ? "지갑 브라우저(MetaMask)를 여는 중 — 처음이면 지갑을 준비합니다(30초쯤)" : "브라우저를 띄우는 중" });
     const forbidden = (req.draft.settings?.forbiddenLabels ?? []).filter((x) => { try { new RegExp(x, "u"); return true; } catch { return false; } });
     let s: RecorderSession;
     if (attach) {
       const { context, page, viewport, attached } = await RecorderSession.#attachTo(src.cdpUrl, req);
       s = new RecorderSession(context, page, io, forbidden, viewport, attached);
+    } else if ("wallet" in src) {
+      // 지갑 브라우저 — 워커가 연 MetaMask 크롬에 우리 탭을 하나 연다(창이 보이는 PC · 사람은 MetaMask 창을 직접 볼 수 있다)
+      const w = await src.wallet();
+      try {
+        const viewport = RecorderSession.viewportFor(req.viewport);
+        const page = await w.context.newPage();
+        await page.setViewportSize(viewport).catch(() => undefined);
+        s = new RecorderSession(w.context, page, io, forbidden, viewport, null, w.close);
+      } catch (e) { await w.close(); throw e; }
     } else {
       const viewport = RecorderSession.viewportFor(req.viewport);
       const context = await src.newContext({ viewport, locale: "ko-KR" });
@@ -198,9 +218,15 @@ export class RecorderSession {
     return v && v.width > 0 && v.height > 0 ? v : { width: 1280, height: 800 };
   }
 
-  get #script(): string { return `${INJECT}\nrelayRecorder(${JSON.stringify({ forbidden: this.#forbidden })});`; }
+  /**
+   * 페이지에 심는 녹화 스크립트. ★확장 페이지(MetaMask 창)에서는 돌지 않는다 — 녹화 스크립트는 누르기를 가로채 대신 누르는데,
+   *  MetaMask 창의 누르기는 녹화하지 않으니 가로채면 그대로 사라진다(사람이 승인을 못 한다)
+   */
+  get #script(): string { return `if (!/^chrome-extension:/.test(location.href)) {\n${INJECT}\nrelayRecorder(${JSON.stringify({ forbidden: this.#forbidden })});\n}`; }
 
   #emit = (src: { frame: Frame }, payload: Emitted): void => {
+    // ★MetaMask 화면(확장 페이지)에서 사람이 누른 것은 녹화하지 않는다 — 승인은 «MetaMask 승인» 동작이 맡는다
+    if (src.frame.url().startsWith("chrome-extension://")) return;
     if (DEBUG) console.log(`[live] 페이지가 알림 ${payload.kind}`);
     this.#queue = this.#queue.then(() => this.#handle(src.frame, payload)).catch((e) => this.#notice("error", `녹화하다 문제가 생겼습니다 — ${toFailure(e).message}`));
   };
@@ -217,8 +243,8 @@ export class RecorderSession {
     // 팝업 — 그 창으로 옮겨 가 보여 준다. 닫히면 연 창으로 돌아온다
     this.#context.on("page", (p) => {
       if (p === this.#page || this.#closed) return;
-      if (!this.#attached) { this.#adopt(p); return; }
-      // ★사람의 크롬에서는 사람이 새 탭을 열 수도 있다 — 우리 창이 연 것만 따라간다
+      if (!this.#attached && !this.#walletClose) { this.#adopt(p); return; }
+      // ★사람의 크롬에서는 사람이 새 탭을 열 수도 있다 · 지갑 브라우저에서는 MetaMask가 제 창을 연다 — 우리 창이 연 것만 따라간다
       void p.opener().then((o) => { if (o && (o === this.#page || this.#stack.includes(o)) && !this.#closed) this.#adopt(p); }, () => undefined);
     });
   }
@@ -347,6 +373,16 @@ export class RecorderSession {
     }
 
     const scope = { input, nodes: outputs, params: req.params, vars: req.draft.vars ?? {}, secrets };
+    // 지갑 브라우저 — 이 노드의 «MetaMask 승인»을 재생할 수 있게 · 시작 주소로 가면 실행과 같이 체인부터
+    const w = req.draft.settings?.wallet;
+    const walletEnv = this.#walletClose && w?.mode === "metamask" ? (() => {
+      const wallet = { chains: w.chains ?? [], defaultChainId: w.defaultChainId ?? 1 };
+      const log = (text: string) => this.#io.send({ t: "progress", text: `   ${text}` });
+      return {
+        prepare: (p: Page) => ensureChain({ context: this.#context, dapp: p, wallet, log }),
+        approve: async (p: Page, done: () => Promise<boolean>, timeoutMs: number) => (await approveUntil({ context: this.#context, dapp: p, wallet, done, timeoutMs, log })).length,
+      };
+    })() : null;
     // 다시 지정이면 그 동작 앞까지만 재생한다
     const cut = req.stopBeforeAction ? node.config.actions.findIndex((a) => a.id === req.stopBeforeAction) : -1;
     const draft = cut >= 0 ? { ...req.draft, nodes: req.draft.nodes.map((n) => (n.id === req.nodeId && n.type === "web" ? { ...n, config: { ...n.config, actions: n.config.actions.slice(0, cut) } } : n)) } : req.draft;
@@ -359,6 +395,7 @@ export class RecorderSession {
         await runWebNode(ownNode, {
           prim: this.#prim, primFor: (p) => new Primitives(p, this.#forbidden), scope, defaultTimeoutMs: timeout,
           step: (s) => this.#io.send({ t: "progress", text: `   ${s.note}` }),
+          ...(walletEnv ? { wallet: walletEnv } : {}),
           // 사람 기다리기 — 녹화하는 사람이 바로 이 화면에 있다(모드는 «둘러보기» — 넣은 것은 녹화되지 않는다)
           human: {
             waiting: (w) => this.#io.send({ t: "human", prompt: w.prompt, deadline: w.deadline }),
@@ -373,7 +410,10 @@ export class RecorderSession {
     if (node.config.start.kind === "url") {
       try {
         const url = String(evaluate(node.config.start.url, { ...scope, secrets: {} }).value ?? "");
-        if (url) await this.page.goto(url, { waitUntil: "domcontentloaded", timeout: 20_000 });
+        if (url) {
+          await this.page.goto(url, { waitUntil: "domcontentloaded", timeout: 20_000 });
+          if (walletEnv) await walletEnv.prepare(this.page).catch((e) => this.#notice("warn", `체인을 맞추지 못했습니다 — ${toFailure(e).message}. MetaMask 창에서 직접 하세요`));
+        }
       } catch (e) {
         this.#notice("error", `시작 주소로 가지 못했습니다 — ${toFailure(e).message}`);
       }
@@ -654,6 +694,8 @@ export class RecorderSession {
     if (this.#closed) return;
     this.#closed = true;
     await this.#cast?.stop();
+    // 지갑 브라우저 — 크롬을 닫고 프로필 잠금을 푼다(프로필은 남는다)
+    if (this.#walletClose) { await this.#walletClose(); return; }
     if (!this.#attached) { await this.#context.close().catch(() => undefined); return; }
     // ★사람의 크롬 — 레코더를 끄고(남은 문서에서도 아무것도 가로채지 않게) 우리 탭만 닫고 연결을 놓는다
     for (const p of this.#installed) {

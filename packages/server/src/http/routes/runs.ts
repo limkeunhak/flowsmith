@@ -1,7 +1,8 @@
 /**
  * 실행 · 변경 감시(점검)
  *
- *   POST   /api/flows/:id/runs                     { version?: n | "draft", params?, stopBefore?, stopAfter?, on? } → 202 { runId }
+ *   POST   /api/flows/:id/runs                     { version?: n | "draft", params?, stopBefore?, stopAfter?, on?, resetWallet? } → 202 { runId }
+ *                                                  resetWallet — 지갑 브라우저: 그 지갑의 프로필을 지우고 처음부터 준비한 뒤 돈다
  *                                                  on — 이번만 어디서(「server」 · 「worker:<id>」 · 「label:<라벨>」). 없으면 플로우 설정대로
  *                                                  stopBefore · stopAfter — 초안을 그 노드 앞까지 · 그 노드까지만(편집 화면의 «단계 실행»)
  *   GET    /api/flows/:id/runs                     최근 실행들(결과 본문 없이)
@@ -46,6 +47,7 @@ export function runRoutes({ store, runs, monitor, auth }: ApiDeps): Route[] {
         startedBy: byOf(req),
         ...(typeof b["stopBefore"] === "string" ? { stopBefore: b["stopBefore"] } : {}),
         ...(typeof b["stopAfter"] === "string" ? { stopAfter: b["stopAfter"] } : {}),
+        ...(b["resetWallet"] === true ? { resetWallet: true } : {}),
         ...(b["on"] !== undefined ? { on: b["on"] as string | null } : {}),
       });
       res.statusCode = 202;

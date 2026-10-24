@@ -134,7 +134,10 @@ export async function startApp(opts: {
   const server = createApi({ store, secrets, runs, monitor, notifier, auth, workers, suites, tls: opts.tls ?? null, staticDir: opts.staticDir ?? null, extensions: registry, plugins, ai, files: opts.filesDir ? new Files(opts.filesDir) : null });
   // WebSocket 길 — 한 곳에서 받아 나눈다(맞는 길이 없으면 404)
   const upgrades = new Upgrades(server);
-  const live = new LiveHub(store, secrets, { workers, ...(opts.cdpUrl ? { cdpUrl: opts.cdpUrl } : {}) });
+  // 지갑 브라우저 녹화 — 서버 안 워커가 창을 띄울 수 있으면(capabilities에 wallet) 그 워커가 연다
+  const inProc = opts.worker as { capabilities?: string[]; walletSource?: NonNullable<ConstructorParameters<typeof LiveHub>[2]>["walletSource"] };
+  const walletSource = inProc.capabilities?.includes("wallet") && inProc.walletSource ? inProc.walletSource.bind(opts.worker) : undefined;
+  const live = new LiveHub(store, secrets, { workers, ...(opts.cdpUrl ? { cdpUrl: opts.cdpUrl } : {}), ...(walletSource ? { walletSource } : {}) });
   live.attach(upgrades, (req) => auth.checkUpgrade(req, "editor"), (req, flowId) => auth.canSeeFlowReq(req, flowId));
   // 실행 화면 보기 — 보는 사람이 있을 때만 화면을 보낸다
   const screens = new RunScreens();

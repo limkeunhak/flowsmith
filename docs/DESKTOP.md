@@ -136,7 +136,7 @@ Flowsmith 데스크톱 앱 (Electron · Windows)
 | 단계 | 할 일 | 끝났다는 표시 |
 |---|---|---|
 | **0. 확인** ✅ | ① Electron의 Node에서 서버 · 워커가 도나(type stripping · `node:sqlite` · Playwright) ② WebContentsView를 Playwright로 조종 · 녹화(connectOverCDP) ③ CDP 포트 위험을 줄이는 길 ④ Windows에서 지갑 브라우저로 로그인까지(qa.msu.io — 사내망) | 넷 다 «된다 / 이렇게 바꾼다»가 정해짐 — §9. ④의 서명 · 로그인 완료만 사내망에서 남음 |
-| **1. 지갑 브라우저** 🔶 | `wallet` 모드 · 프로필 · MetaMask 받기 · «MetaMask 승인» 동작 · 설정 화면 · 가이드. **앱 없이** 화면 있는 워커(`--headed`)에서 먼저 쓴다 | 사람 PC 워커에서 qa.msu.io 로그인 시나리오가 무인으로 돈다 — 실행 쪽은 됨(§10) · 녹화 · «지갑 다시 준비» 단추 · qa.msu.io 확인이 남음 |
+| **1. 지갑 브라우저** 🔶 | `wallet` 모드 · 프로필 · MetaMask 받기 · «MetaMask 승인» 동작 · 설정 화면 · 가이드. **앱 없이** 화면 있는 워커(`--headed`)에서 먼저 쓴다 | 사람 PC 워커에서 qa.msu.io 로그인 시나리오가 무인으로 돈다 — 실행 · 녹화 · 지갑 다시 준비는 됨(§10) · qa.msu.io 확인(사내망)만 남음 |
 | **2. 앱 껍데기** | `apps/desktop` · 로컬 모드(서버 · 워커 내장) · 편집 화면 · Windows 설치본 | 설치하고 켜면 편집 화면이 뜨고 `launch` · `wallet` 실행이 돈다 |
 | **3. 앱 안 브라우저** | `app` 모드 · `ElectronTransport` · 녹화 · 실행 화면 · 사람 기다리기 | 일반 사이트를 앱 안에서 녹화 → 실행 |
 | **4. 회사 서버 모드** | 서버 주소 + 워커 토큰으로 붙기 · `capabilities` · 실행 단추의 «이번만 어디서» | 회사 서버의 워크플로우가 이 PC의 앱 안 · 지갑 브라우저에서 돈다 |
@@ -205,4 +205,18 @@ Flowsmith 데스크톱 앱 (Electron · Windows)
 배운 것: 사이트가 «연결»을 부른 뒤에 체인 추가를 끼우면 MetaMask가 두 승인을 함께 쥐고 넘어가지 않는다 → 체인은 시작 주소를 연 직후에.
 MetaMask의 체인 추가 화면에는 체인 id가 숫자로 안 나올 수 있다 — 목록의 이름 · id로 찾고, 못 찾으면 «알 수 없음»으로 누르지 않는다.
 
-남은 것(1단계): **녹화**(지갑 브라우저에서 녹화 · 녹화 중 «MetaMask 승인 넣기») · «지갑 다시 준비»(프로필 지우기 — engine `resetWalletProfile`은 있음, 화면 · API가 없음) · 워커 화면에 «지갑 브라우저 됨» 표시 · 사내망에서 qa.msu.io 로그인 확인.
+### 10-2. 녹화 · 지갑 다시 준비 · 워커 표시 (2026-10-24)
+
+- **녹화** — 지갑 브라우저 플로우는 녹화도 그 브라우저에서(`RecorderSession.open`이 `WalletSource`를 받는다 · 워커 `InProcessWorker.walletSource` ·
+  서버 LiveHub는 서버 안 워커가 창을 띄울 수 있을 때만 — 아니면 «화면이 있는 PC의 워커를 고르세요»). 녹화 창의 «🦊 MetaMask 승인 넣기»(끝 표시: 지금 주소 · 고른 요소).
+  이 노드의 동작을 재생할 때 «MetaMask 승인»도 돈다 · 시작 주소로 가면 체인부터.
+  ★**녹화 스크립트는 확장 페이지에서 돌지 않는다** — 컨텍스트 전체에 심으면 MetaMask 창에도 들어가 «Confirm» 누르기를 가로채 버린다(사람이 승인을 못 한다 · 시험에서 잡았다).
+  MetaMask 창으로 화면을 옮기지 않는다(사이트가 연 팝업만 따라간다).
+- **지갑 다시 준비** — 실행 옵션 `resetWallet`(API `POST /api/flows/:id/runs` · 실행 단추 옆 ▲의 «지갑 다시 준비»). 그 실행을 받은 워커가 잠금을 쥔 뒤 프로필을 지우고 처음부터 준비한다.
+- **워커 화면** — `capabilities`에 wallet이면 «🦊 지갑 브라우저(MetaMask) 됨».
+- 진짜 MetaMask 시험에 둘 더: 다시 준비(워커 경로) · 녹화(MetaMask 창의 누르기는 안 남음 · «MetaMask 승인» 재생).
+
+**Windows에서 확인(2026-10-24)** — Electron 44의 Node로 지갑 시험 39개(진짜 MetaMask 5개 포함 · Windows 크롬 창) 모두 통과. MetaMask는 `%LOCALAPPDATA%\Flowsmith\mm\13.0.0`에 받혔다.
+★**개발 · 설치 폴더도 짧게** — 긴 폴더(139자)에 저장소를 두면 pnpm의 깊은 파일(253자~)이 260자를 넘어 **만들어지지 않는다**(vitest · Electron 바이너리가 조용히 빠졌다). 2단계의 설치본은 짧은 경로(`%LOCALAPPDATA%\Programs\Flowsmith`)에 깔고, 앱 안의 서버 · 워커 파일 경로 길이를 빌드 때 잰다.
+
+남은 것(1단계): 사내망에서 qa.msu.io 로그인 확인.

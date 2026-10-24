@@ -15,7 +15,8 @@ import type { Duplex } from "node:stream";
 import { WebSocketServer, type WebSocket } from "ws";
 import { chromium, type Browser } from "playwright";
 import { DEFAULT_CDP_URL } from "@flowsmith/engine";
-import { RecorderSession } from "@flowsmith/recorder";
+import { RecorderSession, type WalletSource } from "@flowsmith/recorder";
+import type { SecretValue } from "@flowsmith/core";
 import type { ClientMessage, OpenRequest, ServerMessage } from "@flowsmith/recorder/protocol";
 import type { Secrets } from "../storage/secrets.ts";
 import type { Store } from "../storage/store.ts";
@@ -37,9 +38,12 @@ export class LiveHub {
   readonly #headless: boolean;
   readonly #cdpUrl: string;
   readonly #workers: WorkerHub | null;
+  /** 지갑 브라우저 녹화 — 서버 안 워커가 창을 띄울 수 있을 때만(데스크톱 앱 · --headed) */
+  readonly #walletSource: ((draft: OpenRequest["draft"], secrets: Record<string, SecretValue>, log: (t: string) => void) => Promise<WalletSource>) | null;
 
-  constructor(store: Store, secrets: Secrets, opts: { headless?: boolean; cdpUrl?: string; workers?: WorkerHub } = {}) {
+  constructor(store: Store, secrets: Secrets, opts: { headless?: boolean; cdpUrl?: string; workers?: WorkerHub; walletSource?: (draft: OpenRequest["draft"], secrets: Record<string, SecretValue>, log: (t: string) => void) => Promise<WalletSource> } = {}) {
     this.#workers = opts.workers ?? null;
+    this.#walletSource = opts.walletSource ?? null;
     this.#store = store;
     this.#secrets = secrets;
     this.#headless = opts.headless ?? true;
@@ -120,7 +124,12 @@ export class LiveHub {
       return r;
     }
     // 사람의 크롬에 붙는 플로우면 녹화도 그 크롬에서 — 로그인 · 보안 프로그램을 사람이 지나 둔 탭이다(B2)
-    const src = req.draft?.settings?.browser === "attach" ? { cdpUrl: this.#cdpUrl } : await this.#getBrowser();
+    // 지갑 브라우저면 MetaMask를 실은 크롬 — 창이 보이는 서버만(아니면 그 PC의 워커에서 녹화)
+    const browser = req.draft?.settings?.browser;
+    if (browser === "wallet" && !this.#walletSource) throw new Error("이 서버는 지갑 브라우저(MetaMask)를 열 수 없습니다 — «녹화 시작»에서 화면이 있는 PC의 워커를 고르세요");
+    const src = browser === "attach" ? { cdpUrl: this.#cdpUrl }
+      : browser === "wallet" ? await this.#walletSource!(req.draft, secrets, (text) => send({ t: "progress", text }))
+      : await this.#getBrowser();
     const s = await RecorderSession.open(src, req, secrets, { send, frame }, created);
     this.#sessions.add(s);
     return s;

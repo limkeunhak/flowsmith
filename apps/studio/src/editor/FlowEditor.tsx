@@ -151,9 +151,10 @@ export function FlowEditor({ id, runId, panel }: { id: string; runId?: string; p
     return () => removeEventListener("keydown", on);
   }, [dirty, save, say, view]);
 
-  const startRun = useCallback(async (target: Parameters<typeof run.start>[0], params: Record<string, string>, on?: string) => {
+  const startRun = useCallback(async (target: Parameters<typeof run.start>[0], params: Record<string, string>, opts: { on?: string; resetWallet?: boolean } = {}) => {
     if (target === "draft" && !(await ensureSaved())) return false;
-    const ok = await run.start(target, params, on ? { on } : undefined);
+    const part = { ...(opts.on ? { on: opts.on } : {}), ...(opts.resetWallet ? { resetWallet: true } : {}) };
+    const ok = await run.start(target, params, Object.keys(part).length ? part : undefined);
     if (ok) setLogOpen(true);
     return ok;
   }, [ensureSaved, run]);

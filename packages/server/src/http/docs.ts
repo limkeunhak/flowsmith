@@ -70,7 +70,7 @@ export const DOCS: Record<string, RouteDoc> = {
   "POST /api/flows/:id/runs": {
     tag: "실행", summary: "실행하기", ok: 202,
     description: "뒤에서 돈다 — runId가 바로 온다. 진행은 /api/runs/{runId}/events(SSE), 결과는 /api/runs/{runId}.",
-    body: { version: "버전 번호 · \"draft\"(초안) — 없으면 게시된 버전", params: "실행 입력 { 이름: 값 }", on: "이번만 어디서 — \"server\" · \"worker:<id>\" · \"label:<라벨>\"", stopBefore: "초안을 이 노드 앞까지", stopAfter: "초안을 이 노드까지" },
+    body: { version: "버전 번호 · \"draft\"(초안) — 없으면 게시된 버전", params: "실행 입력 { 이름: 값 }", on: "이번만 어디서 — \"server\" · \"worker:<id>\" · \"label:<라벨>\"", stopBefore: "초안을 이 노드 앞까지", stopAfter: "초안을 이 노드까지", resetWallet: "지갑 브라우저 — true면 그 지갑의 프로필을 지우고 처음부터 준비한 뒤 돈다(«지갑 다시 준비»)" },
     example: { params: {} },
   },
   "GET /api/flows/:id/runs": { tag: "실행", summary: "최근 실행들", description: "결과 본문은 없다.", query: { limit: "몇 개(기본 50)" } },

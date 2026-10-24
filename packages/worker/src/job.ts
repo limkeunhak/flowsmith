@@ -24,6 +24,8 @@ export interface RunJob {
   /** 일부만 — 편집 화면의 «앞 단계까지 · 이 단계까지 실행»(초안만) */
   stopBefore?: string;
   stopAfter?: string;
+  /** 지갑 브라우저 — 이 지갑의 프로필을 지우고 처음부터 준비한 뒤 돈다(«지갑 다시 준비» · PLAN §44) */
+  resetWallet?: boolean;
   /**
    * 어디서 도나 — 없으면 서버. 「worker:<id>」 그 워커 · 「label:<라벨>」 그 라벨이 붙은 워커 중 한 곳.
    * 서버(WorkerHub)가 보고 고른다 — 워커에는 보내지 않는다

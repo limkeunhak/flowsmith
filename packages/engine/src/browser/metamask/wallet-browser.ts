@@ -24,6 +24,8 @@ import { MetaMaskUi, type Log } from "./ui.ts";
 export interface MetaMaskEnv {
   extensionDir: string;
   profilesRoot: string;
+  /** «지갑 다시 준비» — 열기 전에 그 지갑의 프로필을 지운다(처음부터 준비한다) */
+  reset?: boolean;
 }
 
 export interface WalletBrowser {
@@ -100,6 +102,8 @@ export async function openWalletBrowser(env: MetaMaskEnv, key: string, o: { log:
     const dir = join(env.profilesRoot, fp);
     const metaFile = join(env.profilesRoot, `${fp}.json`);
     let meta = readMeta(metaFile);
+    // «지갑 다시 준비» — 프로필을 버리고 처음부터(잠금을 쥔 뒤라 다른 실행이 쓰는 중에 지우지 않는다)
+    if (env.reset && (meta || existsSync(dir))) { o.log("MetaMask: 지갑 프로필을 지우고 다시 준비합니다"); meta = null; }
     // 준비하다 멈춘 프로필은 버리고 새로 — 금고는 있는데 계정을 못 불러왔을 수 있다
     if (meta && !meta.ready) { rmSync(dir, { recursive: true, force: true }); meta = null; }
     if (!meta || !existsSync(dir)) {

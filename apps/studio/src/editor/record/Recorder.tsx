@@ -86,6 +86,10 @@ export function Recorder({ flow, start, onCommit, onRepick, onCancel }: {
   const [human, setHuman] = useState<HumanStep | null>(null);
   const humanRef = useRef<HumanStep | null>(null);
   humanRef.current = human;
+  /** MetaMask 승인을 넣는 중 — choose: 끝 표시를 고르는 중 · pick: 페이지에서 요소를 고르는 중(지갑 브라우저만) */
+  const [walletStep, setWalletStep] = useState<"choose" | "pick" | null>(null);
+  const walletRef = useRef<"choose" | "pick" | null>(null);
+  walletRef.current = walletStep;
   /** 재생이 사람을 기다린다(앞 노드 · 이 노드의 사람 기다리기) */
   const [replayHuman, setReplayHuman] = useState<{ prompt: string } | null>(null);
   const pageUrl = useRef("");
@@ -134,6 +138,11 @@ export function Recorder({ flow, start, onCommit, onRepick, onCancel }: {
         if (m.t === "inputs") setUpstream(rowsOf(flow, start.nodeId, m.input, start.params));
         if (m.t === "recorded") {
           if (start.repick && onRepick) { pickedOnce(m.item); return; }
+          // MetaMask 승인 — 고른 요소는 끝났다는 표시다
+          if (walletRef.current === "pick" && m.item.action.kind === "read") {
+            finishWallet({ kind: "visible", target: { ...m.item.action.target, label: m.item.humanLabel ?? m.item.action.target.label } });
+            return;
+          }
           // 사람 기다리기 — 고른 요소는 동작이 아니라 그 동작의 표시다
           const h = humanRef.current;
           if (h && (h.step === "appears" || h.step === "done") && m.item.action.kind === "read") {
@@ -173,6 +182,15 @@ export function Recorder({ flow, start, onCommit, onRepick, onCancel }: {
     tRef.current?.send({ t: "mode", mode: "record" });
   }
   const cancelHuman = () => { setHuman(null); tRef.current?.send({ t: "mode", mode: "record" }); };
+
+  /** MetaMask 승인 — 사이트의 «지갑 연결»을 누른 뒤 넣는다. 녹화 중에는 사람이 MetaMask 창에서 직접 승인한다 */
+  function finishWallet(done: HumanDone) {
+    const action: WebAction = { id: `m${Date.now()}`, kind: "walletApprove", risk: "safe", timeoutMs: null, optional: false, done };
+    setItems((xs) => [...xs, { id: action.id, action, needs: null, table: null, warnings: [], useTable: false, useRow: false, useAssert: false, equals: "" }]);
+    setWalletStep(null);
+    tRef.current?.send({ t: "mode", mode: "record" });
+  }
+  const cancelWallet = () => { setWalletStep(null); tRef.current?.send({ t: "mode", mode: "record" }); };
 
   const update = (id: string, fn: (it: Item) => Item) => setItems((xs) => xs.map((x) => (x.id === id ? fn(x) : x)));
   const taken = new Set(node.config.actions.flatMap((a) => (a.kind === "read" || a.kind === "readTable" ? [a.output] : [])));
@@ -223,9 +241,40 @@ export function Recorder({ flow, start, onCommit, onRepick, onCancel }: {
             ))}
           </div>
           <div className="small muted">{start.repick ? `«${start.repick.label}»에 해당하는 요소를 오른쪽 페이지에서 누르세요 — 그 동작 바로 앞까지 재생해 두었습니다. 누른 것은 페이지에 전달되지 않습니다` : MODE_HINT[mode]}</div>
-          {!start.repick && human === null && (
-            <button className="small" disabled={phase !== "ready"} title="로그인 · 본인 인증처럼 사람이 직접 해야 하는 곳 — 실행이 여기서 멈춰 사람을 기다립니다"
-              onClick={beginHuman}>🙋 사람 기다리기(로그인)</button>
+          {!start.repick && human === null && walletStep === null && (
+            <div className="row wrap">
+              <button className="small" disabled={phase !== "ready"} title="로그인 · 본인 인증처럼 사람이 직접 해야 하는 곳 — 실행이 여기서 멈춰 사람을 기다립니다"
+                onClick={beginHuman}>🙋 사람 기다리기(로그인)</button>
+              {flow.settings.browser === "wallet" && (
+                <button className="small" disabled={phase !== "ready"} title="사이트의 «지갑 연결»을 누른 뒤에 — 실행할 때 MetaMask의 연결 · 서명 화면을 이 동작이 승인합니다"
+                  onClick={() => { setWalletStep("choose"); transport?.send({ t: "mode", mode: "browse" }); }}>🦊 MetaMask 승인 넣기</button>
+              )}
+            </div>
+          )}
+          {walletStep && (
+            <div className="rec-human">
+              {walletStep === "choose" && (
+                <>
+                  <b>MetaMask 승인 — 끝났다는 표시를 고르세요</b>
+                  <span className="small">
+                    지금 MetaMask 창이 떠 있으면 그 창에서 직접 승인하세요(녹화 중에는 사람이 누릅니다 · MetaMask 창에서 누른 것은 녹화하지 않습니다).
+                    실행할 때는 이 동작이 연결 · 서명을 승인하고, 아래 표시가 오면 다음으로 넘어갑니다.
+                  </span>
+                  <div className="row wrap">
+                    <button className="small" title={pageUrl.current} onClick={() => finishWallet(urlDone(pageUrl.current))}>지금 주소가 되면</button>
+                    <button className="small primary" onClick={() => { setWalletStep("pick"); transport?.send({ t: "mode", mode: "read" }); }}>이 요소가 보이면(고르기) — 지갑 주소 · 내 정보</button>
+                    <span className="grow" /><button className="small ghost" onClick={cancelWallet}>그만두기</button>
+                  </div>
+                </>
+              )}
+              {walletStep === "pick" && (
+                <>
+                  <b>로그인 뒤에만 보이는 것을 고르세요</b>
+                  <span className="small">예: 지갑 주소 · 프로필 · «Inventory». 누른 것은 페이지에 가지 않습니다.</span>
+                  <div className="row"><span className="grow" /><button className="small ghost" onClick={() => { setWalletStep("choose"); transport?.send({ t: "mode", mode: "browse" }); }}>뒤로</button></div>
+                </>
+              )}
+            </div>
           )}
           {human && (
             <div className="rec-human">

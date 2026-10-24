@@ -241,8 +241,11 @@ export class WorkerAgent {
     };
     this.#log(`녹화 시작 — ${req.draft?.name ?? req.flowId}`);
     try {
-      // 사람의 크롬에 붙는 플로우면 이 PC의 크롬 · 아니면 이 PC에서 브라우저를 띄운다
-      const src = req.draft?.settings?.browser === "attach" ? { cdpUrl: this.#o.worker.cdpUrl ?? DEFAULT_CDP_URL } : await this.#browser();
+      // 사람의 크롬에 붙는 플로우면 이 PC의 크롬 · 지갑 브라우저면 이 PC의 MetaMask 크롬 · 아니면 이 PC에서 브라우저를 띄운다
+      const browser = req.draft?.settings?.browser;
+      const src = browser === "attach" ? { cdpUrl: this.#o.worker.cdpUrl ?? DEFAULT_CDP_URL }
+        : browser === "wallet" ? await this.#o.worker.walletSource(req.draft, secrets, (text) => io.send({ t: "progress", text }))
+        : await this.#browser();
       // 재생 전에 세션을 받아 둔다 — 재생 중 사람 기다리기(로그인)의 입력이 닿게
       const s = await RecorderSession.open(src, req, secrets, io, (x) => { if (!rec.closed) rec.session = x; });
       if (rec.closed) { await s.close(); return; }
