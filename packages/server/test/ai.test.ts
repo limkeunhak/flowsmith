@@ -164,3 +164,17 @@ describe("AI — 서버", () => {
     expect([413, 429]).toContain(big.status);
   });
 });
+
+describe("AI — 같은 사이트의 워크플로우(GET /api/ai/site-flows)", () => {
+  it("★시작 주소의 사이트가 같은 워크플로우의 웹페이지 노드를 준다(변수는 풀어서) · 다른 사이트는 안 준다", async () => {
+    const css = (label: string, value: string) => ({ label, locators: [{ kind: "css", value }], fingerprint: null, frames: [], verifiedAt: null });
+    const web = (id: string, url: string) => ({ schemaVersion: 1, id, name: id, vars: { site: "https://admin.shop.example.com" }, nodes: [{ id: "w", type: "web", name: "읽기", position: { x: 0, y: 0 }, config: { start: { kind: "url", url }, actions: [{ id: "a1", kind: "read", output: "status", strategy: "auto", target: css("상태", "#order-status") }] } }], edges: [] });
+    expect((await call("POST", "/api/flows", { draft: web("shop-a", "{{ $vars.site }}/orders") })).status).toBe(201);
+    expect((await call("POST", "/api/flows", { draft: web("other", "https://news.example.org/") })).status).toBe(201);
+    const r = await call("GET", "/api/ai/site-flows?hosts=admin.shop.example.com");
+    expect(r.status).toBe(200);
+    expect(r.body.flows.map((f: { id: string }) => f.id)).toEqual(["shop-a"]);
+    expect(r.body.flows[0].nodes[0].actions[0]).toMatchObject({ kind: "read", output: "status", target: { locators: [{ value: "#order-status" }] } });
+    expect((await call("GET", "/api/ai/site-flows?hosts=")).body).toEqual({ flows: [] });
+  });
+});

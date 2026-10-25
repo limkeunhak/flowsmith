@@ -92,7 +92,7 @@ export function AiChat({ sessionKey, mode, draft, newId, flowId, hints, placehol
     const t0 = Date.now();
     try {
       const [extensions, flows] = await Promise.all([listExtensions(), api.listFlows().catch(() => [])]);
-      const turn = await ask(serverSend(flowId), session.history, say, { draft: base, extensions, flows: flows.filter((f) => f.id !== newId).map((f) => ({ id: f.id, name: f.name })), newId }, {
+      const turn = await ask(serverSend(flowId), session.history, say, { draft: base, extensions, flows: flows.filter((f) => f.id !== newId).map((f) => ({ id: f.id, name: f.name })), newId, siteFlows: async (hosts) => (await api.aiSiteFlows(hosts)).flows }, {
         onStep: (st) => { steps.push(st); setLive([...steps]); },
       });
       setSession((s) => ({

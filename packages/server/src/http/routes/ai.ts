@@ -6,13 +6,36 @@
  *   POST /api/ai/messages   (편집자) Anthropic Messages 모양 { system, messages, tools?, flowId? } → 모델의 답 그대로
  *                           머리글 x-flowsmith-ai-key — 그 사람의 키(«내 설정», 브라우저에만 있다). ★저장 · 기록하지 않고 넘기기만
  *                           · x-flowsmith-ai-provider(anthropic · gemini) · x-flowsmith-ai-model — 그 사람이 고른 AI · 모델
+ *   GET  /api/ai/site-flows?hosts=a.com,b.com   (편집자) 같은 사이트를 다루는 워크플로우(그 사람이 볼 수 있는 것 · 5개까지)의 웹페이지 노드 —
+ *                           녹화해 둔 요소를 AI가 다시 쓰게(apps/studio/src/ai/refs.ts). 시크릿 값은 애초에 없다(이름만 쓰는 표현식)
  */
-import { byOf } from "../../auth/auth.ts";
-import { route, type Route } from "../router.ts";
+import { byOf, userOf } from "../../auth/auth.ts";
+import { query, route, type Route } from "../router.ts";
 import type { ApiDeps } from "../api.ts";
 
-export function aiRoutes({ ai }: ApiDeps): Route[] {
+/** 시작 주소의 호스트 — 변수({{ $vars.x }})는 그 워크플로우의 값으로 풀어서 */
+function hostOf(url: unknown, vars: Record<string, unknown>): string | null {
+  if (typeof url !== "string") return null;
+  const full = url.replace(/\{\{\s*\$vars\.([A-Za-z0-9_]+)\s*\}\}/g, (_m, k: string) => String(vars[k] ?? ""));
+  try { return new URL(full).hostname.toLowerCase(); } catch { return null; }
+}
+
+export function aiRoutes({ ai, store, auth }: ApiDeps): Route[] {
   return [
+    route("GET", "/api/ai/site-flows", (req) => {
+      const hosts = (query(req).get("hosts") ?? "").split(",").map((h) => h.trim().toLowerCase()).filter(Boolean).slice(0, 5);
+      if (hosts.length === 0) return { flows: [] };
+      const flows: unknown[] = [];
+      for (const f of store.listFlows(auth.teamsFor(userOf(req)))) {
+        if (flows.length >= 5) break;
+        let draft: { vars?: Record<string, unknown>; nodes?: { id?: string; name?: string; type?: string; config?: { start?: { kind?: string; url?: unknown }; actions?: unknown[] } }[] } | null;
+        try { draft = store.getFlow(f.id).draft as typeof draft; } catch { continue; }
+        const web = (draft?.nodes ?? []).filter((n) => n.type === "web");
+        if (!web.some((n) => n.config?.start?.kind === "url" && hosts.includes(hostOf(n.config.start.url, draft?.vars ?? {}) ?? ""))) continue;
+        flows.push({ id: f.id, name: f.name, nodes: web.map((n) => ({ id: n.id, name: n.name, start: n.config?.start, actions: n.config?.actions ?? [] })) });
+      }
+      return { flows };
+    }),
     route("GET", "/api/ai", () => ({ ...ai.status(), usage: ai.usage(30) })),
     route("PUT", "/api/ai", async (_q, _r, _p, body) => ai.configure(await body())),
     route("POST", "/api/ai/messages", async (req, _r, _p, body) => {

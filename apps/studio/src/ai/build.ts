@@ -2,12 +2,14 @@
  * **AI가 낸 워크플로우를 진짜로** — 빠진 칸은 노드 종류의 기본값(model/nodes.ts)으로 채우고, 검문소(core checkFlow)로 본다.
  *
  *   막는 것   커스텀 코드 노드(새로 만들기 · 고치기 — 있던 것은 그대로 둘 때만) · 설치 안 된 확장 · 모양이 틀린 것 · 검문소 문제
- *   할 일     웹페이지 동작의 요소는 AI가 모른다 — 이름만 있는 빈 자리. 검문소에는 임시 선택자를 넣어 보고(뒤 노드의 $input 검사가 돌게),
+ *   할 일     웹페이지 동작의 요소는 AI가 지어내지 않는다 — `from`(ai/refs.ts의 검증된 요소)이면 그 요소를 그대로 옮기고,
+ *            아니면 이름만 있는 빈 자리. 검문소에는 임시 선택자를 넣어 보고(뒤 노드의 $input 검사가 돌게),
  *            제안에는 비워 둔다 → 편집 화면이 «녹화로 채우세요»로 보인다
  */
 import { checkFlow, NODE_TYPES, type Flow, type FlowNode, type NodeType, type WebAction } from "@flowsmith/core";
 import type { ExtensionMeta } from "../ext-meta.ts";
 import { emptyTarget, newAction, newNode, newParam, nextId, normalize } from "../model/index.ts";
+import type { RefElement } from "./refs.ts";
 
 export interface BuildContext {
   /** 고치는 중인 초안 — 새로 만들면 null */
@@ -15,6 +17,8 @@ export interface BuildContext {
   extensions: ExtensionMeta[];
   /** 새 워크플로우의 id */
   newId: string;
+  /** 다시 쓸 수 있는 요소 — 동작의 from이 가리킨다(목록에 없는 것은 받지 않는다) */
+  refs?: Map<string, RefElement>;
 }
 
 export interface Built {
@@ -26,7 +30,8 @@ export interface Built {
 }
 
 const TODO_CSS = "flowsmith-ai-todo";
-const WEB_KINDS = new Set(["goto", "click", "fill", "select", "read", "readTable", "wait", "press", "human"]);
+/** AI가 낼 수 있는 웹 동작 — catalog의 ACTION_DOCS와 같아야 한다(ai-catalog 시험) */
+export const WEB_KINDS = new Set(["goto", "click", "fill", "select", "read", "readTable", "wait", "press", "human"]);
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => v !== null && typeof v === "object" && !Array.isArray(v);
 const str = (v: unknown, d = ""): string => (typeof v === "string" ? v : d);
@@ -38,20 +43,28 @@ function merge(base: Obj, over: Obj): Obj {
   return out;
 }
 
-/** 웹 동작 — 빈 자리(요소는 녹화로) */
-function webAction(raw: Obj, taken: string[], problems: string[], where: string): WebAction | null {
+/** 웹 동작 — from이면 검증된 요소를 옮기고, 아니면 빈 자리(요소는 녹화로) */
+function webAction(raw: Obj, taken: string[], problems: string[], where: string, refs?: Map<string, RefElement>): WebAction | null {
   const kind = str(raw["kind"]);
   if (!WEB_KINDS.has(kind)) { problems.push(`${where}: 웹 동작 «${kind}»는 쓸 수 없습니다 — ${[...WEB_KINDS].join(" · ")}`); return null; }
   const a = newAction(kind as WebAction["kind"], taken) as WebAction & Obj;
   taken.push(a.id);
-  const label = str(raw["label"]);
-  if ("target" in a && a.target) (a as { target: unknown }).target = emptyTarget(label);
+  const from = str(raw["from"]);
+  const ref = from ? refs?.get(from) : undefined;
+  if (from && !ref) { problems.push(`${where}: from «${from}»은 «다시 쓸 수 있는 요소» 목록에 없습니다 — 목록의 ref만 쓰거나 from 없이 이름만 두세요`); return null; }
+  const label = str(raw["label"]) || ref?.label || "";
+  if ("target" in a && a.target) {
+    if (ref && !ref.target && kind !== "readTable") { problems.push(`${where}: from «${from}»은 표라 ${kind}에 쓸 수 없습니다 — readTable로 쓰세요`); return null; }
+    (a as { target: unknown }).target = ref?.target ? { ...structuredClone(ref.target), label } : emptyTarget(label);
+  }
   switch (a.kind) {
     case "goto": a.url = str(raw["url"]); break;
-    case "fill": case "select": a.value = str(raw["value"]); break;
-    case "read": a.output = str(raw["output"]); break;
+    case "fill": case "select": a.value = str(raw["value"], ref?.value ?? ""); break;
+    case "read": a.output = str(raw["output"], ref?.output ?? ""); break;
     case "readTable": {
       a.output = str(raw["output"]);
+      if (ref?.table) { a.table = { ...structuredClone(ref.table), label: label || ref.table.label }; break; }
+      if (ref) { problems.push(`${where}: from «${from}»은 표가 아닙니다 — readTable에는 표(«표 · 열 …») ref만`); return null; }
       const cols = Array.isArray(raw["columns"]) ? raw["columns"].map((c) => (typeof c === "string" ? c : str((c as Obj)?.["name"]))).filter(Boolean) : [];
       a.table = { ...a.table, label, rows: emptyTarget(label), columns: (cols.length ? cols : ["값"]).map((name) => ({ name, selector: "", strategy: "auto" as const })) };
       break;
@@ -61,6 +74,7 @@ function webAction(raw: Obj, taken: string[], problems: string[], where: string)
     case "human": a.prompt = str(raw["prompt"]) || label || "로그인해 주세요"; break;
     default: break;
   }
+  if (a.kind === "click" && raw["popup"] === true) a.popup = true;
   return a;
 }
 
@@ -146,7 +160,7 @@ export function buildProposal(raw: unknown, ctx: BuildContext): Built {
           if ("output" in k && typeof ra["output"] === "string") k.output = ra["output"];
           return [k];
         }
-        const a = webAction(ra, taken, problems, `${where}(${name}).actions[${j}]`);
+        const a = webAction(ra, taken, problems, `${where}(${name}).actions[${j}]`, ctx.refs);
         return a ? [a] : [];
       });
       const start = isObj(cfg["start"]) ? cfg["start"] : (fresh.config as { start: unknown }).start;

@@ -6,6 +6,7 @@
 import type { Flow } from "@flowsmith/core";
 import type { ExtensionMeta } from "../ext-meta.ts";
 import { buildProposal } from "./build.ts";
+import { hostsOf, siteRefs, type RefElement, type SiteFlow } from "./refs.ts";
 import { systemPrompt, TOOLS } from "./spec.ts";
 
 export type Block =
@@ -22,6 +23,11 @@ export interface AgentContext {
   flows: { id: string; name: string }[];
   /** 새 워크플로우의 id */
   newId: string;
+  /**
+   * 같은 사이트의 워크플로우(서버 GET /api/ai/site-flows) — 사람이 쓴 글 · 초안의 사이트 이름으로 찾는다.
+   * 녹화해 둔 요소를 AI가 from으로 다시 쓴다(ai/refs.ts). 없으면 찾지 않는다
+   */
+  siteFlows?: (hosts: string[]) => Promise<SiteFlow[]>;
 }
 
 export interface Turn {
@@ -56,7 +62,12 @@ export interface AskOptions { maxRounds?: number; onStep?: (s: Step) => void }
 export async function ask(send: Send, history: Message[], text: string, ctx: AgentContext, opts: number | AskOptions = {}): Promise<Turn> {
   const { maxRounds = MAX_ROUNDS, onStep } = typeof opts === "number" ? { maxRounds: opts } : opts;
   const step = (st: Step) => { try { onStep?.(st); } catch { /* 보이는 쪽의 사고는 여기서 멈춘다 */ } };
-  const system = systemPrompt(ctx);
+  // 같은 사이트의 녹화 — 찾지 못해도 그냥 간다(빈 자리로)
+  let refs: RefElement[] = [];
+  const hosts = ctx.siteFlows ? hostsOf(text, ctx.draft) : [];
+  if (hosts.length) { try { refs = siteRefs(await ctx.siteFlows!(hosts)); } catch { refs = []; } }
+  const refMap = new Map(refs.map((r) => [r.ref, r]));
+  const system = systemPrompt({ ...ctx, refs });
   const messages: Message[] = [...history, { role: "user", content: text }];
   let proposal: Turn["proposal"] = null;
   let problems: string[] = [];
@@ -74,7 +85,7 @@ export async function ask(send: Send, history: Message[], text: string, ctx: Age
       const input = (u.input ?? {}) as { flow?: unknown; summary?: unknown };
       const rawNodes = (input.flow as { nodes?: unknown[] } | undefined)?.nodes;
       step({ kind: "proposed", round, nodes: Array.isArray(rawNodes) ? rawNodes.length : 0, summary: typeof input.summary === "string" ? input.summary : "" });
-      const b = buildProposal(input.flow, { draft: proposal?.flow ?? ctx.draft, extensions: ctx.extensions, newId: ctx.newId });
+      const b = buildProposal(input.flow, { draft: proposal?.flow ?? ctx.draft, extensions: ctx.extensions, newId: ctx.newId, refs: refMap });
       if (!b.flow) {
         problems = b.problems;
         step({ kind: "rejected", round, problems: b.problems });

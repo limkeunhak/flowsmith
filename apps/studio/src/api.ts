@@ -143,6 +143,8 @@ export const api = {
   rerun: (runId: string) => call<{ runId: string; version: number | null }>("POST", `/runs/${encodeURIComponent(runId)}/rerun`),
   listWorkers: () => call<WorkersView>("GET", "/workers"),
   listPlugins: () => call<PluginsView>("GET", "/plugins"),
+  /** 같은 사이트를 다루는 워크플로우의 웹페이지 노드 — AI가 녹화해 둔 요소를 다시 쓴다(ai/refs.ts) */
+  aiSiteFlows: (hosts: string[]) => call<{ flows: import("./ai/refs.ts").SiteFlow[] }>("GET", `/ai/site-flows?hosts=${encodeURIComponent(hosts.join(","))}`),
   aiStatus: () => call<AiStatus>("GET", "/ai"),
   aiConfigure: (p: { apiKey?: string; model?: string; enabled?: boolean }) => call<AiStatus>("PUT", "/ai", p),
   /** 모델에 묻기 — 서버가 키를 쥐고 대신 부른다 */

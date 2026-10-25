@@ -1,10 +1,13 @@
 /**
  * **AI에게 주는 설명서**(시스템 프롬프트) — 워크플로우의 모양 · 규칙 · 지금 이 서버에 있는 것(확장 · 다른 워크플로우 · 시크릿 이름).
- * ★노드 설정의 모양은 core(nodes/*.ts)와 같아야 한다 — 바꾸면 여기도. 빠진 칸은 화면이 기본값으로 채우니(ai/build.ts) 꼭 필요한 것만 적는다.
- * ★커스텀 코드 노드는 쓰지 않는다(사용자 결정 2026-10-20) · 웹페이지의 «어느 요소»는 AI가 모른다 — 이름만 붙인 빈 자리로 두고 사람이 녹화로 채운다.
+ * ★«노드 종류»와 예시는 ai/catalog.ts에서 만든다 — 시험이 예시를 진짜 길(ai/build.ts · 검문소)로 돌려 보니 core와 어긋나지 않는다.
+ * ★커스텀 코드 노드는 쓰지 않는다(사용자 결정 2026-10-20) · 웹페이지의 «어느 요소»는 AI가 지어내지 않는다 —
+ *  이미 검증된 요소(ai/refs.ts — 같은 사이트의 녹화)가 있으면 from으로 다시 쓰고, 없으면 이름만 붙인 빈 자리로 둔다(사람이 녹화로).
  */
-import { CONDITION_OPS, CHECK_LIST_OPS, type Flow } from "@flowsmith/core";
+import type { Flow } from "@flowsmith/core";
 import type { ExtensionMeta } from "../ext-meta.ts";
+import { EXAMPLES, NODE_DOCS } from "./catalog.ts";
+import { refLines, type RefElement } from "./refs.ts";
 
 export interface SpecContext {
   /** 고치는 중인 초안 — 새로 만들 때는 null */
@@ -12,6 +15,8 @@ export interface SpecContext {
   extensions: ExtensionMeta[];
   /** 다른 워크플로우 실행 노드가 부를 수 있는 것 */
   flows: { id: string; name: string }[];
+  /** 다시 쓸 수 있는 요소(ai/refs.ts) — 같은 사이트의 녹화 · AI가 본 화면 */
+  refs?: RefElement[];
 }
 
 const GUIDE = `
@@ -28,7 +33,8 @@ const GUIDE = `
 ## 지켜야 할 것
 - ★커스텀 코드 노드(type "custom")는 만들지도 고치지도 않습니다(관리 정책). 코드 없이 되는 노드(값 다듬기 · 조건 · HTTP 등)를 씁니다.
 - ★시크릿(비밀번호 · 토큰)의 값은 절대 적지 않습니다. secrets에 이름 · 종류만 정의하고 {{ $secrets.이름 }}으로 씁니다. 값은 사람이 화면에서 넣습니다.
-- ★웹페이지에서 «어느 단추 · 칸»인지는 당신이 알 수 없습니다. 웹페이지 노드의 동작은 **이름(label)만 붙인 빈 자리**로 둡니다 — 사람이 녹화로 채웁니다.
+- ★웹페이지에서 «어느 단추 · 칸»인지는 지어내지 않습니다. 아래 «다시 쓸 수 있는 요소»에 맞는 것이 있으면 동작에 **"from": "r3"**처럼 그 ref를 적습니다(이름 · 값 · output은 따로 적어도 됩니다).
+  없으면 **이름(label)만 붙인 빈 자리**로 둡니다 — 사람이 녹화로 채웁니다. 목록에 없는 ref는 받지 않습니다.
 - 게시 · 실행은 하지 않습니다(사람이 확인하고 합니다).
 
 ## 모양(JSON)
@@ -46,37 +52,17 @@ const GUIDE = `
 - 실행 입력 {{ $params.x }} · 변수 {{ $vars.x }} · 시크릿 {{ $secrets.x }} · 다른 워크플로우를 행마다 돌릴 때의 그 행 {{ $item.칸 }}
 - 글 안에 섞어 써도 됩니다: "주문 {{ $params.orderNo }} 결과"
 
-## 노드 종류
-- **web** 웹페이지 — config: { "start": { "kind": "url", "url": "https://..." } 또는 { "kind": "continue" }(앞 웹페이지 노드의 페이지에서 이어서), "actions": [...] }
-  actions(빈 자리 — 요소는 녹화로): { "kind": "click", "label": "로그인 단추" } · { "kind": "fill", "label": "아이디 칸", "value": "{{ $secrets.portal.username }}" }
-  · { "kind": "select", "label": "기간", "value": "..." } · { "kind": "read", "label": "금액", "output": "amount" } · { "kind": "readTable", "label": "주문 목록", "output": "orders", "columns": ["주문번호", "고객"] }
-  · { "kind": "goto", "url": "https://..." } · { "kind": "wait", "ms": 2000 } · { "kind": "press", "key": "Enter" }
-  · { "kind": "human", "prompt": "포털에 로그인해 주세요" } — 사람 기다리기(로그인 · 본인 인증 · 캡차처럼 사람이 직접 할 일). 끝났다는 표시는 사람이 녹화로 정합니다
-  내놓는 것: read · readTable의 output 이름들(readTable은 행 목록) + «앞 페이지에서 이어서»면 앞 노드가 넘긴 것도 함께
-  ★**한 웹페이지 노드에 단계를 몰지 말고 나눕니다** — 사용자가 캔버스에서 흐름을 봅니다:
-    «페이지 접속»(start url · actions 비움) → «사람 기다리기»(start continue · actions에 human 하나만) → «주문 읽기»(start continue · 업무 동작)
-    로그인이 자동이면(시크릿으로 아이디 · 비밀번호 넣기) «로그인» 노드로 따로 둡니다. 나눈 노드들은 같은 브라우저 페이지에서 이어 돌고, 앞에서 읽은 값도 뒤로 이어집니다
-- **condition** 조건 — config: { "cases": [{ "id": "yes", "label": "맞으면", "match": "all|any", "rules": [{ "left": "{{ $input.status }}", "op": "eq", "right": "완료" }], "then": { "kind": "next" } }], "else": { "then": { "kind": "end", "status": "success|failure", "message": "" } 또는 { "kind": "next" } } }
-  op: ${CONDITION_OPS.join(" · ")} (empty · notEmpty · isTrue · isFalse는 right가 null). 갈래마다 출력 port = 갈래 id, 나머지는 "else"
-- **transform** 값 다듬기(코드 없이 목록 다루기) — config: { "source": "{{ $input.orders }}", "steps": [...] }
-  steps: { "kind": "pick", "fields": [{ "from": "주문번호", "to": "orderNo" }] } · { "kind": "filter", "match": "all", "rules": [{ "field": "상태", "op": "eq", "value": "배송중" }] }
-  · { "kind": "dedupe", "fields": ["주문번호"] } · { "kind": "map", "field": "상태", "table": [{ "from": "A", "to": "가" }], "otherwise": "keep", "fixed": "" }
-  · { "kind": "format", "field": "금액", "as": "number|trim|date|replace", "find": "", "replace": "" } · { "kind": "sort", "field": "금액", "order": "asc|desc" } · { "kind": "limit", "count": 10 }
-  내놓는 것: rows · count · first
-- **http** HTTP 요청 — config: { "method": "GET|POST|PUT|PATCH|DELETE|HEAD", "url": "https://...", "query": [{ "name": "", "value": "" }], "headers": [...], "body": { "kind": "none|json|form|text", "text": "" }, "response": "auto|json|text" }
-  내놓는 것: status · ok · body · headers
-- **fileWrite** 파일 쓰기 — config: { "data": "{{ $input.rows }}", "target": { "name": "결과", "format": "csv|jsonl|json|text", "mode": "append|overwrite" } }
-  내놓는 것: file · written · skipped
-- **fileRead** 파일 읽기 — config: { "source": { "scope": "flow|shared|otherFlow", "flowId": null, "name": "결과", "format": "csv" }, "missing": "fail|empty" }
-  내놓는 것: rows · file · count
-- **flowCall** 다른 워크플로우 실행 — config: { "flowId": "그 워크플로우 id", "version": "active", "items": "{{ $input.rows }}"(행마다 돌릴 때 · 한 번이면 ""), "params": { "orderNo": "{{ $item.주문번호 }}" }, "concurrency": 1, "onError": "stop|continue" }
-  내놓는 것: results · succeeded · failed
-- **approval** 승인 기다리기 — config: { "message": "진행해도 될까요?", "minRole": "runner|editor|admin", "timeoutMin": 1440 }
-  내놓는 것: approved · by · comment · at
-- **check** 검사(테스트 — 값이 기대대로인지) — config: { "items": [{ "id": "k1", "label": "금액이 있다", "actual": "{{ $input.amount }}", "op": "notEmpty", "expected": null }] }
-  op: 조건과 같고 목록용 ${CHECK_LIST_OPS.join(" · ")}. 내놓는 것: checksPassed · checksFailed
-- **extension** 확장(이 서버에 설치된 것만 — 아래 목록) — config: { "extension": "확장 id", "options": { "이름": "값" } }
 `.trim();
+
+/** «노드 종류» — catalog의 예시에서 */
+export function nodeGuide(): string {
+  return `## 노드 종류\n${NODE_DOCS.map((d) => `- **${d.type}** ${d.title} — config 예: ${JSON.stringify(d.config)}${d.more ? `\n  ${d.more}` : ""}\n  내놓는 것: ${d.outputs}`).join("\n")}`;
+}
+
+/** 잘 만든 예(few-shot) */
+export function exampleGuide(): string {
+  return `## 잘 만든 예\n${EXAMPLES.map((e, i) => `### 예 ${i + 1} — «${e.ask}»\npropose_flow의 flow: ${JSON.stringify(e.flow)}`).join("\n\n")}`;
+}
 
 export function systemPrompt(ctx: SpecContext): string {
   const exts = ctx.extensions.length
@@ -86,7 +72,10 @@ export function systemPrompt(ctx: SpecContext): string {
   const now = ctx.draft
     ? `## 지금 고치는 워크플로우(JSON)\n${JSON.stringify(compact(ctx.draft))}`
     : "## 지금\n새 워크플로우를 만듭니다.";
-  return `${GUIDE}\n\n## 이 서버의 확장\n${exts}\n\n## 다른 워크플로우(flowCall이 부를 수 있는 것)\n${flows}\n\n${now}`;
+  const refs = ctx.refs?.length
+    ? `## 다시 쓸 수 있는 요소(from으로 — 이미 녹화해 검증된 것)\n${refLines(ctx.refs)}`
+    : "## 다시 쓸 수 있는 요소\n(없음 — 웹페이지 동작은 이름만 붙인 빈 자리로)";
+  return `${GUIDE}\n\n${nodeGuide()}\n\n${exampleGuide()}\n\n## 이 서버의 확장\n${exts}\n\n## 다른 워크플로우(flowCall이 부를 수 있는 것)\n${flows}\n\n${refs}\n\n${now}`;
 }
 
 /** 모델에 보일 초안 — 웹 동작의 요소(선택자 · 지문)는 빼고 이름만(크기를 줄이고, 바꾸지 말 것을 바꾸지 않게) */
