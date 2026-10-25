@@ -8,7 +8,7 @@
  *                           · x-flowsmith-ai-provider(anthropic · gemini) · x-flowsmith-ai-model — 그 사람이 고른 AI · 모델
  *   POST /api/ai/browse     (편집자) { url } → { id, snapshot, shot } AI가 사이트를 본다(live/ai-browse.ts) — ★관리자가 «사이트 화면 보기»를 켜야
  *   POST /api/ai/browse/:id/look   지금 화면을 다시 · DELETE /api/ai/browse/:id   닫기
- *   POST /api/ai/browse/:id/act    { kind: click|fill|select|press, target, value?, key?, flowId? } 열린 화면에서 한 가지(3단계) — 그 뒤 화면 요약.
+ *   POST /api/ai/browse/:id/act    { kind: click|fill|select|press, target, value?, key?, flowId?, forbidden? } 열린 화면에서 한 가지(3단계) — 그 뒤 화면 요약.
  *                                  되돌릴 수 없어 보이는 단추는 409 · 값의 {{ $secrets.x }}는 flowId의 시크릿으로 바꿔 넣는다
  *   POST /api/ai/try        { draft, flowId?, params? } 만든 워크플로우를 점검 실행으로(되돌릴 수 없는 동작 앞에서 멈춤 · 1분)
  *   GET  /api/ai/site-flows?hosts=a.com,b.com   (편집자) 같은 사이트를 다루는 워크플로우(그 사람이 볼 수 있는 것 · 5개까지)의 웹페이지 노드 —
@@ -55,7 +55,7 @@ export function aiRoutes({ ai, aiBrowse, store, auth, secrets }: ApiDeps): Route
       return aiBrowse.act(byOf(req), p["id"]!, {
         kind, ...(b["target"] && typeof b["target"] === "object" ? { target: b["target"] as never } : {}),
         ...(typeof b["value"] === "string" ? { value: b["value"] } : {}), ...(typeof b["key"] === "string" ? { key: b["key"] } : {}),
-      }, secretsOf(req, b["flowId"]));
+      }, secretsOf(req, b["flowId"]), Array.isArray(b["forbidden"]) ? b["forbidden"].filter((x): x is string => typeof x === "string" && x.trim() !== "") : []);
     }),
     route("POST", "/api/ai/try", async (req, _r, _p, body) => {
       canView();

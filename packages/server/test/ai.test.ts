@@ -242,13 +242,17 @@ describe("AI가 직접 해 보고 · 돌려 본다(act · try — 3단계)", () 
     const shown = await call("POST", `/api/ai/browse/${id}/act`, { kind: "click", target: search.target });
     const cancel = find(shown.body.snapshot.elements, "button", /주문 취소/);
     expect(cancel).toBeDefined();
-    // 낱말 목록(저장 · 제출 · 삭제 …)에 걸리는 이름이면 409 · 정말 눌리지 않았다.
-    // ★«취소»는 목록에 없다(대화 상자의 «취소»는 닫기라) — «주문 취소»를 누르지 않는 것은 AI의 판단이고 평가 세트가 본다(ai-eval.ts cancel)
+    // ★누르지 않는 단추는 워크플로우가 정한다(금지 버튼) — 걸리면 409 · 정말 눌리지 않았다
     const before = site.stats.cancelPosts;
-    const r = await call("POST", `/api/ai/browse/${id}/act`, { kind: "click", target: { ...(cancel!.target as object), label: "'저장' 버튼" } });
+    const r = await call("POST", `/api/ai/browse/${id}/act`, { kind: "click", target: cancel!.target, forbidden: ["주문\\s*취소"] });
     expect(r.status).toBe(409);
-    expect(r.body.error).toMatch(/되돌릴 수 없어 보이는 단추/);
+    expect(r.body.error).toMatch(/금지 버튼/);
     expect(site.stats.cancelPosts).toBe(before);
+    expect((await call("POST", `/api/ai/browse/${id}/act`, { kind: "click", target: cancel!.target, forbidden: ["("] })).status).toBe(400);
+    // 금지 버튼이 아니면(워크플로우가 허용) 누른다 — 서버가 따로 정한 낱말은 없다
+    const ok = await call("POST", `/api/ai/browse/${id}/act`, { kind: "click", target: cancel!.target, forbidden: ["삭제"] });
+    expect(ok.status).toBe(200);
+    expect(site.stats.cancelPosts).toBe(before + 1);
     await call("DELETE", `/api/ai/browse/${id}`);
   }, 90_000);
 

@@ -150,7 +150,7 @@ export const api = {
   aiBrowseLook: (id: string) => call<{ id: string; snapshot: { url: string; title: string; elements: import("./ai/refs.ts").PageElement[] }; shot: string }>("POST", `/ai/browse/${encodeURIComponent(id)}/look`),
   aiBrowseClose: (id: string) => call<null>("DELETE", `/ai/browse/${encodeURIComponent(id)}`),
   /** AI가 보는 화면에서 한 가지(누르기 · 넣기 · 고르기 · 키) — 값의 {{ $secrets.x }}는 서버가 flowId의 시크릿으로 */
-  aiBrowseAct: (id: string, a: { kind: string; target?: unknown; value?: string; key?: string; flowId?: string | null }) =>
+  aiBrowseAct: (id: string, a: { kind: string; target?: unknown; value?: string; key?: string; flowId?: string | null; forbidden?: string[] }) =>
     call<{ id: string; snapshot: { url: string; title: string; elements: import("./ai/refs.ts").PageElement[] }; shot: string }>("POST", `/ai/browse/${encodeURIComponent(id)}/act`, a),
   /** 만든 워크플로우를 점검 실행으로 돌려 본다(AI가 스스로 고치게) */
   aiTry: (p: { draft: unknown; flowId: string | null; params: Record<string, string> }) => call<import("./ai/agent.ts").TryResult>("POST", "/ai/try", p),

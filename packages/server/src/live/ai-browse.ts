@@ -6,8 +6,9 @@
  *   ★관리자가 켜야 한다(AI 설정 siteView — 페이지의 글자가 AI 회사로 간다). 켜지 않았으면 열지 않는다
  *
  * 3단계(PLAN §42-9) — **AI가 직접 누르며 다음 화면으로**(act) · **만든 것을 점검 실행으로 돌려 본다**(tryFlow):
- *   누르기 · 넣기 · 고르기 · 키 — 녹화와 같은 Primitives로(금지 버튼은 누르지 않는다).
- *   ★되돌릴 수 없어 보이는 단추(저장 · 제출 · 결제 · 삭제 …)는 누르지 않는다 — 녹화기와 같은 낱말로 거른다.
+ *   누르기 · 넣기 · 고르기 · 키 — 녹화 · 실행과 같은 Primitives로.
+ *   ★누르지 않는 단추는 **그 워크플로우가 정한다**(설정의 «금지 버튼» — 실행 때 엔진이 막는 것과 같은 규칙 · 사용자 결정 2026-10-25).
+ *    서버가 따로 정한 낱말은 없다 — 금지 버튼에 걸리지 않으면 누른다.
  *   ★시크릿 값은 AI가 모른다 — 넣을 값이 {{ $secrets.이름 }}이면 서버가 그 워크플로우의 시크릿으로 바꿔 넣는다(라우트가 준다).
  *   점검 실행 — 되돌릴 수 없는 동작 앞에서 멈추고, 요소를 녹화 때와 견준다(엔진 probe). 그 결과를 AI가 보고 고친다.
  */
@@ -18,8 +19,6 @@ import { Primitives, runFlow, toFailure, type RunResult } from "@flowsmith/engin
 import { pageSnapshot, type PageSnapshot } from "@flowsmith/recorder";
 import { StoreError } from "../storage/types.ts";
 
-/** 되돌릴 수 없어 보이는 단추 — 녹화기(inject.js RISKY)와 같은 낱말 */
-const RISKY = /저장|제출|등록|신청|결제|삭제|송금|이체|구매|주문하기|발행|확정|전송|submit|delete|remove|pay|buy|purchase|confirm|save|send/i;
 const ACT_TIMEOUT_MS = 10_000;
 
 export interface ActRequest { kind: "click" | "fill" | "select" | "press"; target?: Target; value?: string; key?: string }
@@ -94,16 +93,16 @@ export class AiBrowse {
   /**
    * 열린 화면에서 한 가지 — 누르기 · 넣기 · 고르기 · 키. 그 뒤 화면을 다시 요약해 돌려준다.
    * secrets — 그 워크플로우의 시크릿(넣을 값의 {{ $secrets.x }}를 바꿔 넣는다 · 결과 · 요약에는 값이 남지 않는다)
+   * forbidden — 그 워크플로우의 금지 버튼(settings.forbiddenLabels · 정규식) — 걸리면 누르지 않는다(409)
    */
-  async act(owner: string | null, id: string, a: ActRequest, secrets: Record<string, SecretValue> = {}): Promise<BrowseView> {
+  async act(owner: string | null, id: string, a: ActRequest, secrets: Record<string, SecretValue> = {}, forbidden: readonly string[] = []): Promise<BrowseView> {
     const s = this.#mine(owner, id);
-    const p = new Primitives(s.page, []);
+    for (const f of forbidden) {
+      try { new RegExp(f, "u"); } catch { throw new StoreError(400, `금지 버튼 규칙을 읽을 수 없습니다 — /${f}/`); }
+    }
+    const p = new Primitives(s.page, forbidden);
     const t = a.target;
     if (a.kind !== "press" && (!t || !t.locators?.length)) throw new StoreError(400, "어느 요소인지 없습니다(target)");
-    if (a.kind === "click") {
-      const words = [t!.label, t!.fingerprint?.text ?? "", t!.fingerprint?.attrs?.["value"] ?? ""].join(" ");
-      if (RISKY.test(words)) throw new StoreError(409, `되돌릴 수 없어 보이는 단추(«${t!.label}»)라 누르지 않았습니다 — 동작으로는 넣되 사람이 확인하게 두세요`);
-    }
     const value = a.value === undefined ? "" : this.#fillValue(a.value, secrets);
     try {
       if (a.kind === "click") await p.click(t!, ACT_TIMEOUT_MS);
@@ -111,7 +110,9 @@ export class AiBrowse {
       else if (a.kind === "select") await p.select(t!, value, ACT_TIMEOUT_MS);
       else await p.press(t ?? null, a.key || "Enter", ACT_TIMEOUT_MS);
     } catch (e) {
-      throw new StoreError(400, `하지 못했습니다 — ${toFailure(e).message.split("\n")[0]}`);
+      const f = toFailure(e);
+      if (f.problem === "forbidden") throw new StoreError(409, `이 워크플로우의 금지 버튼이라 누르지 않았습니다 — ${f.message.split("\n")[0]}`);
+      throw new StoreError(400, `하지 못했습니다 — ${f.message.split("\n")[0]}`);
     }
     await s.page.waitForLoadState("domcontentloaded", { timeout: 10_000 }).catch(() => undefined);
     return this.#view(s);

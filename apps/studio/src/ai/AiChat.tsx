@@ -102,10 +102,10 @@ export function AiChat({ sessionKey, mode, draft, newId, flowId, hints, placehol
       const browse = status?.siteView ? {
         open: async (url: string) => view(await api.aiBrowseOpen(url)),
         look: async () => { if (!browseId.current) throw new Error("먼저 open_page로 여세요"); return view(await api.aiBrowseLook(browseId.current)); },
-        // 3단계 — 직접 해 보기(시크릿은 이 워크플로우의 것을 서버가 넣는다) · 만든 것을 점검 실행으로
+        // 3단계 — 직접 해 보기(시크릿은 이 워크플로우의 것을 서버가 넣는다 · 누르지 않는 단추는 이 워크플로우의 금지 버튼) · 만든 것을 점검 실행으로
         act: async (a: { kind: "click" | "fill" | "select" | "press"; target?: unknown; value?: string; key?: string }) => {
           if (!browseId.current) throw new Error("먼저 open_page로 여세요");
-          return view(await api.aiBrowseAct(browseId.current, { ...a, flowId }));
+          return view(await api.aiBrowseAct(browseId.current, { ...a, flowId, forbidden: base?.settings.forbiddenLabels ?? [] }));
         },
         tryFlow: async (f: Flow, params: Record<string, string>) => api.aiTry({ draft: f, flowId, params }),
       } : undefined;
