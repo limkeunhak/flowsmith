@@ -30,6 +30,8 @@ export interface Built {
 }
 
 const TODO_CSS = "flowsmith-ai-todo";
+/** 되돌릴 수 없어 보이는 단추 — 녹화기(recorder inject.js RISKY)와 같은 낱말 */
+const RISKY = /저장|제출|등록|신청|결제|삭제|송금|이체|구매|주문하기|발행|확정|전송|submit|delete|remove|pay|buy|purchase|confirm|save|send/i;
 /** AI가 낼 수 있는 웹 동작 — catalog의 ACTION_DOCS와 같아야 한다(ai-catalog 시험) */
 export const WEB_KINDS = new Set(["goto", "click", "fill", "select", "read", "readTable", "wait", "press", "human"]);
 type Obj = Record<string, unknown>;
@@ -75,6 +77,8 @@ function webAction(raw: Obj, taken: string[], problems: string[], where: string,
     default: break;
   }
   if (a.kind === "click" && raw["popup"] === true) a.popup = true;
+  // 되돌릴 수 없어 보이는 누르기 — 녹화기와 같은 낱말 · 점검 실행 · AI의 돌려 보기는 그 앞에서 멈춘다
+  if (a.kind === "click" && (raw["risk"] === "unsafe" || RISKY.test(label))) a.risk = "unsafe";
   return a;
 }
 

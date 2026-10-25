@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { NODE_TYPES, type Flow, type Target } from "@flowsmith/core";
-import { ask, type Message, type ModelReply, type Send } from "../src/ai/agent.ts";
+import { ask, tryText, type Message, type ModelReply, type Send, type TryResult } from "../src/ai/agent.ts";
 import { buildProposal, WEB_KINDS } from "../src/ai/build.ts";
 import { ACTION_DOCS, DOC_WRAPPER, EXAMPLES, NODE_DOCS } from "../src/ai/catalog.ts";
 import { hostsOf, siteRefs, type SiteFlow } from "../src/ai/refs.ts";
@@ -144,5 +144,53 @@ describe("사이트 보기 — open_page · from p…", () => {
     // 켜지 않았으면 도구도 없고 설명서도 «볼 수 없음»
     const s = systemPrompt({ draft: null, extensions: [], flows: [] });
     expect(s).toContain("관리자가 켜지 않았습니다");
+  });
+});
+
+describe("직접 해 보고 · 돌려 보기 — act · try_flow", () => {
+  const LOGIN = { url: "https://admin.shop.example.com/login", title: "로그인", elements: [
+    { kind: "input" as const, label: "'아이디' 칸", target: tgt("'아이디' 칸", "#uid") },
+    { kind: "button" as const, label: "'로그인' 버튼", target: tgt("'로그인' 버튼", "button[type=submit]") },
+  ] };
+  const HOME = { url: "https://admin.shop.example.com/home", title: "홈", elements: [{ kind: "text" as const, label: "김철수", text: "김철수", target: tgt("김철수", "[data-testid=user-name]") }] };
+  it("★act로 넣고 누르면 다음 화면의 요소(p3 …)가 이어 붙고 · try_flow는 마지막 제안을 돌려 실패를 돌려준다 · 고쳐서 통과", async () => {
+    const acted: unknown[] = [];
+    const tried: unknown[] = [];
+    const results: string[] = [];
+    const replies: ModelReply[] = [
+      { content: [{ type: "tool_use", id: "o", name: "open_page", input: { url: LOGIN.url } }], stop_reason: "tool_use" },
+      { content: [{ type: "tool_use", id: "a1", name: "act", input: { ref: "p1", action: "fill", value: "kim" } }, { type: "tool_use", id: "a2", name: "act", input: { ref: "p2", action: "click" } }], stop_reason: "tool_use" },
+      { content: [{ type: "tool_use", id: "f1", name: "propose_flow", input: { summary: "읽기", flow: { name: "이름 읽기", nodes: [{ id: "w", type: "web", name: "로그인 · 읽기", config: { start: { kind: "url", url: LOGIN.url }, actions: [{ kind: "fill", from: "p1", value: "kim" }, { kind: "click", from: "p2" }, { kind: "read", from: "p3", output: "who" }] } }], edges: [] } } }], stop_reason: "tool_use" },
+      { content: [{ type: "tool_use", id: "t1", name: "try_flow", input: {} }], stop_reason: "tool_use" },
+      { content: [{ type: "tool_use", id: "t2", name: "try_flow", input: {} }], stop_reason: "tool_use" },
+      { content: [{ type: "text", text: "만들고 돌려 봤습니다" }], stop_reason: "end_turn" },
+    ];
+    const send = (async (req: { messages: Message[] }) => {
+      const last = req.messages.at(-1);
+      if (last && Array.isArray(last.content)) for (const b of last.content) if (b.type === "tool_result") results.push(`${b.is_error ? "ERR " : ""}${b.content}`);
+      return replies.shift()!;
+    }) as unknown as Send;
+    const tries: TryResult[] = [
+      { status: "success", nodes: [], probe: { status: "broken", findings: [{ label: "김철수", status: "missing" }], stop: { reason: "끝까지" } } },
+      { status: "success", nodes: [], probe: { status: "ok", findings: [{ label: "김철수", status: "ok" }], stop: { reason: "끝까지" } } },
+    ];
+    const t = await ask(send, [], "로그인해서 이름을 읽어줘", {
+      draft: null, extensions: [], flows: [], newId: "n",
+      browse: {
+        open: async () => LOGIN, look: async () => LOGIN,
+        act: async (a) => { acted.push(a); return a.kind === "click" ? HOME : LOGIN; },
+        tryFlow: async (f) => { tried.push(f.name); return tries.shift()!; },
+      },
+    });
+    expect(acted).toEqual([{ kind: "fill", target: LOGIN.elements[0]!.target, value: "kim" }, { kind: "click", target: LOGIN.elements[1]!.target }]);
+    // 넣은 뒤 다시 본 로그인 화면의 요소는 같은 번호(p1 · p2) · 누른 뒤 화면(홈)의 이름만 새로 p3
+    expect(t.pageRefs.map((r) => `${r.ref}:${r.label}`)).toEqual(["p1:'아이디' 칸", "p2:'로그인' 버튼", "p3:김철수"]);
+    expect(tried).toEqual(["이름 읽기", "이름 읽기"]);
+    expect(results.some((r) => r.startsWith("ERR 점검 실행") && r.includes("요소 «김철수»: missing"))).toBe(true);
+    expect(results.some((r) => r.includes("고칠 것이 없습니다"))).toBe(true);
+  });
+  it("try 결과를 말로 — 실패 노드 · 요소 · 멈춘 곳", () => {
+    expect(tryText({ status: "failure", message: "멈춤", nodes: [{ id: "w", name: "읽기", status: "failed", failure: { message: "요소를 찾지 못했습니다" } }] })).toEqual({ ok: false, text: "점검 실행: 실패 — 멈춤\n- 노드 «읽기»: 요소를 찾지 못했습니다" });
+    expect(tryText({ status: "success", probe: { status: "ok", findings: [], stop: { reason: "되돌릴 수 없는 동작 «저장» 앞" } } }).ok).toBe(true);
   });
 });

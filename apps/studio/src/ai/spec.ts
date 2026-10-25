@@ -82,7 +82,10 @@ export function systemPrompt(ctx: SpecContext): string {
     : "## 다시 쓸 수 있는 요소\n(아직 없음 — 웹페이지 동작은 이름만 붙인 빈 자리로)";
   const site = ctx.browse
     ? "## 사이트 보기(쓸 수 있음)\n사이트 주소를 알면 **먼저 open_page로 열어** 화면의 요소(p1 …)를 보고, 동작에 from으로 씁니다. 화면이 바뀌면 look_page. " +
-      "서버의 새 브라우저라 **로그인하지 않은 화면**만 보입니다 — 로그인 페이지는 볼 수 있지만 그 뒤 화면의 동작은 이름만 붙인 빈 자리로 둡니다. 주소를 모르면 지어내지 말고 묻습니다."
+      "**act로 직접 누르고 넣으며 다음 화면으로 갑니다** — 사람이 녹화하듯 워크플로우의 동작 순서대로 해 보고, 그때 본 요소(p…)를 그 동작의 from으로 씁니다. " +
+      "로그인은 시크릿({{ $secrets.이름.username }} · .password — 값은 서버가 넣는다)으로 해 봅니다. 시크릿 값이 없거나(새 워크플로우) 본인 인증 · 캡차면 «사람 기다리기»를 넣고 그 뒤는 이름만 붙인 빈 자리로 둡니다. " +
+      "되돌릴 수 없어 보이는 단추(저장 · 제출 · 결제 · 삭제 …)는 누르지 않습니다 — 동작으로만 넣습니다(실행 때 사람이 확인). " +
+      "제안이 받아들여지면 **try_flow로 돌려 보고**, 실패하면 고쳐서 다시 냅니다. 주소를 모르면 지어내지 말고 묻습니다."
     : "## 사이트 보기\n(관리자가 켜지 않았습니다 — 사이트를 열어 볼 수 없습니다)";
   return `${GUIDE}\n\n${nodeGuide()}\n\n${exampleGuide()}\n\n## 이 서버의 확장\n${exts}\n\n## 다른 워크플로우(flowCall이 부를 수 있는 것)\n${flows}\n\n${site}\n\n${refs}\n\n${now}`;
 }
@@ -120,4 +123,11 @@ export const BROWSE_TOOLS: Tool[] = [
   { name: "open_page", description: "사이트 주소를 열어 화면 요약(누를 것 · 넣을 칸 · 고를 것 · 읽을 글자 · 표 — 요소마다 ref p…)을 받습니다. 로그인하지 않은 새 브라우저입니다.", input_schema: { type: "object", properties: { url: { type: "string", description: "http(s) 주소" } }, required: ["url"] } },
   { name: "look_page", description: "지금 연 화면을 다시 요약합니다.", input_schema: { type: "object", properties: {} } },
 ];
-export const toolsFor = (browse: boolean): Tool[] => (browse ? [...TOOLS, ...BROWSE_TOOLS] : TOOLS);
+/** 3단계 — 직접 해 보기 · 돌려 보기 */
+export const ACT_TOOLS: Tool[] = [
+  { name: "act", description: "지금 화면에서 한 가지를 합니다 — ref 요소를 누르기(click) · 넣기(fill) · 고르기(select) · 키(press). 다음 화면의 요약이 돌아옵니다. 되돌릴 수 없어 보이는 단추(저장 · 제출 · 결제 · 삭제 …)는 누르지 않습니다. 비밀번호 등은 value에 \"{{ $secrets.이름.password }}\"처럼 — 값은 서버가 넣습니다. 실행 입력 자리에는 시험 값을 그대로 넣습니다.",
+    input_schema: { type: "object", properties: { ref: { type: "string", description: "p… 또는 r…" }, action: { type: "string", enum: ["click", "fill", "select", "press"] }, value: { type: "string" }, key: { type: "string", description: "press일 때 — Enter 등" } }, required: ["action"] } },
+  { name: "try_flow", description: "받아들여진 마지막 제안을 점검 실행으로 돌려 봅니다(되돌릴 수 없는 동작 앞에서 멈춤 · 요소를 녹화 때와 견줌). 실패하면 무엇이 틀렸는지 돌아옵니다 — 고쳐서 다시 제안하세요.",
+    input_schema: { type: "object", properties: { params: { type: "object", description: "실행 입력의 시험 값" } } } },
+];
+export const toolsFor = (browse: boolean, act = false): Tool[] => (browse ? [...TOOLS, ...BROWSE_TOOLS, ...(act ? ACT_TOOLS : [])] : TOOLS);

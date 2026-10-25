@@ -203,3 +203,65 @@ describe("AI가 사이트를 본다(POST /api/ai/browse)", () => {
     await call("PUT", "/api/ai", { siteView: false });
   }, 60_000);
 });
+
+describe("AI가 직접 해 보고 · 돌려 본다(act · try — 3단계)", () => {
+  let site: TestSite;
+  beforeAll(async () => {
+    site = await startTestSite(0);
+    await call("PUT", "/api/ai", { siteView: true });
+    // 시크릿 값이 든 워크플로우 — AI는 값을 모르고 {{ $secrets.shop.password }}만 쓴다
+    expect((await call("POST", "/api/flows", { draft: { schemaVersion: 1, id: "ai-shop", name: "쇼핑몰", secrets: [{ name: "shop", kind: "login" }], nodes: [], edges: [] } })).status).toBe(201);
+    expect((await call("PUT", "/api/flows/ai-shop/secrets/shop", { value: { username: "kim", password: "p@ss" } })).status).toBeLessThan(300);
+  });
+  afterAll(async () => { await call("PUT", "/api/ai", { siteView: false }); await site?.close(); });
+  type El = { kind: string; label: string; text?: string; target?: unknown };
+  const find = (els: El[], kind: string, re: RegExp) => els.find((e) => e.kind === kind && re.test(e.label));
+
+  it("★화면에서 넣고 누르며 다음 화면으로 — 비밀번호는 시크릿으로(서버가 넣음 · 어디에도 안 남음) · 되돌릴 수 없는 단추는 409", async () => {
+    const open = await call("POST", "/api/ai/browse", { url: `${site.url}/login` });
+    const id = open.body.id as string;
+    const els = open.body.snapshot.elements as El[];
+    const uid = els.find((e) => e.kind === "input" && /아이디|uid/i.test(e.label)) ?? els.filter((e) => e.kind === "input")[0]!;
+    const pw = els.filter((e) => e.kind === "input").find((e) => e !== uid)!;
+    expect((await call("POST", `/api/ai/browse/${id}/act`, { kind: "fill", target: uid.target, value: "{{ $params.x }}" })).status).toBe(400);
+    expect((await call("POST", `/api/ai/browse/${id}/act`, { kind: "fill", target: uid.target, value: "kim" })).status).toBe(200);
+    const typed = await call("POST", `/api/ai/browse/${id}/act`, { kind: "fill", target: pw.target, value: "{{ $secrets.shop.password }}", flowId: "ai-shop" });
+    expect(typed.status).toBe(200);
+    expect(JSON.stringify(typed.body)).not.toContain("p@ss");
+    const btn = els.find((e) => e.kind === "button")!;
+    const after = await call("POST", `/api/ai/browse/${id}/act`, { kind: "click", target: btn.target });
+    expect(after.status).toBe(200);
+    expect(after.body.snapshot.url).toContain("/home");
+    // 되돌릴 수 없어 보이는 단추 — 누르지 않는다
+    const orders = await call("POST", "/api/ai/browse", { url: `${site.url}/orders?no=A-1001` });
+    const cancel = find(orders.body.snapshot.elements, "button", /취소/);
+    if (cancel) {
+      const r = await call("POST", `/api/ai/browse/${orders.body.id}/act`, { kind: "click", target: cancel.target });
+      expect(r.status).toBe(409);
+      expect(r.body.error).toMatch(/되돌릴 수 없어 보이는 단추/);
+    }
+    await call("DELETE", `/api/ai/browse/${orders.body.id}`);
+  }, 90_000);
+
+  it("★만든 것을 점검 실행으로 — 맞으면 성공 · 요소가 틀리면 무엇이 틀렸는지", async () => {
+    const css = (label: string, value: string) => ({ label, locators: [{ kind: "css", value }], fingerprint: null, frames: [], verifiedAt: null });
+    const flow = (statusCss: string) => ({ schemaVersion: 1, id: "ai-try", name: "주문 상태", secrets: [{ name: "shop", kind: "login" }], params: [{ name: "no", label: "주문번호" }],
+      nodes: [{ id: "w", type: "web", name: "읽기", position: { x: 0, y: 0 }, config: { start: { kind: "url", url: `${site.url}/login` }, actions: [
+        { id: "a1", kind: "fill", target: css("아이디", "#uid"), value: "{{ $secrets.shop.username }}" },
+        { id: "a2", kind: "fill", target: css("비밀번호", "#pw"), value: "{{ $secrets.shop.password }}" },
+        { id: "a3", kind: "click", target: css("로그인", "button") },
+        { id: "a4", kind: "goto", url: `${site.url}/orders?no={{ $params.no }}` },
+        { id: "a5", kind: "read", output: "status", strategy: "auto", target: css("상태", statusCss) },
+      ] } }], edges: [] });
+    const ok = await call("POST", "/api/ai/try", { draft: flow("#order-status"), flowId: "ai-shop", params: { no: "A-1001" } });
+    expect(ok.status).toBe(200);
+    expect(ok.body.status).toBe("success");
+    const bad = await call("POST", "/api/ai/try", { draft: flow("#no-such-thing"), flowId: "ai-shop", params: { no: "A-1001" } });
+    expect(bad.status).toBe(200);
+    // 점검 실행은 못 찾아도 멈추지 않고 보고에 남긴다(probe.status broken) — AI에게는 둘 다 «고칠 것»으로 간다(ai/agent.ts tryText)
+    expect(bad.body.status === "failure" || bad.body.probe?.status === "broken").toBe(true);
+    expect(JSON.stringify({ nodes: bad.body.nodes, probe: bad.body.probe })).toMatch(/상태/);
+    expect(ok.body.probe?.status).toBe("ok");
+    expect(JSON.stringify(ok.body)).not.toContain("p@ss");
+  }, 90_000);
+});

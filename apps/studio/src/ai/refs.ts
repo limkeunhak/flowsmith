@@ -32,13 +32,24 @@ export interface BrowseView { url: string; title: string; elements: PageElement[
 
 const ACTION_OF: Record<PageElement["kind"], string> = { button: "click", link: "click", checkbox: "click", radio: "click", input: "fill", select: "select", text: "read", table: "readTable" };
 
-/** 본 화면의 요소 → ref 목록(p{start} …) */
-export function pageRefs(v: BrowseView, start = 1): RefElement[] {
-  let n = start;
+/** 같은 요소인가 — 첫 위치(표면 행 위치)가 같으면 */
+const keyOf = (r: { target?: Target; table?: TableTarget }): string => {
+  const l = r.table ? r.table.rows.locators[0] : r.target?.locators[0];
+  return l ? `${r.table ? "t" : "e"}\0${l.kind}\0${l.value}\0${l.name ?? ""}` : "";
+};
+
+/**
+ * 본 화면의 요소 → ref 목록. ★이미 본 요소(seen — 같은 첫 위치)면 그 ref를 그대로 쓴다(다시 볼 때마다 번호가 늘지 않게) ·
+ * 처음 보는 요소만 새 번호(p{seen 수 + 1} …). 돌려주는 것은 이 화면의 요소 전부(다시 쓴 것 포함)
+ */
+export function pageRefs(v: BrowseView, seen: RefElement[] = []): RefElement[] {
+  const byKey = new Map(seen.map((r) => [keyOf(r), r]));
+  let n = seen.length + 1;
   return v.elements.flatMap((e): RefElement[] => {
     if (!e.target && !e.table) return [];
+    const old = byKey.get(keyOf(e));
     return [{
-      ref: `p${n++}`, where: `화면 «${v.title || v.url}»`, kind: ACTION_OF[e.kind], label: e.label,
+      ref: old?.ref ?? `p${n++}`, where: `화면 «${v.title || v.url}»`, kind: ACTION_OF[e.kind], label: e.label,
       ...(e.target ? { target: e.target } : {}), ...(e.table ? { table: e.table } : {}),
       ...(e.text ? { now: e.text } : {}), ...(e.options?.length ? { options: e.options } : {}),
     }];

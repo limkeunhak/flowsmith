@@ -102,6 +102,12 @@ export function AiChat({ sessionKey, mode, draft, newId, flowId, hints, placehol
       const browse = status?.siteView ? {
         open: async (url: string) => view(await api.aiBrowseOpen(url)),
         look: async () => { if (!browseId.current) throw new Error("먼저 open_page로 여세요"); return view(await api.aiBrowseLook(browseId.current)); },
+        // 3단계 — 직접 해 보기(시크릿은 이 워크플로우의 것을 서버가 넣는다) · 만든 것을 점검 실행으로
+        act: async (a: { kind: "click" | "fill" | "select" | "press"; target?: unknown; value?: string; key?: string }) => {
+          if (!browseId.current) throw new Error("먼저 open_page로 여세요");
+          return view(await api.aiBrowseAct(browseId.current, { ...a, flowId }));
+        },
+        tryFlow: async (f: Flow, params: Record<string, string>) => api.aiTry({ draft: f, flowId, params }),
       } : undefined;
       const turn = await ask(serverSend(flowId), session.history, say, {
         draft: base, extensions, flows: flows.filter((f) => f.id !== newId).map((f) => ({ id: f.id, name: f.name })), newId,
@@ -165,6 +171,8 @@ export function AiChat({ sessionKey, mode, draft, newId, flowId, hints, placehol
   );
 }
 
+const ACT_WORD: Record<string, string> = { click: "눌렀습니다", fill: "넣었습니다", select: "골랐습니다", press: "키를 눌렀습니다" };
+
 /** ★AI가 하는 일 — 도는 동안은 한 줄씩 늘어나고, 끝나면 접힌 한 줄(눌러 펼침) */
 function Steps({ steps, ms, done }: { steps: Step[]; ms: number; done: boolean }) {
   const [open, setOpen] = useState(!done);
@@ -184,6 +192,10 @@ function Steps({ steps, ms, done }: { steps: Step[]; ms: number; done: boolean }
       case "look": return s.error
         ? { running: false, ok: false, bad: true, text: `화면을 열지 못함 — ${s.url} (${s.error.slice(0, 80)})` }
         : { running: false, ok: true, text: `화면을 봤습니다 — «${s.title || s.url}» · 쓸 요소 ${s.elements}개`, ...(s.shot ? { shot: s.shot } : {}) };
+      case "act": return s.error
+        ? { running: false, ok: false, bad: true, text: `${ACT_WORD[s.action] ?? s.action} 못 함 — «${s.label}» (${s.error.slice(0, 80)})` }
+        : { running: false, ok: true, text: `${ACT_WORD[s.action] ?? s.action} — «${s.label}»` };
+      case "try": return { running: false, ok: s.ok, bad: !s.ok, text: s.ok ? "점검 실행 — 통과" : `점검 실행 — 고칠 것: ${s.text.split("\n").slice(1, 3).join(" · ").slice(0, 120) || s.text.slice(0, 120)}` };
       case "reply": return { running, ok: !running, text: "답했습니다" };
     }
   }) as { running: boolean; ok: boolean; bad?: boolean; text: string; shot?: string }[];

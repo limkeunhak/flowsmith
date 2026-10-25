@@ -8,6 +8,9 @@
  *                           · x-flowsmith-ai-provider(anthropic · gemini) · x-flowsmith-ai-model — 그 사람이 고른 AI · 모델
  *   POST /api/ai/browse     (편집자) { url } → { id, snapshot, shot } AI가 사이트를 본다(live/ai-browse.ts) — ★관리자가 «사이트 화면 보기»를 켜야
  *   POST /api/ai/browse/:id/look   지금 화면을 다시 · DELETE /api/ai/browse/:id   닫기
+ *   POST /api/ai/browse/:id/act    { kind: click|fill|select|press, target, value?, key?, flowId? } 열린 화면에서 한 가지(3단계) — 그 뒤 화면 요약.
+ *                                  되돌릴 수 없어 보이는 단추는 409 · 값의 {{ $secrets.x }}는 flowId의 시크릿으로 바꿔 넣는다
+ *   POST /api/ai/try        { draft, flowId?, params? } 만든 워크플로우를 점검 실행으로(되돌릴 수 없는 동작 앞에서 멈춤 · 1분)
  *   GET  /api/ai/site-flows?hosts=a.com,b.com   (편집자) 같은 사이트를 다루는 워크플로우(그 사람이 볼 수 있는 것 · 5개까지)의 웹페이지 노드 —
  *                           녹화해 둔 요소를 AI가 다시 쓰게(apps/studio/src/ai/refs.ts). 시크릿 값은 애초에 없다(이름만 쓰는 표현식)
  */
@@ -22,7 +25,15 @@ function hostOf(url: unknown, vars: Record<string, unknown>): string | null {
   try { return new URL(full).hostname.toLowerCase(); } catch { return null; }
 }
 
-export function aiRoutes({ ai, aiBrowse, store, auth }: ApiDeps): Route[] {
+export function aiRoutes({ ai, aiBrowse, store, auth, secrets }: ApiDeps): Route[] {
+  /** 그 워크플로우의 시크릿(볼 수 있는 사람만 · 없으면 빈 것) — AI에게는 가지 않고 서버 안에서만 쓴다 */
+  const secretsOf = (req: Parameters<typeof userOf>[0], flowId: unknown) => {
+    if (typeof flowId !== "string" || !flowId) return {};
+    if (!auth.canSeeFlowReq(req, flowId)) throw new HttpError(404, "없는 워크플로우입니다");
+    let defs: unknown = [];
+    try { defs = (store.getFlow(flowId).draft as { secrets?: unknown } | null)?.secrets ?? []; } catch { return {}; }
+    return secrets.unlockFor(flowId, Array.isArray(defs) ? defs : []);
+  };
   const canView = () => {
     if (!ai.enabled) throw new HttpError(403, "AI를 꺼 두었습니다 — 관리자가 켜야 합니다");
     if (!ai.siteView) throw new HttpError(403, "AI가 사이트 화면을 보는 것을 관리자가 켜지 않았습니다(«내 설정 › AI 도우미»)");
@@ -36,6 +47,23 @@ export function aiRoutes({ ai, aiBrowse, store, auth }: ApiDeps): Route[] {
     }),
     route("POST", "/api/ai/browse/:id/look", (req, _r, p) => { canView(); return aiBrowse.look(byOf(req), p["id"]!); }),
     route("DELETE", "/api/ai/browse/:id", async (req, res, p) => { await aiBrowse.close(byOf(req), p["id"]!); res.statusCode = 204; return null; }),
+    route("POST", "/api/ai/browse/:id/act", async (req, _r, p, body) => {
+      canView();
+      const b = await body();
+      const kind = b["kind"];
+      if (kind !== "click" && kind !== "fill" && kind !== "select" && kind !== "press") throw new HttpError(400, "kind는 click · fill · select · press입니다");
+      return aiBrowse.act(byOf(req), p["id"]!, {
+        kind, ...(b["target"] && typeof b["target"] === "object" ? { target: b["target"] as never } : {}),
+        ...(typeof b["value"] === "string" ? { value: b["value"] } : {}), ...(typeof b["key"] === "string" ? { key: b["key"] } : {}),
+      }, secretsOf(req, b["flowId"]));
+    }),
+    route("POST", "/api/ai/try", async (req, _r, _p, body) => {
+      canView();
+      const b = await body();
+      const params = b["params"] && typeof b["params"] === "object" && !Array.isArray(b["params"]) ? Object.fromEntries(Object.entries(b["params"] as Record<string, unknown>).map(([k, v]) => [k, String(v)])) : {};
+      try { return await aiBrowse.tryFlow(b["draft"], params, secretsOf(req, b["flowId"])); }
+      catch (e) { throw new HttpError(400, `돌려 보지 못했습니다 — ${e instanceof Error ? e.message.split("\n").slice(0, 4).join(" · ") : String(e)}`); }
+    }),
     route("GET", "/api/ai/site-flows", (req) => {
       const hosts = (query(req).get("hosts") ?? "").split(",").map((h) => h.trim().toLowerCase()).filter(Boolean).slice(0, 5);
       if (hosts.length === 0) return { flows: [] };
