@@ -232,15 +232,24 @@ describe("AI가 직접 해 보고 · 돌려 본다(act · try — 3단계)", () 
     const after = await call("POST", `/api/ai/browse/${id}/act`, { kind: "click", target: btn.target });
     expect(after.status).toBe(200);
     expect(after.body.snapshot.url).toContain("/home");
-    // 되돌릴 수 없어 보이는 단추 — 누르지 않는다
-    const orders = await call("POST", "/api/ai/browse", { url: `${site.url}/orders?no=A-1001` });
-    const cancel = find(orders.body.snapshot.elements, "button", /취소/);
-    if (cancel) {
-      const r = await call("POST", `/api/ai/browse/${orders.body.id}/act`, { kind: "click", target: cancel.target });
-      expect(r.status).toBe(409);
-      expect(r.body.error).toMatch(/되돌릴 수 없어 보이는 단추/);
-    }
-    await call("DELETE", `/api/ai/browse/${orders.body.id}`);
+    // 되돌릴 수 없어 보이는 단추 — 누르지 않는다. 로그인한 그 화면에서 주문 조회 › A-1001 › 조회까지 간다
+    // (★새로 열면 쿠키가 없어 로그인 화면으로 돌아간다 — 그래서 같은 화면에서 이어 간다)
+    const link = find(after.body.snapshot.elements, "link", /주문 조회/)!;
+    const ordersPage = await call("POST", `/api/ai/browse/${id}/act`, { kind: "click", target: link.target });
+    const no = find(ordersPage.body.snapshot.elements, "input", /주문번호/)!;
+    await call("POST", `/api/ai/browse/${id}/act`, { kind: "fill", target: no.target, value: "A-1001" });
+    const search = find(ordersPage.body.snapshot.elements, "button", /조회/)!;
+    const shown = await call("POST", `/api/ai/browse/${id}/act`, { kind: "click", target: search.target });
+    const cancel = find(shown.body.snapshot.elements, "button", /주문 취소/);
+    expect(cancel).toBeDefined();
+    // 낱말 목록(저장 · 제출 · 삭제 …)에 걸리는 이름이면 409 · 정말 눌리지 않았다.
+    // ★«취소»는 목록에 없다(대화 상자의 «취소»는 닫기라) — «주문 취소»를 누르지 않는 것은 AI의 판단이고 평가 세트가 본다(ai-eval.ts cancel)
+    const before = site.stats.cancelPosts;
+    const r = await call("POST", `/api/ai/browse/${id}/act`, { kind: "click", target: { ...(cancel!.target as object), label: "'저장' 버튼" } });
+    expect(r.status).toBe(409);
+    expect(r.body.error).toMatch(/되돌릴 수 없어 보이는 단추/);
+    expect(site.stats.cancelPosts).toBe(before);
+    await call("DELETE", `/api/ai/browse/${id}`);
   }, 90_000);
 
   it("★만든 것을 점검 실행으로 — 맞으면 성공 · 요소가 틀리면 무엇이 틀렸는지", async () => {

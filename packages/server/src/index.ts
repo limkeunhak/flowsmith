@@ -4,3 +4,4 @@ export { InProcessWorker, type WorkerClient, type RunJob } from "./run/worker.ts
 export { Store, StoreError } from "./storage/store.ts";
 export { loadExtensions } from "./run/extensions.ts";
 export { fromGemini, toGemini } from "./run/ai-gemini.ts";
+export { AiBrowse } from "./live/ai-browse.ts";

@@ -5,9 +5,12 @@
  * 요청마다 «검사를 통과한 제안이 나왔나 · 커스텀 코드가 없나 · 시크릿 값을 적지 않았나»를 보고, 통과 비율을 찍는다.
  * ★AI 답은 매번 같지 않다 — 하나하나를 실패로 보지 않고 비율로 본다(80% 밑이면 실패).
  */
-import { describe, expect, it } from "vitest";
-import { fromGemini, toGemini } from "@flowsmith/server";
+import { writeFileSync } from "node:fs";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { AiBrowse, fromGemini, toGemini } from "@flowsmith/server";
+import { startTestSite, type TestSite } from "@flowsmith/testsite";
 import { ask, type ModelReply, type Send } from "../src/ai/agent.ts";
+import { report, runCase, SITE_CASES, type CaseResult } from "./ai-eval.ts";
 
 const anthropicKey = process.env["FLOWSMITH_ANTHROPIC_KEY"];
 const geminiKey = process.env["FLOWSMITH_GEMINI_KEY"];
@@ -64,9 +67,34 @@ async function evaluate(send: Send, label: string): Promise<number> {
   return ok / CASES.length;
 }
 
-describe.skipIf(!anthropicKey)(`AI 평가 세트 — ${claudeModel}`, () => {
-  it("★검사를 통과한 제안 비율", async () => { expect(await evaluate(claude, claudeModel)).toBeGreaterThanOrEqual(0.8); }, 30 * 60_000);
-});
-describe.skipIf(!geminiKey)(`AI 평가 세트 — ${geminiModel}`, () => {
-  it("★검사를 통과한 제안 비율", async () => { expect(await evaluate(gemini, geminiModel)).toBeGreaterThanOrEqual(0.8); }, 30 * 60_000);
-});
+/**
+ * 노드 속까지(PLAN §42-10 · ai-eval.ts) — 시험 사이트에서 답이 정해진 일을 시키고, AI가 화면을 보고 · 해 보고 · 돌려 보며 만든 것을
+ * 점검 실행으로 정말 돌려 채점한다(시크릿 · 실행 입력 · 읽은 값 · 되돌릴 수 없는 단추). 사례의 80%(FLOWSMITH_AI_EVAL_MIN) 밑이면 실패.
+ *   FLOWSMITH_AI_EVAL_CASES=login-name,cancel   — 몇 사례만
+ *   FLOWSMITH_AI_EVAL_OUT=/tmp/eval.json        — 결과(사례마다 기준 · AI가 한 일)를 파일로 — 모델끼리 견줄 때
+ */
+const minRatio = Number(process.env["FLOWSMITH_AI_EVAL_MIN"] ?? "0.8");
+const only = process.env["FLOWSMITH_AI_EVAL_CASES"]?.split(",").map((s) => s.trim()).filter(Boolean);
+const siteCases = only?.length ? SITE_CASES.filter((c) => only.includes(c.id)) : SITE_CASES;
+
+async function siteEval(send: Send, label: string, env: { site: TestSite; browse: AiBrowse }): Promise<number> {
+  const results: CaseResult[] = [];
+  for (const c of siteCases) results.push(await runCase(send, c, env));
+  console.log(`\n${report(label, results)}`);
+  const out = process.env["FLOWSMITH_AI_EVAL_OUT"];
+  if (out) writeFileSync(out, JSON.stringify({ model: label, at: new Date().toISOString(), results }, null, 2));
+  return results.filter((r) => r.ok).length / Math.max(1, results.length);
+}
+
+for (const [key, send, label] of [[anthropicKey, claude, claudeModel], [geminiKey, gemini, geminiModel]] as const) {
+  describe.skipIf(!key)(`AI 평가 세트 — ${label}`, () => {
+    let site: TestSite;
+    const browse = new AiBrowse();
+    beforeAll(async () => { site = await startTestSite(0); });
+    afterAll(async () => { await browse.closeAll(); await site?.close(); });
+    it("★검사를 통과한 제안 비율", async () => { expect(await evaluate(send, label)).toBeGreaterThanOrEqual(0.8); }, 30 * 60_000);
+    it("★노드 속까지 — 시험 사이트에서 정말 돌려 채점한 사례 비율", async () => {
+      expect(await siteEval(send, label, { site, browse })).toBeGreaterThanOrEqual(minRatio);
+    }, 60 * 60_000);
+  });
+}
