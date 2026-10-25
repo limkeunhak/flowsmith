@@ -6,11 +6,13 @@
  *   POST /api/ai/messages   (편집자) Anthropic Messages 모양 { system, messages, tools?, flowId? } → 모델의 답 그대로
  *                           머리글 x-flowsmith-ai-key — 그 사람의 키(«내 설정», 브라우저에만 있다). ★저장 · 기록하지 않고 넘기기만
  *                           · x-flowsmith-ai-provider(anthropic · gemini) · x-flowsmith-ai-model — 그 사람이 고른 AI · 모델
+ *   POST /api/ai/browse     (편집자) { url } → { id, snapshot, shot } AI가 사이트를 본다(live/ai-browse.ts) — ★관리자가 «사이트 화면 보기»를 켜야
+ *   POST /api/ai/browse/:id/look   지금 화면을 다시 · DELETE /api/ai/browse/:id   닫기
  *   GET  /api/ai/site-flows?hosts=a.com,b.com   (편집자) 같은 사이트를 다루는 워크플로우(그 사람이 볼 수 있는 것 · 5개까지)의 웹페이지 노드 —
  *                           녹화해 둔 요소를 AI가 다시 쓰게(apps/studio/src/ai/refs.ts). 시크릿 값은 애초에 없다(이름만 쓰는 표현식)
  */
 import { byOf, userOf } from "../../auth/auth.ts";
-import { query, route, type Route } from "../router.ts";
+import { HttpError, query, route, type Route } from "../router.ts";
 import type { ApiDeps } from "../api.ts";
 
 /** 시작 주소의 호스트 — 변수({{ $vars.x }})는 그 워크플로우의 값으로 풀어서 */
@@ -20,8 +22,20 @@ function hostOf(url: unknown, vars: Record<string, unknown>): string | null {
   try { return new URL(full).hostname.toLowerCase(); } catch { return null; }
 }
 
-export function aiRoutes({ ai, store, auth }: ApiDeps): Route[] {
+export function aiRoutes({ ai, aiBrowse, store, auth }: ApiDeps): Route[] {
+  const canView = () => {
+    if (!ai.enabled) throw new HttpError(403, "AI를 꺼 두었습니다 — 관리자가 켜야 합니다");
+    if (!ai.siteView) throw new HttpError(403, "AI가 사이트 화면을 보는 것을 관리자가 켜지 않았습니다(«내 설정 › AI 도우미»)");
+  };
   return [
+    route("POST", "/api/ai/browse", async (req, _r, _p, body) => {
+      canView();
+      const url = (await body())["url"];
+      if (typeof url !== "string" || !url.trim()) throw new HttpError(400, "url이 필요합니다");
+      return aiBrowse.open(byOf(req), url.trim());
+    }),
+    route("POST", "/api/ai/browse/:id/look", (req, _r, p) => { canView(); return aiBrowse.look(byOf(req), p["id"]!); }),
+    route("DELETE", "/api/ai/browse/:id", async (req, res, p) => { await aiBrowse.close(byOf(req), p["id"]!); res.statusCode = 204; return null; }),
     route("GET", "/api/ai/site-flows", (req) => {
       const hosts = (query(req).get("hosts") ?? "").split(",").map((h) => h.trim().toLowerCase()).filter(Boolean).slice(0, 5);
       if (hosts.length === 0) return { flows: [] };

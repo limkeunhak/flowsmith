@@ -1,7 +1,8 @@
 /**
  * **AI 대화** — 떠 있는 AI 창(AiDock) 안. PLAN §42.
  *
- *   말풍선 · 예시 말 · ★AI가 하는 일(실시간 — 묻는 중 → 초안 → 검사 → 고치는 중 → 통과) · 제안 카드(작은 흐름도 · 바뀐 것 · 녹화로 채울 곳)
+ *   말풍선 · 예시 말 · ★AI가 하는 일(실시간 — 묻는 중 → 화면 보기 → 초안 → 검사 → 고치는 중 → 통과) · 제안 카드(작은 흐름도 · 바뀐 것 · 녹화로 채울 곳)
+ *   사이트 보기(관리자가 켰을 때) — AI가 연 화면을 «AI가 한 일»에 작게 보인다. 대화마다 하나(창을 닫거나 대상이 바뀌면 닫는다)
  *   edit    지금 초안을 고친다 — [캔버스에서 보기] · [버리기] · [적용]
  *   create  새로 만든다 — 다음 말은 직전 제안을 바탕으로 고친다 · [이대로 만들기]
  *   ★적용 · 만들기는 초안만 — 저장 · 게시는 사람이. 대화는 대상마다(create · flow:<id>) 기억한다.
@@ -14,6 +15,7 @@ import { NODE_META } from "../editor/nodeMeta.tsx";
 import { IconCheck, IconX } from "../icons.tsx";
 import { AI_KEY_HINT, myAiKey, myAiProvider } from "./key.ts";
 import { ask, type Message, type Send, type Step, type Turn } from "./agent.ts";
+import type { BrowseView, RefElement } from "./refs.ts";
 import { aiBridge, useAiBridge } from "./bridge.ts";
 
 /** 서버가 대신 부른다 — 키는 «내 설정»(머리글) 또는 서버의 것 */
@@ -41,7 +43,7 @@ interface Line {
   ms?: number;
   state?: "applied" | "dropped";
 }
-interface Session { lines: Line[]; history: Message[] }
+interface Session { lines: Line[]; history: Message[]; /** 앞 말에서 본 화면의 요소 */ pageRefs?: RefElement[] }
 
 /** 대화 — 대상마다 기억한다(이 탭이 살아 있는 동안) */
 const sessions = new Map<string, Session>();
@@ -71,6 +73,9 @@ export function AiChat({ sessionKey, mode, draft, newId, flowId, hints, placehol
   const [live, setLive] = useState<Step[]>([]);
   const [error, setError] = useState<string | null>(null);
   const end = useRef<HTMLDivElement>(null);
+  /** AI가 연 화면(서버) — 이 대화 동안 */
+  const browseId = useRef<string | null>(null);
+  useEffect(() => () => { if (browseId.current) void api.aiBrowseClose(browseId.current).catch(() => undefined); browseId.current = null; }, [sessionKey]);
   const setSession = (fn: (s: Session) => Session) => setSessionState((s) => { const n = fn(s); sessions.set(sessionKey, n); return n; });
   useEffect(() => { setSessionState(sessions.get(sessionKey) ?? { lines: [], history: [] }); setText(""); setError(null); }, [sessionKey]);
   useEffect(() => { void api.aiStatus().then(setStatus, (e: Error) => setError(e.message)); }, []);
@@ -92,11 +97,21 @@ export function AiChat({ sessionKey, mode, draft, newId, flowId, hints, placehol
     const t0 = Date.now();
     try {
       const [extensions, flows] = await Promise.all([listExtensions(), api.listFlows().catch(() => [])]);
-      const turn = await ask(serverSend(flowId), session.history, say, { draft: base, extensions, flows: flows.filter((f) => f.id !== newId).map((f) => ({ id: f.id, name: f.name })), newId, siteFlows: async (hosts) => (await api.aiSiteFlows(hosts)).flows }, {
+      // 사이트 보기 — 관리자가 켰을 때만(페이지의 글자가 AI 회사로 간다)
+      const view = (v: { id: string; snapshot: { url: string; title: string; elements: BrowseView["elements"] }; shot: string }): BrowseView => { browseId.current = v.id; return { ...v.snapshot, shot: v.shot }; };
+      const browse = status?.siteView ? {
+        open: async (url: string) => view(await api.aiBrowseOpen(url)),
+        look: async () => { if (!browseId.current) throw new Error("먼저 open_page로 여세요"); return view(await api.aiBrowseLook(browseId.current)); },
+      } : undefined;
+      const turn = await ask(serverSend(flowId), session.history, say, {
+        draft: base, extensions, flows: flows.filter((f) => f.id !== newId).map((f) => ({ id: f.id, name: f.name })), newId,
+        siteFlows: async (hosts) => (await api.aiSiteFlows(hosts)).flows,
+        ...(browse ? { browse } : {}), pageRefs: session.pageRefs ?? [],
+      }, {
         onStep: (st) => { steps.push(st); setLive([...steps]); },
       });
       setSession((s) => ({
-        history: turn.messages,
+        history: turn.messages, pageRefs: turn.pageRefs,
         // 처음 만드는 제안은 빈 것과 견준다 — 이름은 같게(«이름 «» → «…»» 줄이 생기지 않게)
         lines: [...s.lines, { who: "ai", text: turn.reply, turn, base: base ?? blankFlow(newId, turn.proposal?.flow.name ?? ""), steps, ms: Date.now() - t0 }],
       }));
@@ -166,9 +181,12 @@ function Steps({ steps, ms, done }: { steps: Step[]; ms: number; done: boolean }
       case "proposed": return { running, ok: !running, text: `초안 — 노드 ${s.nodes}개${s.summary ? ` · ${s.summary}` : ""} · 검사하는 중` };
       case "rejected": return { running: false, ok: false, bad: true, text: `문제 ${s.problems.length}개 — 고쳐 달라고 돌려줌${s.problems[0] ? ` («${s.problems[0].slice(0, 60)}${s.problems[0].length > 60 ? "…" : ""}»)` : ""}` };
       case "accepted": return { running: false, ok: true, text: `검사 통과 — 노드 ${s.nodes}개${s.todo ? ` · 녹화로 채울 곳 ${s.todo}곳` : ""}` };
+      case "look": return s.error
+        ? { running: false, ok: false, bad: true, text: `화면을 열지 못함 — ${s.url} (${s.error.slice(0, 80)})` }
+        : { running: false, ok: true, text: `화면을 봤습니다 — «${s.title || s.url}» · 쓸 요소 ${s.elements}개`, ...(s.shot ? { shot: s.shot } : {}) };
       case "reply": return { running, ok: !running, text: "답했습니다" };
     }
-  });
+  }) as { running: boolean; ok: boolean; bad?: boolean; text: string; shot?: string }[];
   if (!done && rows.length === 0) rows.push({ running: true, ok: false, text: "AI에게 보내는 중" });
   return (
     <div className={`ai-steps${done ? " done" : ""}`}>
@@ -179,7 +197,7 @@ function Steps({ steps, ms, done }: { steps: Step[]; ms: number; done: boolean }
           {rows.map((r, i) => (
             <li key={i} className={r.running ? "running" : "bad" in r && r.bad ? "bad" : r.ok ? "ok" : ""}>
               <span className="ai-step-mark">{r.running ? <span className="spinner" /> : "bad" in r && r.bad ? <IconX size={12} strokeWidth={2.6} /> : <IconCheck size={12} strokeWidth={2.6} />}</span>
-              <span>{r.text}</span>
+              <span>{r.text}{r.shot && <img className="ai-shot" src={`data:image/jpeg;base64,${r.shot}`} alt="AI가 본 화면" />}</span>
             </li>
           ))}
         </ol>

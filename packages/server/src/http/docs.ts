@@ -172,8 +172,11 @@ export const DOCS: Record<string, RouteDoc> = {
   "POST /api/plugins-source/check": { tag: "확장 플러그인", summary: "새 버전 확인 — 저장소의 묶음마다 깔려 있나 · 더 새것인가" },
   "POST /api/plugins-source/install": { tag: "확장 플러그인", summary: "저장소에서 받아 올리기", body: { "*id": "플러그인 id", "*version": "버전" }, example: { id: "shop", version: "1.0.0" }, ok: 201 },
   // ── AI
-  "GET /api/ai": { tag: "AI", summary: "켜 둠 · 키가 있나(값은 안 나감) · 모델 · 최근 30일 쓴 양" },
-  "PUT /api/ai": { tag: "AI", summary: "AI 설정(관리자)", body: { apiKey: "Anthropic API 키 — 빈 글자면 지움", model: "모델", enabled: "켜기/끄기" }, example: { model: "claude-opus-5-5", enabled: true } },
+  "GET /api/ai": { tag: "AI", summary: "켜 둠 · 키가 있나(값은 안 나감) · 모델 · 사이트 화면 보기 · 최근 30일 쓴 양" },
+  "PUT /api/ai": { tag: "AI", summary: "AI 설정(관리자)", body: { apiKey: "Anthropic API 키 — 빈 글자면 지움", model: "모델", enabled: "켜기/끄기", siteView: "AI가 사이트 화면을 본다(기본 끔 — 페이지의 글자가 AI 회사로 간다)" }, example: { model: "claude-opus-5-5", enabled: true } },
+  "POST /api/ai/browse": { tag: "AI", summary: "AI가 사이트를 본다 — 주소를 열어 화면 요약(편집자)", description: "서버의 브라우저(사람의 쿠키 없음)로 열어 보이는 요소(누를 것 · 칸 · 글자 · 표)와 그 요소 하나만 가리키는 위치 후보 · 화면(JPEG)을 준다. 사람마다 하나 · 10분. ★관리자가 «사이트 화면 보기»(PUT /api/ai siteView)를 켜야 한다 — 페이지의 글자가 AI 회사로 간다.", body: { "*url": "http(s) 주소" } },
+  "POST /api/ai/browse/:id/look": { tag: "AI", summary: "AI가 보는 화면을 다시 요약" },
+  "DELETE /api/ai/browse/:id": { tag: "AI", summary: "AI가 보는 화면 닫기", ok: 204 },
   "GET /api/ai/site-flows": { tag: "AI", summary: "같은 사이트의 워크플로우(AI가 녹화해 둔 요소를 다시 쓴다)", description: "hosts(쉼표로 · 5개까지)와 시작 주소의 사이트가 같은 워크플로우(볼 수 있는 것 · 5개까지)의 웹페이지 노드. 변수로 쓴 주소는 그 워크플로우의 값으로 푼다.", query: { hosts: "사이트 이름 — admin.shop.example.com,portal.example.kr" } },
   "POST /api/ai/messages": { tag: "AI", summary: "모델에 묻기(편집자)", description: "Anthropic Messages 모양(system · messages · tools)을 그대로 보내고 답을 그대로 받는다. 도구 반복은 화면이 돌린다. 머리글 x-flowsmith-ai-key에 내 키(«내 설정»)를 실으면 그것으로 — 서버는 저장하지 않는다. x-flowsmith-ai-provider(anthropic · gemini)와 x-flowsmith-ai-model로 AI · 모델을 고른다(Gemini는 서버가 바꿔 부르고 같은 모양으로 돌려준다).", body: { "*system": "시스템 글", "*messages": "대화", tools: "도구", flowId: "어느 워크플로우에서" } },
   "GET /api/openapi.json": { tag: "API", summary: "이 명세(OpenAPI 3.0)" },

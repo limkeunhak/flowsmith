@@ -100,3 +100,49 @@ describe("다시 쓸 수 있는 요소 — from", () => {
     expect(a).toMatchObject({ kind: "read", output: "status", target: { locators: [{ value: "#order-status" }] } });
   });
 });
+
+describe("사이트 보기 — open_page · from p…", () => {
+  const VIEW = {
+    url: "https://admin.shop.example.com/login", title: "로그인",
+    elements: [
+      { kind: "input" as const, label: "'아이디' 칸", target: tgt("'아이디' 칸", "#uid") },
+      { kind: "input" as const, label: "'비밀번호' 칸", target: tgt("'비밀번호' 칸", "#pw") },
+      { kind: "button" as const, label: "'로그인' 버튼", target: tgt("'로그인' 버튼", "button[type=submit]") },
+    ],
+    shot: "AAAA",
+  };
+  it("★관리자가 켰을 때만 도구가 있다 · 연 화면의 요소(p1 …)를 from으로 쓰면 위치가 들어간다 · 다음 말에 넘긴다", async () => {
+    const opened: string[] = [];
+    const tools: string[][] = [];
+    const steps: string[] = [];
+    const replies: ModelReply[] = [
+      { content: [{ type: "tool_use", id: "o1", name: "open_page", input: { url: "https://admin.shop.example.com/login" } }], stop_reason: "tool_use" },
+      { content: [{ type: "tool_use", id: "p1", name: "propose_flow", input: { summary: "로그인", flow: { name: "로그인", secrets: [{ name: "shop", kind: "login" }], nodes: [{ id: "w", type: "web", name: "로그인", config: { start: { kind: "url", url: "https://admin.shop.example.com/login" }, actions: [
+        { kind: "fill", from: "p1", value: "{{ $secrets.shop.username }}" }, { kind: "fill", from: "p2", value: "{{ $secrets.shop.password }}" }, { kind: "click", from: "p3" },
+      ] } }], edges: [] } } }], stop_reason: "tool_use" },
+      { content: [{ type: "text", text: "로그인 노드를 만들었습니다" }], stop_reason: "end_turn" },
+    ];
+    let toolResult = "";
+    const send = (async (req: { messages: Message[]; tools: { name: string }[] }) => {
+      tools.push(req.tools.map((t) => t.name));
+      const last = req.messages.at(-1);
+      if (last && Array.isArray(last.content) && last.content[0]?.type === "tool_result" && !toolResult) toolResult = last.content[0].content;
+      return replies.shift()!;
+    }) as unknown as Send;
+    const t = await ask(send, [], "admin.shop.example.com 로그인 노드를 만들어줘", {
+      draft: null, extensions: [], flows: [], newId: "n",
+      browse: { open: async (u) => { opened.push(u); return VIEW; }, look: async () => VIEW },
+    }, { onStep: (s) => steps.push(s.kind) });
+    expect(tools[0]).toEqual(["propose_flow", "open_page", "look_page"]);
+    expect(opened).toEqual(["https://admin.shop.example.com/login"]);
+    expect(toolResult).toContain("p3 — 화면 «로그인» · click «'로그인' 버튼»");
+    expect(steps).toContain("look");
+    expect(t.proposal?.todo).toEqual([]);
+    const acts = t.proposal!.flow.nodes[0]!.type === "web" ? t.proposal!.flow.nodes[0]!.config.actions : [];
+    expect(acts.map((a) => ("target" in a && a.target ? a.target.locators[0]?.value : null))).toEqual(["#uid", "#pw", "button[type=submit]"]);
+    expect(t.pageRefs.map((r) => r.ref)).toEqual(["p1", "p2", "p3"]);
+    // 켜지 않았으면 도구도 없고 설명서도 «볼 수 없음»
+    const s = systemPrompt({ draft: null, extensions: [], flows: [] });
+    expect(s).toContain("관리자가 켜지 않았습니다");
+  });
+});

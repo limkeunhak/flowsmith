@@ -29,6 +29,7 @@ import type { WorkerClient } from "./run/worker.ts";
 import { WorkerHub } from "./run/worker-hub.ts";
 import { Plugins } from "./run/plugins.ts";
 import { Ai, type AiOptions } from "./run/ai.ts";
+import { AiBrowse } from "./live/ai-browse.ts";
 import type { TrustedKey } from "@flowsmith/worker";
 import { enginePolicy } from "@flowsmith/engine";
 
@@ -107,6 +108,7 @@ export async function startApp(opts: {
   });
   await plugins.start();
   const ai = new Ai(store.plugins, store.ai, opts.box, opts.ai ?? {});
+  const aiBrowse = new AiBrowse();
   // ★워커에도 서버의 실행 정책을 그대로 — 커스텀 코드 · HTTP 주소 지킴이
   const workers = new WorkerHub(store, opts.worker, { filesDir: opts.filesDir ?? null, plugins, policy: () => ({ customCode: enginePolicy.customCode, httpGuard: enginePolicy.httpGuard !== null, httpDeny: opts.httpDeny ?? [] }) });
   plugins.onChange(() => workers.pluginsChanged());
@@ -131,7 +133,7 @@ export async function startApp(opts: {
   runs.onBreakage = (flowId, version) => { try { monitor.probe(flowId, version ?? "draft", "run"); } catch { /* 초안이 틀려 있으면 점검하지 않는다 */ } };
   if (opts.monitor !== false) monitor.start();
   const auth = new Auth(store, opts.auth ?? { enabled: false });
-  const server = createApi({ store, secrets, runs, monitor, notifier, auth, workers, suites, tls: opts.tls ?? null, staticDir: opts.staticDir ?? null, extensions: registry, plugins, ai, files: opts.filesDir ? new Files(opts.filesDir) : null });
+  const server = createApi({ store, secrets, runs, monitor, notifier, auth, workers, suites, tls: opts.tls ?? null, staticDir: opts.staticDir ?? null, extensions: registry, plugins, ai, aiBrowse, files: opts.filesDir ? new Files(opts.filesDir) : null });
   // WebSocket 길 — 한 곳에서 받아 나눈다(맞는 길이 없으면 404)
   const upgrades = new Upgrades(server);
   // 지갑 브라우저 녹화 — 서버 안 워커가 창을 띄울 수 있으면(capabilities에 wallet) 그 워커가 연다
@@ -163,6 +165,7 @@ export async function startApp(opts: {
       await monitor.stop();
       await live.close();
       await screens.close();
+      await aiBrowse.closeAll();
       server.closeAllConnections();
       await new Promise<void>((r) => server.close(() => r()));
       await runs.drain();

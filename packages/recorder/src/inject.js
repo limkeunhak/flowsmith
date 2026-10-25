@@ -196,6 +196,63 @@ function relayRecorder(opts) {
     return { rowsCss: cssPath(body) + " > tr", columns, count: rows.length, label: caption || "표" };
   }
 
+  /**
+   * **화면 요약**(AI가 사이트를 본다 · PLAN §42-8) — 보이는 요소들(누를 것 · 넣을 칸 · 읽을 글자 · 표)을 위치 후보와 함께.
+   * 표의 몸통 행은 둘째 줄까지만(목록이 길면 요약이 커진다 — 표 전체는 table 하나로) · 넣은 값 · 비밀번호는 보내지 않는다
+   */
+  window.__relaySnapshot = (max) => {
+    const limit = max || 160;
+    const out = [];
+    const visible = (el) => { const r = el.getBoundingClientRect(); if (r.width < 1 || r.height < 1) return false; const s = getComputedStyle(el); return s.visibility !== "hidden" && s.display !== "none" && s.opacity !== "0"; };
+    const deepRow = (el) => { const tr = el.closest && el.closest("tbody tr"); if (!tr) return false; return Array.from(tr.parentElement.children).indexOf(tr) >= 2; };
+    const INTERACTIVE = "a[href], button, input:not([type=hidden]), select, textarea, summary, [role=button], [role=link], [role=tab], [role=checkbox], [role=radio], [role=menuitem], [role=combobox], [role=textbox]";
+    const kindOf = (el) => {
+      const role = roleOf(el);
+      if (el.tagName === "SELECT" || role === "combobox" || role === "listbox") return "select";
+      if (role === "checkbox" || role === "radio") return role;
+      if (role === "textbox" || role === "searchbox" || role === "spinbutton" || el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && !["button", "submit", "reset", "image"].includes((el.type || "").toLowerCase()))) return "input";
+      if (role === "link") return "link";
+      return "button";
+    };
+    const seen = new Set();
+    const push = (el, kind) => {
+      if (out.length >= limit || seen.has(el)) return;
+      seen.add(el);
+      const d = describe(el);
+      const item = { token: d.token, kind, label: d.label, candidates: d.candidates, fingerprint: d.fingerprint, tag: d.tag, type: d.type };
+      if (kind === "select") item.options = Array.from(el.options || []).slice(0, 15).map((o) => norm(o.textContent));
+      if (kind === "text") item.text = textOf(el);
+      out.push(item);
+    };
+    // 표 — 몸통 행이 둘 이상인 것
+    for (const table of Array.from(document.querySelectorAll("table"))) {
+      if (out.length >= limit) break;
+      const body = table.tBodies && table.tBodies[0];
+      const first = body && Array.from(body.children).find((r) => r.tagName === "TR");
+      const cell = first && first.querySelector("td, th");
+      if (!cell || !visible(table)) continue;
+      const t = tableOf(cell);
+      if (!t) continue;
+      const near = table.previousElementSibling && /^H[1-6]$/.test(table.previousElementSibling.tagName) ? norm(table.previousElementSibling.textContent) : "";
+      out.push({ token: mark(table), kind: "table", label: t.label !== "표" ? t.label : near || "표", table: t });
+    }
+    // 누를 것 · 넣을 칸 · 고를 것
+    for (const el of Array.from(document.querySelectorAll(INTERACTIVE))) {
+      if (out.length >= limit) break;
+      if (!visible(el) || deepRow(el) || el.closest("[aria-hidden=true]")) continue;
+      push(el, kindOf(el));
+    }
+    // 읽을 글자 — 자식이 없는 짧은 글(제목 · 값). 표 몸통은 표로
+    for (const el of Array.from(document.body.querySelectorAll("*"))) {
+      if (out.length >= limit) break;
+      if (el.children.length || el.closest("tbody, script, style, noscript, button, a, select, option, textarea")) continue;
+      const t = textOf(el);
+      if (!t || t.length > 80 || !visible(el)) continue;
+      push(el, "text");
+    }
+    return { url: location.href, title: document.title, items: out };
+  };
+
   /** 표의 행 안을 눌렀으면 — 「행 고르기」로 바꿀 수 있게 행 · 칸 · 누른 것을 알린다 */
   function rowOf(el) {
     const t = tableOf(el);

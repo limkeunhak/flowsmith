@@ -15,8 +15,12 @@ export interface SpecContext {
   extensions: ExtensionMeta[];
   /** 다른 워크플로우 실행 노드가 부를 수 있는 것 */
   flows: { id: string; name: string }[];
-  /** 다시 쓸 수 있는 요소(ai/refs.ts) — 같은 사이트의 녹화 · AI가 본 화면 */
+  /** 다시 쓸 수 있는 요소(ai/refs.ts) — 같은 사이트의 녹화 */
   refs?: RefElement[];
+  /** 앞 말에서 본 화면의 요소(p …) */
+  pageRefs?: RefElement[];
+  /** 사이트를 볼 수 있나(open_page · look_page — 관리자가 켰을 때만) */
+  browse?: boolean;
 }
 
 const GUIDE = `
@@ -72,10 +76,15 @@ export function systemPrompt(ctx: SpecContext): string {
   const now = ctx.draft
     ? `## 지금 고치는 워크플로우(JSON)\n${JSON.stringify(compact(ctx.draft))}`
     : "## 지금\n새 워크플로우를 만듭니다.";
-  const refs = ctx.refs?.length
-    ? `## 다시 쓸 수 있는 요소(from으로 — 이미 녹화해 검증된 것)\n${refLines(ctx.refs)}`
-    : "## 다시 쓸 수 있는 요소\n(없음 — 웹페이지 동작은 이름만 붙인 빈 자리로)";
-  return `${GUIDE}\n\n${nodeGuide()}\n\n${exampleGuide()}\n\n## 이 서버의 확장\n${exts}\n\n## 다른 워크플로우(flowCall이 부를 수 있는 것)\n${flows}\n\n${refs}\n\n${now}`;
+  const all = [...(ctx.refs ?? []), ...(ctx.pageRefs ?? [])];
+  const refs = all.length
+    ? `## 다시 쓸 수 있는 요소(from으로 — 이미 녹화했거나 화면에서 하나로 확인한 것)\n${refLines(all)}`
+    : "## 다시 쓸 수 있는 요소\n(아직 없음 — 웹페이지 동작은 이름만 붙인 빈 자리로)";
+  const site = ctx.browse
+    ? "## 사이트 보기(쓸 수 있음)\n사이트 주소를 알면 **먼저 open_page로 열어** 화면의 요소(p1 …)를 보고, 동작에 from으로 씁니다. 화면이 바뀌면 look_page. " +
+      "서버의 새 브라우저라 **로그인하지 않은 화면**만 보입니다 — 로그인 페이지는 볼 수 있지만 그 뒤 화면의 동작은 이름만 붙인 빈 자리로 둡니다. 주소를 모르면 지어내지 말고 묻습니다."
+    : "## 사이트 보기\n(관리자가 켜지 않았습니다 — 사이트를 열어 볼 수 없습니다)";
+  return `${GUIDE}\n\n${nodeGuide()}\n\n${exampleGuide()}\n\n## 이 서버의 확장\n${exts}\n\n## 다른 워크플로우(flowCall이 부를 수 있는 것)\n${flows}\n\n${site}\n\n${refs}\n\n${now}`;
 }
 
 /** 모델에 보일 초안 — 웹 동작의 요소(선택자 · 지문)는 빼고 이름만(크기를 줄이고, 바꾸지 말 것을 바꾸지 않게) */
@@ -92,8 +101,10 @@ export function compact(f: Flow): unknown {
   };
 }
 
-/** 모델이 부르는 도구 — 하나뿐 */
-export const TOOLS = [{
+export interface Tool { name: string; description: string; input_schema: Record<string, unknown> }
+
+/** 모델이 부르는 도구 — 제안 하나 · 사이트 보기(관리자가 켰을 때) 둘 */
+export const TOOLS: Tool[] = [{
   name: "propose_flow",
   description: "워크플로우 전체를 제안합니다. 화면이 검문소로 확인해 문제가 있으면 돌려줍니다 — 고쳐서 다시 부르세요. 받아들여지면 사람이 «바뀐 것»을 보고 적용합니다.",
   input_schema: {
@@ -104,4 +115,9 @@ export const TOOLS = [{
     },
     required: ["flow", "summary"],
   },
-}] as const;
+}];
+export const BROWSE_TOOLS: Tool[] = [
+  { name: "open_page", description: "사이트 주소를 열어 화면 요약(누를 것 · 넣을 칸 · 고를 것 · 읽을 글자 · 표 — 요소마다 ref p…)을 받습니다. 로그인하지 않은 새 브라우저입니다.", input_schema: { type: "object", properties: { url: { type: "string", description: "http(s) 주소" } }, required: ["url"] } },
+  { name: "look_page", description: "지금 연 화면을 다시 요약합니다.", input_schema: { type: "object", properties: {} } },
+];
+export const toolsFor = (browse: boolean): Tool[] => (browse ? [...TOOLS, ...BROWSE_TOOLS] : TOOLS);

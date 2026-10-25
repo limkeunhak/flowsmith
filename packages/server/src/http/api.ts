@@ -18,6 +18,7 @@
  * WebSocket은 따로: /api/live(녹화 — live/recorder-hub.ts) · /api/runs/:id/screen(실행 화면 — live/run-screens.ts) ·
  * /api/workers/connect(워커 프로그램 — run/worker-hub.ts, 워커 토큰으로).
  */
+import type { AiBrowse } from "../live/ai-browse.ts";
 import type { Server } from "node:http";
 import type { ExtensionRegistry } from "@flowsmith/engine";
 import type { Store } from "../storage/store.ts";
@@ -69,6 +70,8 @@ export interface ApiDeps {
   plugins: Plugins;
   /** AI — 키를 쥐고 모델을 대신 부른다(run/ai.ts) */
   ai: Ai;
+  /** AI가 사이트를 본다(live/ai-browse.ts) — 관리자가 켜야 연다 */
+  aiBrowse: AiBrowse;
 }
 
 /** 모든 길 — 서버와 OpenAPI 명세가 같은 목록을 본다 */

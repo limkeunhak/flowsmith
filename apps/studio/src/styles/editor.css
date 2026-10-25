@@ -527,3 +527,5 @@ code.token { background: var(--sunken); border: 1px solid var(--border); border-
   padding: 6px 8px 6px 14px; border: 1px solid var(--accent-line); border-radius: 999px; background: var(--panel); box-shadow: var(--shadow); font-size: var(--fs-13); white-space: nowrap; }
 .ai-preview-bar .ai-dock-spark { color: var(--accent); }
 @media (max-width: 600px) { .ai-dock { left: 8px; right: 8px; width: auto; bottom: 84px; } .ai-fab { right: 16px; bottom: 16px; } }
+/* AI가 본 화면(사이트 보기) — «AI가 한 일»에 작게 */
+.ai-shot { display: block; margin-top: 6px; max-width: 100%; width: 260px; border: 1px solid var(--border); border-radius: 6px; }

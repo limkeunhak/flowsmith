@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { InProcessWorker } from "@flowsmith/worker";
+import { startTestSite, type TestSite } from "@flowsmith/testsite";
 import { startApp, type App } from "../src/app.ts";
 import { generateKey, SecretBox } from "../src/storage/secret-box.ts";
 import { caller } from "./helpers.ts";
@@ -177,4 +178,28 @@ describe("AI — 같은 사이트의 워크플로우(GET /api/ai/site-flows)", (
     expect(r.body.flows[0].nodes[0].actions[0]).toMatchObject({ kind: "read", output: "status", target: { locators: [{ value: "#order-status" }] } });
     expect((await call("GET", "/api/ai/site-flows?hosts=")).body).toEqual({ flows: [] });
   });
+});
+
+describe("AI가 사이트를 본다(POST /api/ai/browse)", () => {
+  let site: TestSite;
+  beforeAll(async () => { site = await startTestSite(0); });
+  afterAll(async () => { await site?.close(); });
+  it("★관리자가 켜기 전에는 열지 않는다 · 켜면 화면 요약(요소 · 위치) · 다시 보기 · 닫기", async () => {
+    expect((await call("GET", "/api/ai")).body.siteView).toBe(false);
+    const off = await call("POST", "/api/ai/browse", { url: `${site.url}/login` });
+    expect(off.status).toBe(403);
+    expect(off.body.error).toMatch(/관리자가 켜지 않았습니다/);
+    expect((await call("PUT", "/api/ai", { siteView: true })).body.siteView).toBe(true);
+    expect((await call("POST", "/api/ai/browse", { url: "file:///etc/passwd" })).status).toBe(400);
+    const r = await call("POST", "/api/ai/browse", { url: `${site.url}/login` });
+    expect(r.status).toBe(200);
+    expect(r.body.snapshot.url).toContain("/login");
+    expect(r.body.snapshot.elements.some((e: { kind: string }) => e.kind === "button")).toBe(true);
+    expect(r.body.shot.length).toBeGreaterThan(1000);
+    const again = await call("POST", `/api/ai/browse/${r.body.id}/look`);
+    expect(again.body.snapshot.elements.length).toBe(r.body.snapshot.elements.length);
+    expect((await call("DELETE", `/api/ai/browse/${r.body.id}`)).status).toBe(204);
+    expect((await call("POST", `/api/ai/browse/${r.body.id}/look`)).status).toBe(404);
+    await call("PUT", "/api/ai", { siteView: false });
+  }, 60_000);
 });

@@ -36,6 +36,8 @@ const GEMINI = "https://generativelanguage.googleapis.com/v1beta/models";
 const KEY_SETTING = "ai_key";
 const MODEL_SETTING = "ai_model";
 const ENABLED_SETTING = "ai_enabled";
+/** AI가 사이트 화면을 본다(PLAN §42-8) — 페이지의 글자가 AI 회사로 간다 · ★기본 끔(관리자가 켠다) */
+const SITE_VIEW_SETTING = "ai_site_view";
 const AAD = "flowsmith:ai-key";
 /** 한 번에 보내는 크기 · 받는 글 · 기다리는 시간 · 사람마다 1분에 몇 번 */
 const MAX_REQUEST_BYTES = 600 * 1024;
@@ -58,6 +60,8 @@ export interface AiStatus {
   ready: boolean;
   model: string; models: readonly string[]; key: "env" | "screen" | null;
   providers: Record<AiProvider, AiProviderStatus>;
+  /** AI가 사이트 화면을 볼 수 있나(관리자 설정 · 기본 끔) — 페이지의 글자가 AI 회사로 간다 */
+  siteView: boolean;
 }
 
 export interface AiOptions {
@@ -108,6 +112,7 @@ export class Ai {
 
   get model(): string { const m = this.#settings.getSetting(MODEL_SETTING); return m && AI_PROVIDERS.anthropic.models.includes(m) ? m : AI_DEFAULT_MODEL; }
   get enabled(): boolean { return this.#settings.getSetting(ENABLED_SETTING) !== "off"; }
+  get siteView(): boolean { return this.#settings.getSetting(SITE_VIEW_SETTING) === "on"; }
 
   status(): AiStatus {
     const key = this.#o.envKey ? "env" : this.#settings.getSetting(KEY_SETTING) ? "screen" : null;
@@ -116,11 +121,16 @@ export class Ai {
     return {
       enabled: this.enabled, ready: this.enabled && this.#serverKey("anthropic") !== null, model: this.model, models: AI_MODELS, key,
       providers: { anthropic: info("anthropic", key, this.model), gemini: info("gemini", this.#o.envGeminiKey ? "env" : null, AI_PROVIDERS.gemini.default) },
+      siteView: this.siteView,
     };
   }
 
   /** 관리자 — (Claude) 서버 키(빈 글자면 지움) · 기본 모델 · 켜기/끄기 */
-  configure(p: { apiKey?: unknown; model?: unknown; enabled?: unknown }): AiStatus {
+  configure(p: { apiKey?: unknown; model?: unknown; enabled?: unknown; siteView?: unknown }): AiStatus {
+    if (p.siteView !== undefined) {
+      if (typeof p.siteView !== "boolean") throw new StoreError(400, "siteView는 참 · 거짓입니다");
+      this.#settings.setSetting(SITE_VIEW_SETTING, p.siteView ? "on" : null);
+    }
     if (p.apiKey !== undefined) {
       if (typeof p.apiKey !== "string") throw new StoreError(400, "apiKey는 글자입니다");
       const k = p.apiKey.trim();

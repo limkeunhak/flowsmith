@@ -58,7 +58,7 @@ export type SuiteSummary = Server.Suite & { lastRun: Server.SuiteRun | null; run
 export interface SuiteDetail { suite: Server.Suite; runs: Server.SuiteRun[]; running: boolean }
 /** AI 도우미 — 켜 둠 · 키가 있나(값은 오지 않는다) · 모델 */
 export interface AiProviderStatus { label: string; models: string[]; model: string; keyHint: string; serverKey: "env" | "screen" | null }
-export interface AiStatus { enabled: boolean; ready: boolean; model: string; models: string[]; key: "env" | "screen" | null; providers: Record<"anthropic" | "gemini", AiProviderStatus> }
+export interface AiStatus { enabled: boolean; ready: boolean; model: string; models: string[]; key: "env" | "screen" | null; providers: Record<"anthropic" | "gemini", AiProviderStatus>; /** AI가 사이트 화면을 본다(관리자 설정 · 기본 끔) */ siteView: boolean }
 /** 확장 플러그인 — «확장» 화면 */
 export type PluginsView = Server.PluginsView;
 export type PluginView = Server.PluginView;
@@ -145,8 +145,12 @@ export const api = {
   listPlugins: () => call<PluginsView>("GET", "/plugins"),
   /** 같은 사이트를 다루는 워크플로우의 웹페이지 노드 — AI가 녹화해 둔 요소를 다시 쓴다(ai/refs.ts) */
   aiSiteFlows: (hosts: string[]) => call<{ flows: import("./ai/refs.ts").SiteFlow[] }>("GET", `/ai/site-flows?hosts=${encodeURIComponent(hosts.join(","))}`),
+  /** AI가 사이트를 본다(관리자가 켰을 때) — 열기 · 다시 보기 · 닫기 */
+  aiBrowseOpen: (url: string) => call<{ id: string; snapshot: { url: string; title: string; elements: import("./ai/refs.ts").PageElement[] }; shot: string }>("POST", "/ai/browse", { url }),
+  aiBrowseLook: (id: string) => call<{ id: string; snapshot: { url: string; title: string; elements: import("./ai/refs.ts").PageElement[] }; shot: string }>("POST", `/ai/browse/${encodeURIComponent(id)}/look`),
+  aiBrowseClose: (id: string) => call<null>("DELETE", `/ai/browse/${encodeURIComponent(id)}`),
   aiStatus: () => call<AiStatus>("GET", "/ai"),
-  aiConfigure: (p: { apiKey?: string; model?: string; enabled?: boolean }) => call<AiStatus>("PUT", "/ai", p),
+  aiConfigure: (p: { apiKey?: string; model?: string; enabled?: boolean; siteView?: boolean }) => call<AiStatus>("PUT", "/ai", p),
   /** 모델에 묻기 — 서버가 키를 쥐고 대신 부른다 */
   /** ★내 AI · 키 · 모델(«내 설정» — 이 브라우저에만)을 머리글로 싣는다 · 서버는 저장하지 않고 넘긴다(Gemini는 서버가 바꿔 부른다) */
   aiMessages: async (req: { system: string; messages: unknown[]; tools?: readonly unknown[]; flowId: string | null }): Promise<unknown> => {

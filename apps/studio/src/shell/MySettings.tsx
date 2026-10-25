@@ -63,6 +63,12 @@ export function MySettings() {
         <h2>AI 도우미</h2>
         <span className="small muted">오른쪽 아래 «✦ AI» 창이 고른 AI를 부릅니다(AI · 모델은 그 창 위쪽에서도 바꿀 수 있습니다). 키는 <b>이 브라우저에만</b> 저장되고, AI를 부를 때만 서버를 거쳐 그 회사에 전달됩니다(서버는 저장하지 않습니다).</span>
         {status && !status.enabled && <div className="banner warn small">관리자가 AI를 꺼 두었습니다 — 키를 넣어도 쓸 수 없습니다.</div>}
+        {status && (me.can("admin") ? (
+          <label className="check small" title="AI가 사이트 주소를 서버의 새 브라우저로 열어 화면 요약(누를 것 · 칸 · 글자 · 표)을 보고, 그 요소로 웹페이지 동작을 채웁니다">
+            <input type="checkbox" checked={status.siteView} onChange={(e) => void api.aiConfigure({ siteView: e.target.checked }).then(setStatus, () => undefined)} />
+            AI가 사이트 화면을 본다(관리자) — ★열어 본 페이지의 글자가 AI 회사({AI_KEY_HINT[provider].label})로 갑니다. 로그인하지 않은 화면만 봅니다
+          </label>
+        ) : <span className="small muted">AI가 사이트 화면을 보기: {status.siteView ? "켜짐" : "꺼짐(관리자가 켭니다)"}</span>)}
 
         <div className="field"><span>쓸 AI</span>
           <div className="seg-tabs ai-provider" role="radiogroup" aria-label="쓸 AI">
