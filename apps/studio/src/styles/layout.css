@@ -88,6 +88,14 @@
 .exec-detail { display: flex; flex-direction: column; gap: 12px; padding: 16px 20px 24px; }
 .exec-head { display: flex; align-items: center; gap: 10px; }
 .exec-head h2 { font-size: 16px; }
+/* 다음 할 일 — 실행 머리 바로 아래 오른쪽(어느 단계를 골라 두었든) */
+.exec-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: -4px; }
+.split-btn { display: inline-flex; }
+.split-btn > button:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.split-btn .split-more { border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: 1px solid color-mix(in srgb, var(--on-primary, #fff) 25%, transparent); padding-left: 6px; padding-right: 6px; }
+.split-btn .menu { min-width: 300px; }
+.resume-confirm { display: flex; align-items: flex-start; gap: 10px; }
+.resume-row { padding: 8px 10px; border: 1px dashed var(--border); border-radius: var(--radius); }
 .exec-canvas { position: relative; height: 300px; flex: none; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
 .exec-canvas .canvas { height: 100%; }
 .exec-canvas-note { position: absolute; left: 10px; bottom: 8px; font-size: 12px; color: var(--muted); background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; }
