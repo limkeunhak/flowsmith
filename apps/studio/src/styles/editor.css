@@ -93,7 +93,10 @@
 .port { position: absolute; right: 0; width: 0; height: 0; }
 .port-label { position: absolute; left: 12px; top: -21px; font-size: 12px; color: var(--muted); white-space: nowrap; background: var(--canvas); padding: 0 4px; border-radius: 4px; pointer-events: none; }
 .port-label.end { color: var(--faint); }
-.port-add { position: absolute; left: 6px; top: -10px; display: flex; align-items: center; }
+/* ★«+»의 짧은 선이 출력 점과 겹친다 — 선은 마우스를 받지 않고(점에서 끌어 잇기가 시작되게) 단추만 받는다. 점은 그 위에 */
+.port-add { position: absolute; left: 6px; top: -10px; display: flex; align-items: center; pointer-events: none; }
+.port-add button { pointer-events: auto; }
+.relay-node .react-flow__handle { z-index: 2; }
 .port-add.with-label { top: -10px; }
 .port-add .stub { width: 26px; height: 2px; background: var(--edge); }
 .port-add button { width: 20px; height: 20px; padding: 0; justify-content: center; border-radius: 5px; border: 1.5px solid var(--edge); background: var(--panel); color: var(--muted); }
