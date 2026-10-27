@@ -165,8 +165,10 @@ export type WebAction =
    * 누를 만한 것(core approvalDecision)만 누르며, 끝났다는 표시(done — 로그인 뒤에만 보이는 것)가 오면 멈춘다.
    *   timeoutMs 기다리는 시간(ActionBase) — 없으면 2분. 넘으면 실패
    * 처음부터 끝 표시가 맞으면(이미 연결됨) 아무것도 누르지 않는다. 점검 실행은 이 동작 앞에서 멈춘다
+   *   atLeast  적어도 몇 개를 승인해야 끝으로 치나(1~10) — 구매 · 등록처럼 **지갑이 꼭 불려야 하는** 자리.
+   *            누른 단추가 처리 중 모양으로 바뀌면 «사라짐» 끝 표시가 지갑 요청 전에 맞아 버린다(그대로 끝내면 요청이 버려진다)
    */
-  | (ActionBase & { kind: "walletApprove"; done: HumanDone });
+  | (ActionBase & { kind: "walletApprove"; done: HumanDone; atLeast?: number });
 
 export const ACTION_KINDS = ["goto", "click", "fill", "select", "check", "press", "wait", "read", "readTable", "closeWindow", "switchWindow", "recheck", "pickRow", "assert", "human", "walletApprove"] as const;
 /** MetaMask 승인을 기다리는 시간 — 기본 2분 · 10초~10분 */

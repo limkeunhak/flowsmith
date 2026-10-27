@@ -226,9 +226,9 @@ export async function runFlow(flow: Flow, opts: RunOptions = {}): Promise<RunRes
   const prepareChain = async (page: Page) => { if (!chainReady) { await ensureChain(walletBase(page)); chainReady = true; } };
   const walletHook = mm ? {
     prepare: prepareChain,
-    approve: async (page: Page, done: () => Promise<boolean>, timeoutMs: number) => {
+    approve: async (page: Page, done: () => Promise<boolean>, timeoutMs: number, atLeast?: number) => {
       await prepareChain(page);   // «앞 페이지에서 이어서»로만 시작했으면 여기서
-      return (await approveUntil({ ...walletBase(page), done, timeoutMs })).length;
+      return (await approveUntil({ ...walletBase(page), done, timeoutMs, ...(atLeast ? { atLeast } : {}) })).length;
     },
   } : null;
   // 테스트 지갑(페이지에 넣는 것) — 우리가 띄운 브라우저에만(core wallet.ts)
