@@ -3,6 +3,7 @@
  * 왼쪽은 목차와 찾기, 가운데는 문서, 오른쪽은 «이 페이지에서»(넓은 화면). 문서는 content/*.md(앱에 함께 묶는다).
  */
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTitle } from "../shell/title.ts";
 import { IconSearch } from "../icons.tsx";
 import { plainText, renderMarkdown } from "./markdown.tsx";
 import start from "./content/start.md?raw";
@@ -51,6 +52,7 @@ const GROUPS = [...new Set(PAGES.map((p) => p.group))];
 export function Docs({ slug }: { slug: string | null }) {
   const page = PAGES.find((p) => p.slug === slug) ?? PAGES[0]!;
   const doc = useMemo(() => renderMarkdown(page.src), [page]);
+  useTitle(`${titleOf(page.src)} — 가이드`);
   const [q, setQ] = useState("");
   const body = useRef<HTMLElement>(null);
   const index = useMemo(() => PAGES.map((p) => ({ ...p, title: titleOf(p.src), text: plainText(p.src) })), []);

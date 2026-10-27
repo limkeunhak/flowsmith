@@ -4,13 +4,14 @@
  * 오른쪽: API · 가이드 · 화면 색(눌러 바꾸기) · 내 설정 · 나(역할 · 비밀번호 · 로그아웃).
  * ★색은 styles/tokens.css의 --side-*(숯) — 모양은 styles/workbench.css의 .appbar.
  */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BrandMark, IconGear, IconMonitor, IconMoon, IconSun, IconX } from "../icons.tsx";
 import { applyTheme, readTheme, type Theme } from "./theme.ts";
 import { ROLE_LABEL, type Me } from "./me.ts";
 import { ChangePassword } from "./AuthGate.tsx";
 
-export type Page = "home" | "templates" | "users" | "teams" | "workers" | "plugins" | "me" | "dashboard" | "docs" | "api" | "flow" | "tests";
+/** none — 없는 화면(어느 길도 켜지 않는다) */
+export type Page = "none" | "home" | "templates" | "users" | "teams" | "workers" | "plugins" | "me" | "dashboard" | "docs" | "api" | "flow" | "tests";
 
 const THEMES: { t: Theme; Icon: typeof IconSun; label: string }[] = [
   { t: "light", Icon: IconSun, label: "밝게" }, { t: "system", Icon: IconMonitor, label: "시스템" }, { t: "dark", Icon: IconMoon, label: "어둡게" },
@@ -22,16 +23,19 @@ export function AppBar({ page, me, onLogout }: { page: Page; me: Me; onLogout: (
   const [theme, setTheme] = useState<Theme>(readTheme);
   const now = THEMES.find((x) => x.t === theme) ?? THEMES[1]!;
   const cycle = () => { const next = THEMES[(THEMES.indexOf(now) + 1) % THEMES.length]!.t; setTheme(next); applyTheme(next); };
-  const link = (href: string, on: boolean, label: string) => (
-    <a href={href} className={on ? "on" : undefined} aria-current={on ? "page" : undefined}>{label}</a>
+  const link = (href: string, on: boolean, label: string, cls?: string) => (
+    <a href={href} className={[on ? "on" : "", cls ?? ""].join(" ").trim() || undefined} aria-current={on ? "page" : undefined}>{label}</a>
   );
+  // 좁은 화면 — 길이 가로로 흐를 때 지금 길이 보이게
+  const nav = useRef<HTMLElement>(null);
+  useEffect(() => { nav.current?.querySelector(".on")?.scrollIntoView({ block: "nearest", inline: "center" }); }, [page]);
   return (
     <header className="appbar">
       <a href="#/" className="appbar-brand" title="Flowsmith">
         <span className="brand-tile"><BrandMark size={28} /></span>
         <span>Flowsmith</span>
       </a>
-      <nav className="appbar-nav" aria-label="Flowsmith">
+      <nav className="appbar-nav" aria-label="Flowsmith" ref={nav}>
         {link("#/", page === "home" || page === "flow", "워크플로우")}
         {link("#/dashboard", page === "dashboard", "대시보드")}
         {link("#/tests", page === "tests", "테스트")}
@@ -40,6 +44,8 @@ export function AppBar({ page, me, onLogout }: { page: Page; me: Me; onLogout: (
         {me.can("editor") && link("#/plugins", page === "plugins", "확장")}
         {me.can("admin") && me.auth && link("#/users", page === "users", "사람")}
         {me.can("admin") && me.auth && link("#/teams", page === "teams", "팀")}
+        {link("#/api", page === "api", "API", "narrow-only")}
+        {link("#/docs", page === "docs", "가이드", "narrow-only")}
       </nav>
       <span className="grow" />
       <nav className="appbar-side" aria-label="도움 · 설정">
