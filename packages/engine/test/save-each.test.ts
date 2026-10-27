@@ -195,6 +195,7 @@ describe("화면 캡처 · HTML 추출", () => {
     expect(page).toContain('<img src="/logo.png">');
     const card = readFileSync(join(root, "uid5", "html", "카드.html"), "utf8");
     expect(card).toMatch(/^<!doctype html>/);
+    expect(card).toContain("<title>카드</title>");
     expect(card).toContain('<div id="card"><b id="name">홍길동</b> 고객</div>');
     expect(card).not.toContain("머리말");
     expect((r.output as Record<string, string>)["cardHtml"]).toBe('<div id="card"><b id="name">홍길동</b> 고객</div>');

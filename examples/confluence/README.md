@@ -23,3 +23,20 @@
 
 ★로그인 완료는 주소로 본다(`confluence.nexon.com`의 로그인 화면이 아닌 곳) — 다른 Confluence에 쓰면 로그인 노드의 «끝났다는 표시»를 바꾼다.
 ★제목의 `/`는 폴더가 되지 않게 `_`로 · 파일 이름에 못 쓰는 글자(`: ? *` …)도 `_`로 바꾼다.
+
+## HTML로 — `confluence-html.json`
+
+PDF와 같은 길(로그인 → 페이지 목록 → 목록 CSV)에서, 페이지마다 **열어서 HTML을 뽑고** 끝에 **zip 하나로 묶는다**.
+
+```
+로그인(사람) → 페이지 목록(REST) → 목록 CSV → 페이지마다 HTML(행마다 반복 · 화면 HTML 추출) → 결과 CSV → zip으로 묶기 → 판정
+```
+
+| 실행 입력 | 뜻 |
+|---|---|
+| `area` | `content` 본문만(`#main-content` — 메뉴 · 트리 없이 · 제목은 `<title>`로) · `page` 페이지 전체 |
+| `zipName` | 결과 zip 이름(기본 `confluence-html` → `confluence-html.zip`) |
+
+결과: `html/<트리 경로>.html` · `pages.csv` · `result.csv` · **`confluence-html.zip`**(html 폴더 전체 — 노드 «zip으로 묶기»의 설정에서 바로 내려받는다).
+HTML에는 원래 주소(`<base>`)가 들어 있어 열면 그림 · 링크가 위키를 가리킨다 — ★그림은 위키에 로그인한 브라우저에서만 보인다(파일로 따로 받지 않는다).
+권한이 없는 페이지는 본문이 없어 그 행만 실패로 남는다. 다시 돌리면 받은 HTML은 건너뛴다(페이지는 연 뒤에 건너뛴다).

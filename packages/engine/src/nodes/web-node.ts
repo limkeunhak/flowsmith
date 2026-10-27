@@ -229,7 +229,7 @@ async function saveFile(
       if ((await el.count()) === 0) throw refuse(`HTML을 뽑을 요소 «${h.target!.label}»가 없습니다 — ${describeLocator(h.target!.locators[0]!)}`);
       html = await el.evaluate((e: any) => e.outerHTML as string);
     } else html = await page.content();
-    bytes = Buffer.from(standaloneHtml(html, page.url(), h.area === "element"), "utf8");
+    bytes = Buffer.from(standaloneHtml(html, page.url(), h.area === "element", await page.title().catch(() => "")), "utf8");
     how = h.area === "element" ? `«${h.target!.label}»의 HTML` : "페이지 HTML";
   } else {
     bytes = await page.pdf({ printBackground: true, format: "A4", timeout: timeoutMs } as Parameters<Page["pdf"]>[0]).catch((e: Error) => {
@@ -248,11 +248,13 @@ async function saveFile(
 
 /**
  * 뽑은 HTML을 따로 열어도 보이게 — 원래 주소를 <base>로(상대 경로의 그림 · 스타일 · 링크) · utf-8.
- * 요소 하나면 문서로 감싼다. 이미 <base>가 있으면 두고, 원본 HTML은 바꾸지 않는다(스크립트도 그대로)
+ * 요소 하나면 문서로 감싸고 원래 페이지의 제목을 <title>로 붙인다(본문에는 제목이 없는 사이트가 많다 — Confluence #main-content).
+ * 이미 <base>가 있으면 두고, 원본 HTML은 바꾸지 않는다(스크립트도 그대로)
  */
-export function standaloneHtml(html: string, url: string, fragment: boolean): string {
+export function standaloneHtml(html: string, url: string, fragment: boolean, title = ""): string {
   const head = `<meta charset="utf-8"><base href="${url.replace(/"/g, "&quot;")}">`;
-  if (fragment) return `<!doctype html>\n<html><head>${head}</head><body>\n${html}\n</body></html>\n`;
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  if (fragment) return `<!doctype html>\n<html><head>${head}${title ? `<title>${esc(title)}</title>` : ""}</head><body>\n${html}\n</body></html>\n`;
   if (/<base[\s>]/iu.test(html)) return html;
   if (/<head[^>]*>/iu.test(html)) return html.replace(/<head[^>]*>/iu, (m) => `${m}${head}`);
   return `${head}\n${html}`;

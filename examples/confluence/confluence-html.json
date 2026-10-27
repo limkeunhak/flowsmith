@@ -1,0 +1,410 @@
+{
+  "schemaVersion": 1,
+  "id": "confluence-html",
+  "name": "Confluence · 페이지 트리를 HTML로(zip)",
+  "description": "로그인(사람) → REST로 시작 페이지 아래 모든 페이지 목록 → 페이지마다 열어 본문 HTML을 트리 경로대로 저장 → 목록 · 결과 CSV → html 폴더를 zip 하나로. 다시 돌리면 받은 HTML은 건너뛴다",
+  "params": [
+    {
+      "name": "base",
+      "label": "Confluence 주소",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "https://confluence.nexon.com",
+      "help": ""
+    },
+    {
+      "name": "rootPath",
+      "label": "시작 페이지(트리 경로)",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "05. 팀 별 공간 > 08. 플랫폼개발 > [서비스파트]",
+      "help": "좌측 트리의 경로를 «>»로 — 끝 페이지와 그 아래 모두를 받는다"
+    },
+    {
+      "name": "spaceKey",
+      "label": "스페이스 키(같은 제목이 여럿이면)",
+      "required": false,
+      "type": "text",
+      "options": [],
+      "default": "",
+      "help": ""
+    },
+    {
+      "name": "area",
+      "label": "무엇을",
+      "required": true,
+      "type": "select",
+      "options": [
+        "content",
+        "page"
+      ],
+      "default": "content",
+      "help": "content: 본문만(#main-content — 메뉴 · 트리 없이) · page: 페이지 전체"
+    },
+    {
+      "name": "zipName",
+      "label": "zip 이름",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "confluence-html",
+      "help": ".zip은 붙여 준다"
+    }
+  ],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "browser": "launch",
+    "defaultTimeoutMs": 30000,
+    "runTimeoutMin": 600,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "login",
+      "type": "web",
+      "name": "로그인(사람)",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "{{ $params.base }}/login.action?os_destination=%2Findex.action"
+        },
+        "actions": [
+          {
+            "id": "h",
+            "kind": "human",
+            "risk": "safe",
+            "timeoutMs": 600000,
+            "optional": false,
+            "prompt": "Confluence에 로그인해 주세요 — 첫 화면(대시보드)이 보이면 이어 갑니다",
+            "appears": null,
+            "done": {
+              "kind": "url",
+              "pattern": "^https://confluence\\.nexon\\.com/(?!login\\.action)(?!.*os_destination)"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "tree",
+      "type": "custom",
+      "name": "페이지 목록(REST)",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "// 로그인한 브라우저의 쿠키로 Confluence REST를 부른다 — 트리를 화면에서 펼치지 않는다(접힌 가지 · 늦게 그려지는 트리를 놓치지 않게)\nconst base = String(ctx.params.base).replace(/\\/$/, '');\nconst get = async (path) => {\n  const r = await page.context().request.get(base + path, { timeout: 60000 });\n  if (!r.ok()) throw new Error(`${path} → HTTP ${r.status()}${r.status() === 401 ? ' — 로그인이 안 됐습니다' : ''}`);\n  return r.json();\n};\nconst norm = (s) => String(s).replace(/\\s+/g, ' ').trim();\n// 견줄 때는 너그럽게 — 전각 괄호 · 공백 · 대소문자 차이를 무시한다\nconst key = (s) => String(s).normalize('NFKC').replace(/\\s+/g, '').toLowerCase();\nconst names = String(ctx.params.rootPath).split('>').map(norm).filter(Boolean);\nconst leaf = names[names.length - 1];\nconst space = String(ctx.params.spaceKey || '').trim();\nconst inSpace = space ? ` and space=\"${space}\"` : '';\nconst q = (s) => s.replace(/\"/g, '\\\\\"');\nconst trail = (p) => [...(p.ancestors || []).map((a) => a.title), p.title].join(' > ');\nconst fits = (p) => key(p.title) === key(leaf) && names.slice(0, -1).every((n) => (p.ancestors || []).some((a) => key(a.title) === key(n)));\nconst tried = [];\nconst search = async (label, cql) => {\n  const res = await get(`/rest/api/content/search?cql=${encodeURIComponent(cql)}&expand=ancestors,space&limit=100`);\n  const hit = res.results.filter(fits);\n  tried.push(`${label} ${res.results.length}개 중 맞음 ${hit.length}${res.results.length ? ` (${res.results.slice(0, 5).map((p) => `${p.type}:${trail(p)}`).join(' | ')})` : ''}`);\n  ctx.log(`찾기 — ${tried[tried.length - 1]}`);\n  return hit;\n};\n// 1) 제목 그대로(페이지) 2) 제목 그대로(종류 무관 — 폴더 같은 것) 3) 글자 검색(괄호 · 기호 없이)\nlet match = await search('제목=(페이지)', `type=page and title=\"${q(leaf)}\"${inSpace}`);\nif (match.length === 0) match = await search('제목=(종류 무관)', `title=\"${q(leaf)}\"${inSpace}`);\nconst words = leaf.replace(/[\\[\\]()［］【】{}<>\"'~*?:\\\\/^!-]/g, ' ').trim();\nif (match.length === 0 && words) match = await search('글자 검색', `title~\"${q(words)}\"${inSpace}`);\n// 4) 트리를 이름으로 내려가기 — 맨 앞 이름을 찾고 하위 페이지에서 다음 이름을 차례로 고른다\nconst children = async (id) => {\n  const out = [];\n  for (let start = 0; ; start += 200) {\n    const res = await get(`/rest/api/content/${id}/child/page?limit=200&start=${start}`);\n    out.push(...res.results);\n    if (res.results.length < 200) break;\n  }\n  return out;\n};\nif (match.length === 0) {\n  const top = names[0];\n  const res = await get(`/rest/api/content/search?cql=${encodeURIComponent(`title=\"${q(top)}\"${inSpace}`)}&expand=ancestors,space&limit=100`);\n  const tops = res.results.filter((p) => key(p.title) === key(top));\n  tried.push(`트리 내려가기 — 맨 앞 «${top}» ${tops.length}개`);\n  for (const t of tops) {\n    let cur = [t];\n    for (const n of names.slice(1)) {\n      const next = [];\n      for (const c of cur) {\n        const kids = await children(c.id);\n        const hit = kids.filter((k) => key(k.title) === key(n));\n        if (hit.length === 0) tried.push(`«${c.title}» 아래에 «${n}» 없음 — 하위: ${kids.map((k) => k.title).slice(0, 15).join(' · ') || '없음'}`);\n        next.push(...hit.map((h) => ({ ...h, ancestors: [...(c.ancestors || []), { title: c.title }], space: t.space })));\n      }\n      cur = next;\n    }\n    match.push(...cur);\n  }\n  ctx.log(`찾기 — ${tried.slice(3).join(' / ')}`);\n}\nif (match.length !== 1) throw new Error(`«${ctx.params.rootPath}»에 맞는 페이지가 ${match.length}개입니다${match.length > 1 ? ` — ${match.map(trail).join(' | ')} (스페이스 키로 좁히세요)` : ''} — 찾아본 것: ${tried.join(' / ')}`);\nconst root = match[0];\n// 제목의 «/»는 폴더가 되지 않게 바꾼다\nconst seg = (t) => norm(t).replace(/\\//g, '_');\nconst pages = [];\nconst walk = async (id, title, path, depth) => {\n  pages.push({ id: String(id), title, path, depth });\n  for (const c of await children(id)) await walk(c.id, c.title, `${path}/${seg(c.title)}`, depth + 1);\n};\nawait walk(root.id, root.title, seg(root.title), 0);\nctx.log(`${trail(root)} 아래 ${pages.length}쪽`);\nreturn { pages, count: pages.length, rootId: String(root.id), space: root.space ? root.space.key : '' };\n",
+        "outputs": [
+          "pages",
+          "count",
+          "rootId",
+          "space"
+        ],
+        "usesPage": true,
+        "timeoutMs": 900000
+      }
+    },
+    {
+      "id": "list",
+      "type": "fileWrite",
+      "name": "목록 CSV",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "data": "{{ $node.tree.pages }}",
+        "target": {
+          "kind": "file",
+          "dir": "",
+          "name": "pages",
+          "format": "csv",
+          "mode": "overwrite",
+          "csv": {
+            "header": true,
+            "bom": true,
+            "columns": [
+              "id",
+              "depth",
+              "title",
+              "path"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "html",
+      "type": "web",
+      "name": "페이지마다 HTML",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "each": {
+          "items": "{{ $node.tree.pages }}",
+          "onError": "continue"
+        },
+        "actions": [
+          {
+            "risk": "safe",
+            "optional": false,
+            "id": "g",
+            "kind": "goto",
+            "timeoutMs": 60000,
+            "url": "{{ $params.base }}/pages/viewpage.action?pageId={{ $item.id }}"
+          },
+          {
+            "risk": "safe",
+            "optional": false,
+            "id": "v",
+            "kind": "wait",
+            "timeoutMs": 30000,
+            "wait": {
+              "kind": "visible",
+              "target": {
+                "label": "페이지 본문",
+                "locators": [
+                  {
+                    "kind": "css",
+                    "value": "#main-content"
+                  }
+                ],
+                "fingerprint": null,
+                "frames": [],
+                "verifiedAt": null
+              }
+            }
+          },
+          {
+            "risk": "safe",
+            "optional": false,
+            "id": "sc",
+            "kind": "save",
+            "timeoutMs": 60000,
+            "when": {
+              "left": "{{ $params.area }}",
+              "op": "eq",
+              "right": "content"
+            },
+            "source": "html",
+            "url": "",
+            "path": "html/{{ $item.path }}.html",
+            "output": "file",
+            "skipExisting": true,
+            "html": {
+              "area": "element",
+              "target": {
+                "label": "페이지 본문",
+                "locators": [
+                  {
+                    "kind": "css",
+                    "value": "#main-content"
+                  }
+                ],
+                "fingerprint": null,
+                "frames": [],
+                "verifiedAt": null
+              }
+            }
+          },
+          {
+            "risk": "safe",
+            "optional": false,
+            "id": "sp",
+            "kind": "save",
+            "timeoutMs": 60000,
+            "when": {
+              "left": "{{ $params.area }}",
+              "op": "eq",
+              "right": "page"
+            },
+            "source": "html",
+            "url": "",
+            "path": "html/{{ $item.path }}.html",
+            "output": null,
+            "skipExisting": true,
+            "html": {
+              "area": "page",
+              "target": null
+            }
+          },
+          {
+            "risk": "safe",
+            "optional": false,
+            "id": "p",
+            "kind": "wait",
+            "timeoutMs": null,
+            "wait": {
+              "kind": "fixed",
+              "ms": 300
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "result",
+      "type": "fileWrite",
+      "name": "결과 CSV",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "data": "{{ $node.html.rows }}",
+        "target": {
+          "kind": "file",
+          "dir": "",
+          "name": "result",
+          "format": "csv",
+          "mode": "overwrite",
+          "csv": {
+            "header": true,
+            "bom": true,
+            "columns": [
+              "id",
+              "title",
+              "path",
+              "ok",
+              "file",
+              "error"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "zip",
+      "type": "zip",
+      "name": "zip으로 묶기",
+      "position": {
+        "x": 1500,
+        "y": 0
+      },
+      "config": {
+        "from": {
+          "scope": "flow",
+          "dir": "html",
+          "include": [
+            "**/*.html"
+          ]
+        },
+        "to": {
+          "scope": "flow",
+          "dir": "",
+          "name": "{{ $params.zipName }}"
+        },
+        "ifExists": "overwrite"
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 1800,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k1",
+            "label": "페이지를 찾았다",
+            "actual": "{{ $node.tree.count }}",
+            "op": "gt",
+            "expected": "0"
+          },
+          {
+            "id": "k2",
+            "label": "모든 페이지의 HTML을 받았다",
+            "actual": "{{ $node.html.failed }}",
+            "op": "eq",
+            "expected": "0"
+          },
+          {
+            "id": "k3",
+            "label": "zip에 묶었다",
+            "actual": "{{ $node.zip.count }}",
+            "op": "gt",
+            "expected": "0"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "login",
+        "port": "out"
+      },
+      "to": {
+        "node": "tree"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "tree",
+        "port": "out"
+      },
+      "to": {
+        "node": "list"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "list",
+        "port": "out"
+      },
+      "to": {
+        "node": "html"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "html",
+        "port": "out"
+      },
+      "to": {
+        "node": "result"
+      }
+    },
+    {
+      "id": "e5",
+      "from": {
+        "node": "result",
+        "port": "out"
+      },
+      "to": {
+        "node": "zip"
+      }
+    },
+    {
+      "id": "e6",
+      "from": {
+        "node": "zip",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}
