@@ -96,6 +96,7 @@ describe("막힘 갈래", () => {
     d.nodes = d.nodes.filter((n: any) => n.id !== "s");
     await api("PUT", "/api/flows/orders/draft", { draft: d });
     await page.goto(`${app.url}/#/flows/orders`);
+    await page.reload();   // 같은 워크플로우 안의 이동(실행 기록 → 편집기)은 초안을 다시 읽지 않는다 — 서버에서 바꾼 것을 읽게
     const tile = page.locator(".relay-node", { hasText: "주문 읽기" });
     await tile.waitFor();
     expect(await tile.locator(".port-label.blocked").innerText()).toBe("막힘 · 구매확정 → 멈춤");

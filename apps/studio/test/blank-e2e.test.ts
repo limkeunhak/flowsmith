@@ -116,3 +116,67 @@ describe("목록 정돈 — 묶음", () => {
     expect("group" in d.draft).toBe(false);
   });
 });
+
+describe("뒤로 · 앞으로 — 주소가 화면을 따른다", () => {
+  const draft = { schemaVersion: 1, id: "nav-a", name: "길 찾기", nodes: [
+    { id: "h1", type: "http", name: "첫 API", position: { x: 0, y: 0 }, config: { method: "GET", url: "https://api.example/a" } },
+    { id: "h2", type: "http", name: "둘째 API", position: { x: 260, y: 0 }, config: { method: "GET", url: "https://api.example/b" } },
+  ], edges: [{ id: "e1", from: { node: "h1", port: "out" }, to: { node: "h2" } }] };
+  const hash = async () => new URL(page.url()).hash;
+
+  it("★시트 · 실행 기록 탭이 주소에 남고 · 뒤로 가기가 시트를 닫고 탭을 돌린다(시트 안에서 단계를 오가도 한 번)", async () => {
+    await fetch(`${app.url}/api/flows`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ draft }) });
+    await page.goto(`${app.url}/#/`);
+    await page.goto(`${app.url}/#/flows/nav-a`);
+    await page.locator(".relay-node", { hasText: "첫 API" }).click();
+    await expect.poll(hash).toBe("#/flows/nav-a/nodes/h1");
+    await page.locator(".sheet-step", { hasText: "둘째 API" }).click();
+    await expect.poll(hash).toBe("#/flows/nav-a/nodes/h2");
+    await page.goBack();
+    await expect.poll(hash).toBe("#/flows/nav-a");
+    expect(await page.locator(".ndv.sheet").count()).toBe(0);
+    await page.goForward();
+    await page.locator(".ndv.sheet").waitFor();
+
+    await page.keyboard.press("Escape");
+    await expect.poll(hash).toBe("#/flows/nav-a");
+    await page.getByRole("button", { name: "실행 기록", exact: true }).click();
+    await expect.poll(hash).toBe("#/flows/nav-a/runs");
+    await page.goBack();
+    await expect.poll(hash).toBe("#/flows/nav-a");
+    await page.locator(".react-flow").waitFor();
+  });
+
+  it("★저장하지 않은 고침 — 뒤로 · 위 메뉴로 떠나려 하면 묻고, 머무르면 고침이 그대로", async () => {
+    await page.goto(`${app.url}/#/flows/nav-a`);
+    await page.getByLabel("워크플로우 이름").fill("길 찾기 (고침)");
+    await page.locator(".topbar .save-state", { hasText: "저장 안 됨" }).waitFor();
+    const asked: string[] = [];
+    const stay = (d: import("playwright").Dialog) => { asked.push(d.message()); void d.dismiss(); };
+    page.on("dialog", stay);
+    await page.locator(".appbar-nav").getByRole("link", { name: "대시보드" }).click();
+    await expect.poll(() => asked.length).toBe(1);
+    await page.goBack();
+    await expect.poll(() => asked.length).toBe(2);
+    page.off("dialog", stay);
+    expect(asked[0]).toMatch(/저장하지 않은 고침/);
+    expect(await hash()).toBe("#/flows/nav-a");
+    expect(await page.getByLabel("워크플로우 이름").inputValue()).toBe("길 찾기 (고침)");
+
+    const go = (d: import("playwright").Dialog) => void d.accept();
+    page.on("dialog", go);
+    await page.locator(".appbar-nav").getByRole("link", { name: "대시보드" }).click();
+    await expect.poll(hash).toBe("#/dashboard");
+    page.off("dialog", go);
+  });
+
+  it("빈 워크플로우의 이름을 묻는 중에 뒤로 가면 — 지운다(빈 것이 쌓이지 않게)", async () => {
+    await page.goto(`${app.url}/#/templates`);
+    const before = (await flows()).length;
+    await page.getByRole("button", { name: /빈 워크플로우에서/ }).click();
+    await page.getByRole("dialog", { name: "새 워크플로우 이름" }).waitFor();
+    expect(await flows()).toHaveLength(before + 1);
+    await page.goBack();
+    await expect.poll(async () => (await flows()).length).toBe(before);
+  });
+});
