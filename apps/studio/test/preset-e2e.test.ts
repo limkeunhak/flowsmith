@@ -60,6 +60,27 @@ afterAll(async () => {
 });
 
 describe("노드 고르기 — 화면 캡처 · HTML 추출", () => {
+  it("★API로 넣은 초안(빈 칸이 있는 캡처 · HTML)을 열어도 화면이 죽지 않는다", async () => {
+    const errors: string[] = [];
+    const save = (id: string, extra: Record<string, unknown>) => ({ id, kind: "save", risk: "safe", timeoutMs: null, optional: false, url: "", path: `${id}.out`, output: null, skipExisting: false, ...extra });
+    const r = await fetch(`${app.url}/api/flows`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ team: null, draft: {
+      schemaVersion: 1, id: "raw", name: "raw", edges: [],
+      nodes: [{ id: "w", type: "web", name: "찍기", position: { x: 0, y: 0 }, config: { start: { kind: "url", url: "https://example.com" }, actions: [
+        save("a", { source: "screenshot", capture: { area: "full" } }), save("b", { source: "screenshot" }), save("c", { source: "html" }),
+      ] } }],
+    } }) });
+    expect(r.status).toBe(201);
+    await page?.close();
+    page = await browser.newPage({ viewport: { width: 1500, height: 900 } });
+    page.on("pageerror", (e) => { errors.push(e.message); });
+    await page.goto(`${app.url}/#/flows/raw`);
+    await page.locator(".react-flow__node").first().waitFor({ timeout: 10_000 });
+    await page.locator(".react-flow__node").first().dblclick();
+    for (const row of await page.locator(".action .text").all()) await row.click();
+    await page.waitForTimeout(500);
+    expect(errors).toEqual([]);
+  }, 30_000);
+
   for (const [title, sub, row, field] of [["화면 캡처", "📷 capture/화면.png", "전체 페이지를 PNG로 찍어", "가릴 요소 더하기"], ["HTML 추출", "🧾 html/페이지.html", "페이지 HTML을 뽑아", "무엇의 HTML"]] as const) {
     it(`★«${title}»를 고르면 그 얼굴의 노드가 놓이고 설정에 그 칸이 있다`, async () => {
       const id = title === "화면 캡처" ? "cap" : "htm";
