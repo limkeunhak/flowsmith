@@ -5,7 +5,7 @@
  */
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { api, ApiError } from "../api.ts";
-import { IconRocket } from "../icons.tsx";
+import { BrandMark } from "../icons.tsx";
 import { MeContext, meOf, type Me, type Team, type User } from "./me.ts";
 
 type State = { kind: "loading" } | { kind: "off" } | { kind: "login" } | { kind: "setup" } | { kind: "change"; user: User } | { kind: "in"; user: User; teams: Team[] } | { kind: "down"; error: string };
@@ -14,7 +14,7 @@ function Door({ title, sub, children }: { title: string; sub: string; children: 
   return (
     <div className="door">
       <div className="door-card card">
-        <div className="door-brand"><span className="side-mark"><IconRocket size={18} /></span><b>Flowsmith</b></div>
+        <div className="door-brand"><span className="side-mark"><BrandMark size={32} /></span><b>Flowsmith</b></div>
         <h1>{title}</h1>
         <p className="muted small">{sub}</p>
         {children}

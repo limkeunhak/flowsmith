@@ -216,7 +216,7 @@ flowsmith/
 |---|---|
 | `App.tsx` · `FlowList.tsx` | 주소(해시) 나누기 · 첫 화면(템플릿 · 플로우 목록) |
 | `shell/` | 앱 틀 — 왼쪽 사이드바(플로우 · 템플릿 · 화면 색 · 접기) · 밝게/어둡게(`theme.ts`) |
-| `styles/tokens.css` · `styles/*.css` | 모양은 구역마다 — base · editor · layout(n8n의 틀 — editor를 덮는다) · pages · dashboard · docs, **이 차례로** 불러온다(main.tsx). **색은 tokens.css에서만** — 파랑 눈금 · 의미 토큰(바탕 · 글자 · 강조 · 상태) · 노드 종류 색 · 사이드바. 밝게/어둡게(시스템 · `html[data-theme]`). 컴포넌트 CSS는 이름만 쓴다 |
+| `styles/tokens.css` · `styles/*.css` | 모양은 구역마다 — base · editor · layout(n8n의 틀 — editor를 덮는다) · pages · dashboard · docs, **이 차례로** 불러온다(main.tsx). **색은 tokens.css에서만** — 주황(ember) · 숯빛(char) 눈금 · 의미 토큰(바탕 · 글자 · 강조 · 상태) · 노드 종류 색 · 사이드바. 밝게/어둡게(시스템 · `html[data-theme]`). 컴포넌트 CSS는 이름만 쓴다 |
 | `api.ts` | 서버 API 클라이언트(응답 타입 포함) |
 | `model/` | 초안을 고치는 순수 함수 — `nodes`(새 노드 · 새 동작 · normalize) · `describe`(사람 말로) · `graph`(입출력 · 포트 · 값 칩 이름) · `templates`(첫 화면 템플릿) · `guide`(다음 할 일) · `fix`(깨졌을 때 고치기) |
 | `editor/FlowEditor.tsx` | 편집기 셸 — 위쪽 막대 · 캔버스 · 서랍 · 실행 로그 |

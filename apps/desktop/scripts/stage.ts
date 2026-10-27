@@ -4,7 +4,7 @@
  *   node apps/desktop/scripts/stage.ts <나갈 폴더>          (먼저 pnpm studio:build)
  *
  *   <폴더>/packages/{core,engine,recorder,server,worker}/{src,package.json}   ★.ts 그대로 — node_modules 밖(Node는 node_modules 안의 .ts를 벗기지 않는다)
- *   <폴더>/apps/studio/dist · apps/desktop/src
+ *   <폴더>/apps/studio/dist · apps/desktop/src · build/icon.png(앱 아이콘)
  *   <폴더>/package.json   외부 의존성(위 패키지들의 것을 모은다 · 판이 다르면 멈춘다) + electron-builder 설정(NSIS · asar 끔)
  *
  * 그다음 Windows에서(★짧은 폴더 — 260자):  npm install  →  npx electron-builder --win nsis   → <폴더>/dist/Flowsmith-Setup-<판>.exe
@@ -48,6 +48,9 @@ for (const p of PACKAGES) {
 }
 cpSync(join(repo, "apps", "studio", "dist"), join(out, "apps", "studio", "dist"), { recursive: true });
 cpSync(join(repo, "apps", "desktop", "src"), join(out, "apps", "desktop", "src"), { recursive: true });
+// 앱 아이콘 — electron-builder가 build/icon.png(1024) 하나로 Windows .ico · macOS .icns를 만든다(원본 그림은 build/icon.svg)
+mkdirSync(join(out, "build"), { recursive: true });
+cpSync(join(repo, "apps", "desktop", "build", "icon.png"), join(out, "build", "icon.png"));
 
 writeFileSync(join(out, "package.json"), `${JSON.stringify({
   // ★설치 폴더 이름이 된다 — %LOCALAPPDATA%\Programs\flowsmith

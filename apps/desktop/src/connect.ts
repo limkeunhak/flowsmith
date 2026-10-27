@@ -66,13 +66,13 @@ export function setupPage(now: Mode | null, error: string | null): string {
   const server = now?.mode === "server" ? now.server : "";
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
   return `<!doctype html><meta charset="utf-8"><title>Flowsmith — 연결</title>
-<style>body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:"Segoe UI","Malgun Gothic",sans-serif;background:#f6f7fb;color:#1f2430}
-.box{width:560px;background:#fff;border:1px solid #e3e6ee;border-radius:12px;padding:28px}h1{font-size:22px;margin:0 0 4px}p{color:#5b6475;font-size:14px;margin:0 0 18px}
-label.opt{display:block;border:1px solid #e3e6ee;border-radius:10px;padding:12px 14px;margin:8px 0;cursor:pointer}label.opt:has(input:checked){border-color:#2f6fed;background:#f3f7ff}
-.opt b{font-size:15px}.opt span{display:block;color:#5b6475;font-size:13px;margin:4px 0 0 24px}.fields{margin:10px 0 0 24px;display:none}.fields.on{display:block}
-.fields input{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #cfd5e1;border-radius:8px;font:13px Consolas,monospace;margin:4px 0 10px}
-.fields small{color:#5b6475;font-size:12px}button{margin-top:16px;width:100%;padding:11px;border:0;border-radius:8px;background:#2f6fed;color:#fff;font-size:15px;cursor:pointer}
-button:disabled{opacity:.6}#err{color:#c0392b;font-size:13px;margin-top:12px;white-space:pre-wrap}</style>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:"Segoe UI","Malgun Gothic",sans-serif;background:#f7f4f0;color:#1c1915}
+.box{width:560px;background:#fff;border:1px solid #e6e0d8;border-radius:12px;padding:28px}h1{font-size:22px;margin:0 0 4px}p{color:#5f574e;font-size:14px;margin:0 0 18px}
+label.opt{display:block;border:1px solid #e6e0d8;border-radius:10px;padding:12px 14px;margin:8px 0;cursor:pointer}label.opt:has(input:checked){border-color:#c2410c;background:#fff6f0}
+.opt b{font-size:15px}.opt span{display:block;color:#5f574e;font-size:13px;margin:4px 0 0 24px}.fields{margin:10px 0 0 24px;display:none}.fields.on{display:block}
+.fields input{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d2c9be;border-radius:8px;font:13px Consolas,monospace;margin:4px 0 10px}
+.fields small{color:#5f574e;font-size:12px}button{margin-top:16px;width:100%;padding:11px;border:0;border-radius:8px;background:#c2410c;color:#fff;font-size:15px;cursor:pointer}
+button:disabled{opacity:.6}#err{color:#c81e1e;font-size:13px;margin-top:12px;white-space:pre-wrap}</style>
 <div class="box"><h1>Flowsmith</h1><p>이 앱을 어떻게 쓸지 고르세요. 나중에 «내 설정 › 데스크톱 앱»에서 바꿀 수 있습니다.</p>
 <label class="opt"><input type="radio" name="m" value="local" ${now?.mode === "server" ? "" : "checked"}> <b>이 PC에서만</b><span>워크플로우 · 실행 기록이 이 PC에 남습니다 — 혼자 쓰기 · 시험 · 데모</span></label>
 <label class="opt"><input type="radio" name="m" value="server" ${now?.mode === "server" ? "checked" : ""}> <b>회사 서버에 붙기</b><span>회사 서버의 워크플로우를 열고, «내 PC에서 실행하기»로 이 PC에서 돌립니다</span>
