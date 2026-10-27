@@ -60,7 +60,7 @@ packages/pack       flowsmith-ext — 확장 폴더를 플러그인 묶음으로
 apps/studio         편집 화면(React · Vite) — 캔버스 · 노드 서랍 · 녹화 · 실행 로그 · 감시 · 트리거 · 파일 · 대시보드
 apps/desktop        데스크톱 앱(Electron) — 편집 화면 + 이 PC의 서버 · 워커 · 설치본
 apps/testsite       시험용 작은 쇼핑몰(로그인 · 조회 · 표 · iframe · 뉴스 목록 · 금지 버튼 · /__layout?v=2 바뀐 척)
-examples/           예시 플로우
+examples/           예시 플로우 · msu-qa(msu-e2e-test 시나리오를 옮긴 Suite — qa.msu.io)
 Dockerfile · compose.yaml · docker/   서버 하나 · 워커 둘을 도커로
 ```
 

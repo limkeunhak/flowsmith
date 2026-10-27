@@ -1,0 +1,239 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-ranking-period",
+  "name": "Navigator · 랭킹 기간 필터",
+  "description": "01-explorer-landing: 랭킹 섹션의 기간 필터를 전환하면 선택 상태가 옮겨간다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "기간 바꾸기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/navigator"
+        },
+        "actions": [
+          {
+            "id": "a84",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a85",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a86",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "기간 «7Days»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "//button[normalize-space(.)=\"7Days\"]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "before7",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a87",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "Highest Price",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//*[contains(normalize-space(.),\"Highest Price\") and not(*)])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "ranking",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a88",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "기간 «30Days»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "//button[normalize-space(.)=\"30Days\"]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a89",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 2500
+            }
+          },
+          {
+            "id": "a90",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "기간 «30Days»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "//button[normalize-space(.)=\"30Days\"]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "after30",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a91",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "기간 «7Days»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "//button[normalize-space(.)=\"7Days\"]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "after7",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k92",
+            "label": "기본 선택은 7Days",
+            "actual": "{{ $input.before7 }}",
+            "op": "eq",
+            "expected": "true"
+          },
+          {
+            "id": "k93",
+            "label": "랭킹 섹션이 있다",
+            "actual": "{{ $input.ranking }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k94",
+            "label": "30Days를 누르면 30Days가 선택",
+            "actual": "{{ $input.after30 }}",
+            "op": "eq",
+            "expected": "true"
+          },
+          {
+            "id": "k95",
+            "label": "7Days는 선택이 풀린다",
+            "actual": "{{ $input.after7 }}",
+            "op": "eq",
+            "expected": "false"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

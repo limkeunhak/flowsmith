@@ -1,0 +1,329 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-search-case",
+  "name": "Navigator · 대소문자 무관 검색",
+  "description": "03-search: 대소문자가 달라도 같은 대상으로 검색된다 — 소문자로 바꾸기 · 견주기는 코드로",
+  "params": [
+    {
+      "name": "name",
+      "label": "대소문자 섞인 이름",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "Blahh",
+      "help": ""
+    }
+  ],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "asTyped",
+      "type": "web",
+      "name": "입력 그대로 검색",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/navigator"
+        },
+        "actions": [
+          {
+            "id": "a104",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a105",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a106",
+            "kind": "fill",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "헤더 검색 칸",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "#global_search_input"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "value": "{{ $params.name }}"
+          },
+          {
+            "id": "a107",
+            "kind": "press",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "헤더 검색 칸",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "#global_search_input"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "key": "Enter"
+          },
+          {
+            "id": "a108",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": 15000,
+            "optional": false,
+            "wait": {
+              "kind": "url",
+              "pattern": "/navigator/(nickname|character|nft|owner)/"
+            }
+          },
+          {
+            "id": "a109",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 2000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "firstUrl",
+      "type": "custom",
+      "name": "첫 결과 · 소문자",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "return { first: decodeURIComponent(page.url()).toLowerCase(), lower: String(ctx.params.name).toLowerCase() };",
+        "outputs": [
+          "first",
+          "lower"
+        ],
+        "usesPage": true,
+        "timeoutMs": 30000
+      }
+    },
+    {
+      "id": "asLower",
+      "type": "web",
+      "name": "소문자로 검색",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a110",
+            "kind": "goto",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "url": "https://qa.msu.io/navigator"
+          },
+          {
+            "id": "a111",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a112",
+            "kind": "fill",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "헤더 검색 칸",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "#global_search_input"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "value": "{{ $input.lower }}"
+          },
+          {
+            "id": "a113",
+            "kind": "press",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "헤더 검색 칸",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "#global_search_input"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "key": "Enter"
+          },
+          {
+            "id": "a114",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": 15000,
+            "optional": false,
+            "wait": {
+              "kind": "url",
+              "pattern": "/navigator/(nickname|character|nft|owner)/"
+            }
+          },
+          {
+            "id": "a115",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 2000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "secondUrl",
+      "type": "custom",
+      "name": "둘째 결과",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "code": "return { second: decodeURIComponent(page.url()).toLowerCase() };",
+        "outputs": [
+          "second"
+        ],
+        "usesPage": true,
+        "timeoutMs": 30000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k116",
+            "label": "소문자 검색도 같은 대상",
+            "actual": "{{ $input.second }}",
+            "op": "eq",
+            "expected": "{{ $node.firstUrl.first }}"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "asTyped",
+        "port": "out"
+      },
+      "to": {
+        "node": "firstUrl"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "firstUrl",
+        "port": "out"
+      },
+      "to": {
+        "node": "asLower"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "asLower",
+        "port": "out"
+      },
+      "to": {
+        "node": "secondUrl"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "secondUrl",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

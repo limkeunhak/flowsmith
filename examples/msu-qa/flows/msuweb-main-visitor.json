@@ -1,0 +1,316 @@
+{
+  "schemaVersion": 1,
+  "id": "msuweb-main-visitor",
+  "name": "MSU 웹 · 비회원 메인 — 헤더 · 푸터 · 로그인 진입점",
+  "description": "01-landing: 비회원으로 메인에 들어가면 헤더 · 푸터 · 로그인 진입점이 노출된다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "메인 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/"
+        },
+        "actions": [
+          {
+            "id": "a1",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a2",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a3",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "헤더",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "header"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "header",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a4",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "푸터",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "footer"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "footer",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a5",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "본문 전체",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "body"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "body",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a6",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "헤더의 Connect",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "header button:has-text(\"Connect\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "connect",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a7",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "Synergy Apps",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Synergy Apps\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "synergy",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "where",
+      "type": "custom",
+      "name": "지금 주소",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "return { path: new URL(page.url()).pathname, url: decodeURIComponent(page.url()), title: await page.title() };",
+        "outputs": [
+          "path",
+          "url",
+          "title"
+        ],
+        "usesPage": true,
+        "timeoutMs": 30000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k8",
+            "label": "헤더가 있다",
+            "actual": "{{ $node.open.header }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k9",
+            "label": "푸터가 있다",
+            "actual": "{{ $node.open.footer }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k10",
+            "label": "비회원에게 Connect가 보인다",
+            "actual": "{{ $node.open.connect }}",
+            "op": "contains",
+            "expected": "Connect"
+          },
+          {
+            "id": "k11",
+            "label": "서비스 전환 메뉴가 있다",
+            "actual": "{{ $node.open.synergy }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k12",
+            "label": "«TypeError»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "TypeError"
+          },
+          {
+            "id": "k13",
+            "label": "«ReferenceError»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "ReferenceError"
+          },
+          {
+            "id": "k14",
+            "label": "«at Object.»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "at Object."
+          },
+          {
+            "id": "k15",
+            "label": "«ECONNREFUSED»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "ECONNREFUSED"
+          },
+          {
+            "id": "k16",
+            "label": "«ETIMEDOUT»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "ETIMEDOUT"
+          },
+          {
+            "id": "k17",
+            "label": "«Internal Server»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "Internal Server"
+          },
+          {
+            "id": "k18",
+            "label": "«stacktrace»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "stacktrace"
+          },
+          {
+            "id": "k19",
+            "label": "«Traceback»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "Traceback"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "where"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "where",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

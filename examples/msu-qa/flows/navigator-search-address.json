@@ -1,0 +1,195 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-search-address",
+  "name": "Navigator · 지갑 주소 검색 → 소유자 상세",
+  "description": "03-search: 지갑 주소를 검색하면 소유자 상세로 이동한다",
+  "params": [
+    {
+      "name": "address",
+      "label": "지갑 주소",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      "help": "QA 테스트 지갑(Hardhat #1)"
+    }
+  ],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "주소 검색",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/navigator"
+        },
+        "actions": [
+          {
+            "id": "a117",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a118",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a119",
+            "kind": "fill",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "헤더 검색 칸",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "#global_search_input"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "value": "{{ $params.address }}"
+          },
+          {
+            "id": "a120",
+            "kind": "press",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "헤더 검색 칸",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "#global_search_input"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "key": "Enter"
+          },
+          {
+            "id": "a121",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": 15000,
+            "optional": false,
+            "wait": {
+              "kind": "url",
+              "pattern": "/navigator/(nickname|character|nft|owner)/"
+            }
+          },
+          {
+            "id": "a122",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 2000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "where",
+      "type": "custom",
+      "name": "지금 주소(소문자)",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "return { url: page.url().toLowerCase(), want: '/navigator/owner/' + String(ctx.params.address).toLowerCase() };",
+        "outputs": [
+          "url",
+          "want"
+        ],
+        "usesPage": true,
+        "timeoutMs": 30000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k123",
+            "label": "소유자 상세로 간다",
+            "actual": "{{ $input.url }}",
+            "op": "contains",
+            "expected": "{{ $input.want }}"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "where"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "where",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

@@ -1,0 +1,287 @@
+{
+  "schemaVersion": 1,
+  "id": "msuweb-direct-route",
+  "name": "MSU 웹 · 경로에 직접 들어가기",
+  "description": "01-landing: /about · /notices · /builder-apps 에 직접 들어가도 정상 렌더링된다 — 경로는 실행 입력",
+  "params": [
+    {
+      "name": "path",
+      "label": "경로",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "/about",
+      "help": "/about · /notices · /builder-apps"
+    }
+  ],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "경로 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io{{ $params.path }}"
+        },
+        "actions": [
+          {
+            "id": "a20",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a21",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a22",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "헤더",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "header"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "header",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a23",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "푸터",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "footer"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "footer",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a24",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "본문 전체",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "body"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "body",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "where",
+      "type": "custom",
+      "name": "지금 주소",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "return { path: new URL(page.url()).pathname, url: decodeURIComponent(page.url()), title: await page.title() };",
+        "outputs": [
+          "path",
+          "url",
+          "title"
+        ],
+        "usesPage": true,
+        "timeoutMs": 30000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k25",
+            "label": "그 경로에 남아 있다",
+            "actual": "{{ $input.path }}",
+            "op": "eq",
+            "expected": "{{ $params.path }}"
+          },
+          {
+            "id": "k26",
+            "label": "404가 아니다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "Not Found"
+          },
+          {
+            "id": "k27",
+            "label": "404가 아니다(페이지 없음)",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "Page not found"
+          },
+          {
+            "id": "k28",
+            "label": "헤더가 있다",
+            "actual": "{{ $node.open.header }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k29",
+            "label": "푸터가 있다",
+            "actual": "{{ $node.open.footer }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k30",
+            "label": "«TypeError»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "TypeError"
+          },
+          {
+            "id": "k31",
+            "label": "«ReferenceError»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "ReferenceError"
+          },
+          {
+            "id": "k32",
+            "label": "«at Object.»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "at Object."
+          },
+          {
+            "id": "k33",
+            "label": "«ECONNREFUSED»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "ECONNREFUSED"
+          },
+          {
+            "id": "k34",
+            "label": "«ETIMEDOUT»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "ETIMEDOUT"
+          },
+          {
+            "id": "k35",
+            "label": "«Internal Server»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "Internal Server"
+          },
+          {
+            "id": "k36",
+            "label": "«stacktrace»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "stacktrace"
+          },
+          {
+            "id": "k37",
+            "label": "«Traceback»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "Traceback"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "where"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "where",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

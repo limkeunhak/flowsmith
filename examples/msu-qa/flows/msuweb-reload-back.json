@@ -1,0 +1,222 @@
+{
+  "schemaVersion": 1,
+  "id": "msuweb-reload-back",
+  "name": "MSU 웹 · 새로고침 · 뒤로가기",
+  "description": "01-landing: 새로고침과 뒤로가기 후에도 같은 화면으로 돌아온다 — 새로고침 · 뒤로가기는 동작이 없어 코드로",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "메인 → /about",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/"
+        },
+        "actions": [
+          {
+            "id": "a53",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 3000
+            }
+          },
+          {
+            "id": "a54",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a55",
+            "kind": "goto",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "url": "https://qa.msu.io/about"
+          },
+          {
+            "id": "a56",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 3000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "nav",
+      "type": "custom",
+      "name": "새로고침 · 뒤로가기",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "const header = async () => page.locator('header').first().isVisible().catch(() => false);\nawait page.reload({ waitUntil: 'domcontentloaded' }); await page.waitForTimeout(3000);\nconst afterReload = new URL(page.url()).pathname; const headerAfterReload = await header();\nawait page.goBack({ waitUntil: 'domcontentloaded' }); await page.waitForTimeout(3000);\nconst afterBack = new URL(page.url()).pathname; const headerAfterBack = await header();\nconst body = await page.locator('body').innerText().catch(() => '');\nreturn { afterReload, headerAfterReload, afterBack, headerAfterBack, body };",
+        "outputs": [
+          "afterReload",
+          "headerAfterReload",
+          "afterBack",
+          "headerAfterBack",
+          "body"
+        ],
+        "usesPage": true,
+        "timeoutMs": 30000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k57",
+            "label": "새로고침해도 /about",
+            "actual": "{{ $input.afterReload }}",
+            "op": "eq",
+            "expected": "/about"
+          },
+          {
+            "id": "k58",
+            "label": "새로고침 후에도 헤더",
+            "actual": "{{ $input.headerAfterReload }}",
+            "op": "isTrue",
+            "expected": null
+          },
+          {
+            "id": "k59",
+            "label": "뒤로 가면 메인",
+            "actual": "{{ $input.afterBack }}",
+            "op": "eq",
+            "expected": "/"
+          },
+          {
+            "id": "k60",
+            "label": "뒤로가기 후에도 헤더",
+            "actual": "{{ $input.headerAfterBack }}",
+            "op": "isTrue",
+            "expected": null
+          },
+          {
+            "id": "k61",
+            "label": "«TypeError»가 노출되지 않는다",
+            "actual": "{{ $input.body }}",
+            "op": "notContains",
+            "expected": "TypeError"
+          },
+          {
+            "id": "k62",
+            "label": "«ReferenceError»가 노출되지 않는다",
+            "actual": "{{ $input.body }}",
+            "op": "notContains",
+            "expected": "ReferenceError"
+          },
+          {
+            "id": "k63",
+            "label": "«at Object.»가 노출되지 않는다",
+            "actual": "{{ $input.body }}",
+            "op": "notContains",
+            "expected": "at Object."
+          },
+          {
+            "id": "k64",
+            "label": "«ECONNREFUSED»가 노출되지 않는다",
+            "actual": "{{ $input.body }}",
+            "op": "notContains",
+            "expected": "ECONNREFUSED"
+          },
+          {
+            "id": "k65",
+            "label": "«ETIMEDOUT»가 노출되지 않는다",
+            "actual": "{{ $input.body }}",
+            "op": "notContains",
+            "expected": "ETIMEDOUT"
+          },
+          {
+            "id": "k66",
+            "label": "«Internal Server»가 노출되지 않는다",
+            "actual": "{{ $input.body }}",
+            "op": "notContains",
+            "expected": "Internal Server"
+          },
+          {
+            "id": "k67",
+            "label": "«stacktrace»가 노출되지 않는다",
+            "actual": "{{ $input.body }}",
+            "op": "notContains",
+            "expected": "stacktrace"
+          },
+          {
+            "id": "k68",
+            "label": "«Traceback»가 노출되지 않는다",
+            "actual": "{{ $input.body }}",
+            "op": "notContains",
+            "expected": "Traceback"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "nav"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "nav",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

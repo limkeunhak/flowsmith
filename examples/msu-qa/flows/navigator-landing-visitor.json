@@ -1,0 +1,304 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-landing-visitor",
+  "name": "Navigator · 비회원 탐색 화면 — 지표 · 검색",
+  "description": "01-explorer-landing: 로그인하지 않아도 온체인 지표와 검색이 노출된다(API ≥500 감시는 빠짐)",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "Navigator 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/navigator"
+        },
+        "actions": [
+          {
+            "id": "a69",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a70",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a71",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "지표 «Unique Active Wallets»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//*[contains(normalize-space(text()),\"Unique Active Wallets\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "wallets",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a72",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "지표 «Transactions (30d)»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//*[contains(normalize-space(text()),\"Transactions (30d)\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "tx",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a73",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "지표 «Marketplace Trading Volume (30d)»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//*[contains(normalize-space(text()),\"Marketplace Trading Volume (30d)\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "volume",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a74",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "Transactions (30d) 카드",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//*[normalize-space(text())=\"Transactions (30d)\"])[1]/.."
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "txCard",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a75",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "헤더 검색 칸",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "#global_search_input"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "search",
+            "strategy": "attribute",
+            "attribute": "placeholder",
+            "transform": null
+          },
+          {
+            "id": "a76",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "헤더의 Connect",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "header button:has-text(\"Connect\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "connect",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "where",
+      "type": "custom",
+      "name": "지금 주소",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "return { path: new URL(page.url()).pathname, url: decodeURIComponent(page.url()), title: await page.title() };",
+        "outputs": [
+          "path",
+          "url",
+          "title"
+        ],
+        "usesPage": true,
+        "timeoutMs": 30000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k77",
+            "label": "제목이 MSU Navigator",
+            "actual": "{{ $input.title }}",
+            "op": "contains",
+            "expected": "MSU Navigator"
+          },
+          {
+            "id": "k78",
+            "label": "Unique Active Wallets 지표",
+            "actual": "{{ $node.open.wallets }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k79",
+            "label": "Transactions 지표",
+            "actual": "{{ $node.open.tx }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k80",
+            "label": "Marketplace Trading Volume 지표",
+            "actual": "{{ $node.open.volume }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k81",
+            "label": "Transactions (30d)에 숫자가 있다",
+            "actual": "{{ $node.open.txCard }}",
+            "op": "matches",
+            "expected": "[0-9]"
+          },
+          {
+            "id": "k82",
+            "label": "검색 칸이 있다",
+            "actual": "{{ $node.open.search }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k83",
+            "label": "헤더에 Connect",
+            "actual": "{{ $node.open.connect }}",
+            "op": "contains",
+            "expected": "Connect"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "where"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "where",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}
