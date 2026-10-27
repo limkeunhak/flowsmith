@@ -494,6 +494,16 @@ function SaveForm({ flow, nodeId, action: a, onChange }: { flow: Flow; nodeId: s
           <TemplateInput flow={flow} nodeId={nodeId} value={a.url} placeholder="/spaces/flyingpdf/pdfpageexport.action?pageId={{ $item.id }}" onChange={(url) => onChange({ ...a, url })} />
         </Field>
       )}
+      {a.source === "url" && (
+        <Field label="요청 머리(비워도 됨)" hint="한 줄에 «이름: 값» — 사이트의 요청 보호를 넘길 때(예: X-Atlassian-Token: no-check). 쿠키 · 인증은 넣지 않습니다(브라우저의 로그인을 씁니다)">
+          <textarea className="mono" rows={2} value={Object.entries(a.headers ?? {}).map(([k, v]) => `${k}: ${v}`).join("\n")} placeholder="X-Atlassian-Token: no-check"
+            onChange={(e) => {
+              const headers = Object.fromEntries(e.target.value.split("\n").map((l) => l.split(/:(.*)/s)).filter((x) => x.length > 1 && x[0]!.trim() !== "").map(([k, v]) => [k!.trim(), (v ?? "").trim()]));
+              const { headers: _old, ...rest } = a;
+              onChange(Object.keys(headers).length ? { ...rest, headers } : rest);
+            }} />
+        </Field>
+      )}
       <Field label="저장할 경로" hint="이 워크플로우의 폴더 아래 · 폴더는 만든다 · 파일 이름에 못 쓰는 글자는 바꾼다. .pdf면 받은 것이 정말 PDF인지 봅니다(로그인 화면이면 멈춤)">
         <TemplateInput flow={flow} nodeId={nodeId} value={a.path} placeholder="{{ $item.path }}.pdf" onChange={(path) => onChange({ ...a, path })} />
       </Field>

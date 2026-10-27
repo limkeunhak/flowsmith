@@ -179,7 +179,17 @@ function action(c: Checker, v: unknown, where: string): WebAction {
       const url = source === "url" ? c.text(o, "url", where) : c.str(o, "url", where, "");
       const path = c.text(o, "path", where);
       const output = o["output"] == null || o["output"] === "" ? null : c.name(o, "output", where);
-      return { ...base, kind, source, url, path, output, skipExisting: c.bool(o, "skipExisting", where, false) };
+      const save = { ...base, kind, source, url, path, output, skipExisting: c.bool(o, "skipExisting", where, false) };
+      if (o["headers"] == null) return save;
+      const h = c.obj(o["headers"], `${where}.headers`);
+      const headers: Record<string, string> = {};
+      for (const [k, v] of Object.entries(h)) {
+        if (!/^[A-Za-z0-9-]{1,64}$/.test(k)) c.fail(`${where}.headers`, `요청 머리 이름 «${k}»은 영문 · 숫자 · -만 씁니다`);
+        else if (/^(cookie|authorization|host)$/i.test(k)) c.fail(`${where}.headers`, `«${k}»는 넣지 않습니다 — 브라우저의 로그인을 그대로 씁니다`);
+        else if (typeof v !== "string") c.fail(`${where}.headers`, `«${k}»의 값은 글자여야 합니다`);
+        else headers[k] = v;
+      }
+      return { ...save, headers };
     }
     case "walletApprove": {
       const t = base.timeoutMs;
