@@ -1,0 +1,356 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-09-watch-signin",
+  "name": "Navigator · 비로그인 지켜보기 → 로그인 창",
+  "description": "09-watchlist: 비로그인으로 NFT 상세의 지켜보기를 누르면 페이지를 떠나지 않고 로그인 창이 뜬다 — 툴팁 읽기(호버)는 코드로",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "find",
+      "type": "web",
+      "name": "랜딩에서 랭킹 아이템 고르기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/navigator"
+        },
+        "actions": [
+          {
+            "id": "a802",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a803",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a804",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "첫 nft 링크",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[contains(@href,\"/navigator/nft/\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "nft",
+            "strategy": "link",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "nft",
+      "type": "web",
+      "name": "NFT 상세",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "{{ $node.find.nft }}"
+        },
+        "actions": [
+          {
+            "id": "a805",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 6000
+            }
+          },
+          {
+            "id": "a806",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a807",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "지켜보기 버튼",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button.btn-watch:visible"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "watch",
+            "strategy": "attribute",
+            "attribute": "class",
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "tip",
+      "type": "custom",
+      "name": "지켜보기 툴팁",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "code": "const btn = page.locator('button.btn-watch').first();\nawait btn.hover({ timeout: 20000 }); await page.waitForTimeout(1200);\nreturn { tooltip: ((await page.locator('[role=\"tooltip\"]').first().innerText().catch(() => '')) || '').trim() };",
+        "outputs": [
+          "tooltip"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "press",
+      "type": "web",
+      "name": "지켜보기 누르기",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a808",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "지켜보기 버튼",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button.btn-watch:visible"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a809",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a810",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "로그인 창",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": ".w3a-modal-container:visible"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "modal",
+            "strategy": "attribute",
+            "attribute": "class",
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "where",
+      "type": "custom",
+      "name": "지금 주소",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "code": "return { path: new URL(page.url()).pathname, url: decodeURIComponent(page.url()), title: await page.title() };",
+        "outputs": [
+          "path",
+          "url",
+          "title"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 1500,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k811",
+            "label": "지켜보기 버튼은 비로그인에도 보인다",
+            "actual": "{{ $node.nft.watch }}",
+            "op": "contains",
+            "expected": "btn-watch"
+          },
+          {
+            "id": "k812",
+            "label": "비로그인은 등록되지 않은 상태여야 한다(툴팁 Add to Watchlist)",
+            "actual": "{{ $node.tip.tooltip }}",
+            "op": "eq",
+            "expected": "Add to Watchlist"
+          },
+          {
+            "id": "k813",
+            "label": "로그인 창이 떠야 한다",
+            "actual": "{{ $node.press.modal }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k814",
+            "label": "로그인 창은 페이지를 떠나지 않고 떠야 한다",
+            "actual": "{{ $input.url }}",
+            "op": "contains",
+            "expected": "{{ $node.find.nft }}"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "find",
+        "port": "out"
+      },
+      "to": {
+        "node": "nft"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "nft",
+        "port": "out"
+      },
+      "to": {
+        "node": "tip"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "tip",
+        "port": "out"
+      },
+      "to": {
+        "node": "press"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "press",
+        "port": "out"
+      },
+      "to": {
+        "node": "where"
+      }
+    },
+    {
+      "id": "e5",
+      "from": {
+        "node": "where",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

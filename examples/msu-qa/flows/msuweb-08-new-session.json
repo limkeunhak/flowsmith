@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 1,
+  "id": "msuweb-08-new-session",
+  "name": "MSU 웹 · 새 세션에서 쿠키 배너 다시",
+  "description": "08-cookie-consent: 첫 세션에서 전체 동의로 닫은 뒤, 새 브라우저 컨텍스트로 처음 방문하면 기록이 없고 배너가 다시 보인다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "첫 방문",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/"
+        },
+        "actions": [
+          {
+            "id": "a327",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a324",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "배너 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:visible:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a325",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 2500
+            }
+          },
+          {
+            "id": "a326",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 배너",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "#cookiebotBanner"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "banner",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "second",
+      "type": "custom",
+      "name": "새 컨텍스트로 첫 방문",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "const browser = page.context().browser();\nif (!browser) throw new Error('새 컨텍스트를 열 브라우저가 없습니다');\nconst c2 = await browser.newContext();\ntry {\n  const p2 = await c2.newPage();\n  await p2.goto('https://qa.msu.io/', { waitUntil: 'domcontentloaded' });\n  await p2.waitForTimeout(4000);\n  const recorded = (await c2.cookies()).some((c) => c.name === 'CookieConsent');\n  const banner = await p2.locator('#cookiebotBanner').first().waitFor({ state: 'visible', timeout: 20000 }).then(() => true, () => false);\n  return { recorded, banner };\n} finally { await c2.close(); }",
+        "outputs": [
+          "recorded",
+          "banner"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k328",
+            "label": "첫 세션에서는 닫힌다",
+            "actual": "{{ $node.open.banner }}",
+            "op": "empty",
+            "expected": null
+          },
+          {
+            "id": "k329",
+            "label": "새 세션에는 기록이 없어야 한다",
+            "actual": "{{ $input.recorded }}",
+            "op": "isFalse",
+            "expected": null
+          },
+          {
+            "id": "k330",
+            "label": "새 세션에서는 다시 물어야 한다",
+            "actual": "{{ $input.banner }}",
+            "op": "isTrue",
+            "expected": null
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "second"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "second",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

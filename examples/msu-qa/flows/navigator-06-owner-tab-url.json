@@ -1,0 +1,930 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-06-owner-tab-url",
+  "name": "Navigator · 지갑 상세 탭 전환 → 주소 반영",
+  "description": "06-owner-listing: 지갑 상세의 탭을 차례로 누르면 선택이 옮겨 가고, 주소는 유지된 채 ?tab=<탭>이 붙는다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "seed",
+      "type": "custom",
+      "name": "캐릭터 · 소유자 찾기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "code": "const base = \"https://qa.msu.io\"; const open = async (u) => { await page.goto(new URL(u, base).href, { waitUntil: 'domcontentloaded' }); await page.waitForTimeout(4000); };\nconst hrefs = async (k) => [...new Set(await page.locator(`a[href*=\"/navigator/${k}/\"]`).evaluateAll((as) => as.map((a) => a.getAttribute('href'))))];\nawait open(\"https://qa.msu.io/navigator\");\nawait page.locator('a[href*=\"/navigator/nft/\"]').first().waitFor({ state: 'attached', timeout: 30000 });\nconst items = await hrefs('nft'); const seen = [];\nfor (const it of items.slice(0, 5)) {\n  await open(it);\n  const o = await page.locator('a[href*=\"/navigator/owner/\"]').first().getAttribute('href', { timeout: 15000 }).catch(() => null);\n  if (!o || seen.includes(o)) continue; seen.push(o);\n  await open(o);\n  await page.locator('a[href*=\"/navigator/character/\"]').first().waitFor({ state: 'attached', timeout: 15000 }).catch(() => {});\n  const chars = await hrefs('character'); if (!chars.length) continue;\n  return { character: chars[0].split('/navigator/character/')[1], characterUrl: new URL(chars[0], base).href, owner: o.split('/navigator/owner/')[1], ownerUrl: new URL(o, base).href };\n}\nthrow new Error('랭킹 아이템 ' + items.length + '개의 소유자(' + seen.length + '명) 중 캐릭터를 가진 지갑이 없습니다');",
+        "outputs": [
+          "character",
+          "characterUrl",
+          "owner",
+          "ownerUrl"
+        ],
+        "usesPage": true,
+        "timeoutMs": 180000
+      }
+    },
+    {
+      "id": "t0",
+      "type": "web",
+      "name": "Character 누르기",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "{{ $node.seed.ownerUrl }}"
+        },
+        "actions": [
+          {
+            "id": "a655",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a656",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a649",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "탭 «Character»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Character\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a650",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 3000
+            }
+          },
+          {
+            "id": "a651",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Character»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Character\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "sCharacter",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a652",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Items»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Items\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "sItems",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a653",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Nicknames»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Nicknames\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "sNicknames",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a654",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Watchlist»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Watchlist\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "sWatchlist",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "w0",
+      "type": "custom",
+      "name": "지금 주소",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "code": "return { path: new URL(page.url()).pathname, url: decodeURIComponent(page.url()), title: await page.title() };",
+        "outputs": [
+          "path",
+          "url",
+          "title"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "t1",
+      "type": "web",
+      "name": "Items 누르기",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a657",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "탭 «Items»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Items\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a658",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 3000
+            }
+          },
+          {
+            "id": "a659",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Character»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Character\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "sCharacter",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a660",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Items»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Items\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "sItems",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a661",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Nicknames»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Nicknames\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "sNicknames",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a662",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Watchlist»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Watchlist\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "sWatchlist",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "w1",
+      "type": "custom",
+      "name": "지금 주소",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "code": "return { path: new URL(page.url()).pathname, url: decodeURIComponent(page.url()), title: await page.title() };",
+        "outputs": [
+          "path",
+          "url",
+          "title"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "t2",
+      "type": "web",
+      "name": "Nicknames 누르기",
+      "position": {
+        "x": 1500,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a663",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "탭 «Nicknames»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Nicknames\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a664",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 3000
+            }
+          },
+          {
+            "id": "a665",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Character»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Character\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "sCharacter",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a666",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Items»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Items\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "sItems",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a667",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Nicknames»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Nicknames\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "sNicknames",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a668",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Watchlist»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Watchlist\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "sWatchlist",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "w2",
+      "type": "custom",
+      "name": "지금 주소",
+      "position": {
+        "x": 1800,
+        "y": 0
+      },
+      "config": {
+        "code": "return { path: new URL(page.url()).pathname, url: decodeURIComponent(page.url()), title: await page.title() };",
+        "outputs": [
+          "path",
+          "url",
+          "title"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "t3",
+      "type": "web",
+      "name": "Watchlist 누르기",
+      "position": {
+        "x": 2100,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a669",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "탭 «Watchlist»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Watchlist\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a670",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 3000
+            }
+          },
+          {
+            "id": "a671",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Character»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Character\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "sCharacter",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a672",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Items»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Items\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "sItems",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a673",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Nicknames»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Nicknames\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "sNicknames",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a674",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Watchlist»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Watchlist\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "sWatchlist",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "w3",
+      "type": "custom",
+      "name": "지금 주소",
+      "position": {
+        "x": 2400,
+        "y": 0
+      },
+      "config": {
+        "code": "return { path: new URL(page.url()).pathname, url: decodeURIComponent(page.url()), title: await page.title() };",
+        "outputs": [
+          "path",
+          "url",
+          "title"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 2700,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k675",
+            "label": "Character 선택 상태 — Character 선택",
+            "actual": "{{ $node.t0.sCharacter }}",
+            "op": "eq",
+            "expected": "true"
+          },
+          {
+            "id": "k676",
+            "label": "Character: 주소가 유지되어야 한다",
+            "actual": "{{ $node.w0.url }}",
+            "op": "contains",
+            "expected": "{{ $node.seed.owner }}"
+          },
+          {
+            "id": "k677",
+            "label": "Character: 탭이 주소에 반영되어야 한다",
+            "actual": "{{ $node.w0.url }}",
+            "op": "contains",
+            "expected": "tab=character"
+          },
+          {
+            "id": "k678",
+            "label": "Items 선택 상태 — Items 선택",
+            "actual": "{{ $node.t1.sItems }}",
+            "op": "eq",
+            "expected": "true"
+          },
+          {
+            "id": "k679",
+            "label": "Items 선택 상태 — 앞 탭 Character는 선택 아님",
+            "actual": "{{ $node.t1.sCharacter }}",
+            "op": "ne",
+            "expected": "true"
+          },
+          {
+            "id": "k680",
+            "label": "Items: 주소가 유지되어야 한다",
+            "actual": "{{ $node.w1.url }}",
+            "op": "contains",
+            "expected": "{{ $node.seed.owner }}"
+          },
+          {
+            "id": "k681",
+            "label": "Items: 탭이 주소에 반영되어야 한다",
+            "actual": "{{ $node.w1.url }}",
+            "op": "contains",
+            "expected": "tab=items"
+          },
+          {
+            "id": "k682",
+            "label": "Nicknames 선택 상태 — Nicknames 선택",
+            "actual": "{{ $node.t2.sNicknames }}",
+            "op": "eq",
+            "expected": "true"
+          },
+          {
+            "id": "k683",
+            "label": "Nicknames 선택 상태 — 앞 탭 Character는 선택 아님",
+            "actual": "{{ $node.t2.sCharacter }}",
+            "op": "ne",
+            "expected": "true"
+          },
+          {
+            "id": "k684",
+            "label": "Nicknames 선택 상태 — 앞 탭 Items는 선택 아님",
+            "actual": "{{ $node.t2.sItems }}",
+            "op": "ne",
+            "expected": "true"
+          },
+          {
+            "id": "k685",
+            "label": "Nicknames: 주소가 유지되어야 한다",
+            "actual": "{{ $node.w2.url }}",
+            "op": "contains",
+            "expected": "{{ $node.seed.owner }}"
+          },
+          {
+            "id": "k686",
+            "label": "Nicknames: 탭이 주소에 반영되어야 한다",
+            "actual": "{{ $node.w2.url }}",
+            "op": "contains",
+            "expected": "tab=nicknames"
+          },
+          {
+            "id": "k687",
+            "label": "Watchlist 선택 상태 — Watchlist 선택",
+            "actual": "{{ $node.t3.sWatchlist }}",
+            "op": "eq",
+            "expected": "true"
+          },
+          {
+            "id": "k688",
+            "label": "Watchlist 선택 상태 — 앞 탭 Character는 선택 아님",
+            "actual": "{{ $node.t3.sCharacter }}",
+            "op": "ne",
+            "expected": "true"
+          },
+          {
+            "id": "k689",
+            "label": "Watchlist 선택 상태 — 앞 탭 Items는 선택 아님",
+            "actual": "{{ $node.t3.sItems }}",
+            "op": "ne",
+            "expected": "true"
+          },
+          {
+            "id": "k690",
+            "label": "Watchlist 선택 상태 — 앞 탭 Nicknames는 선택 아님",
+            "actual": "{{ $node.t3.sNicknames }}",
+            "op": "ne",
+            "expected": "true"
+          },
+          {
+            "id": "k691",
+            "label": "Watchlist: 주소가 유지되어야 한다",
+            "actual": "{{ $node.w3.url }}",
+            "op": "contains",
+            "expected": "{{ $node.seed.owner }}"
+          },
+          {
+            "id": "k692",
+            "label": "Watchlist: 탭이 주소에 반영되어야 한다",
+            "actual": "{{ $node.w3.url }}",
+            "op": "contains",
+            "expected": "tab=watchlist"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "seed",
+        "port": "out"
+      },
+      "to": {
+        "node": "t0"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "t0",
+        "port": "out"
+      },
+      "to": {
+        "node": "w0"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "w0",
+        "port": "out"
+      },
+      "to": {
+        "node": "t1"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "t1",
+        "port": "out"
+      },
+      "to": {
+        "node": "w1"
+      }
+    },
+    {
+      "id": "e5",
+      "from": {
+        "node": "w1",
+        "port": "out"
+      },
+      "to": {
+        "node": "t2"
+      }
+    },
+    {
+      "id": "e6",
+      "from": {
+        "node": "t2",
+        "port": "out"
+      },
+      "to": {
+        "node": "w2"
+      }
+    },
+    {
+      "id": "e7",
+      "from": {
+        "node": "w2",
+        "port": "out"
+      },
+      "to": {
+        "node": "t3"
+      }
+    },
+    {
+      "id": "e8",
+      "from": {
+        "node": "t3",
+        "port": "out"
+      },
+      "to": {
+        "node": "w3"
+      }
+    },
+    {
+      "id": "e9",
+      "from": {
+        "node": "w3",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

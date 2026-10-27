@@ -1,0 +1,179 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-11-history-table",
+  "name": "Navigator · History 탭 아이템 이력",
+  "description": "11-activity-history: 랭킹 아이템(최대 5개)을 차례로 History 탭으로 열어 이력이 있는 것을 찾고 — 있으면 Item History · Character · Date 열, 없으면 «No history to display.»",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "landing",
+      "type": "web",
+      "name": "랜딩",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/navigator"
+        },
+        "actions": [
+          {
+            "id": "a884",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a885",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a886",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "랭킹 첫 아이템 링크",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[contains(@href,\"/navigator/nft/\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "nft",
+            "strategy": "link",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "find",
+      "type": "custom",
+      "name": "이력 있는 아이템 찾기",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "const hrefs = await page.locator('a[href*=\"/navigator/nft/\"]').evaluateAll((els) => els.map((a) => a.href));\nconst ids = [...new Set(hrefs)].slice(0, 5); const tabs = []; let withHistory = '';\nfor (const h of ids) {\n  const u = new URL(h); u.searchParams.set('tab', 'history');\n  await page.goto(u.toString(), { waitUntil: 'domcontentloaded' }); await page.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => {}); await page.waitForTimeout(3000);\n  tabs.push((await page.getByRole('tab', { name: 'History', exact: true }).first().getAttribute('aria-selected').catch(() => null)) === 'true' ? 'History' : 'X');\n  if ((await page.locator('tbody tr').count()) > 0) { withHistory = h; break; }\n}\nconst seen = (l) => l.first().waitFor({ state: 'visible', timeout: 20000 }).then(() => true, () => false);\nconst headers = withHistory ? await page.evaluate(() => Array.from(document.querySelectorAll('thead th, thead td, table tr:first-child th')).map((c) => c.innerText.trim()).filter(Boolean)) : [];\nconst titleShown = withHistory ? await seen(page.getByText('Item History')) : false;\nconst noticeShown = withHistory ? false : await seen(page.getByText(/No history to display/i));\nreturn { checked: ids.length, tabs: tabs.join(','), withHistory: withHistory || '없음',\n  noTitle: !!withHistory && !titleShown, noCharacter: !!withHistory && !headers.includes('Character'), noDate: !!withHistory && !headers.includes('Date'),\n  silentEmpty: !withHistory && !noticeShown };",
+        "outputs": [
+          "checked",
+          "tabs",
+          "withHistory",
+          "noTitle",
+          "noCharacter",
+          "noDate",
+          "silentEmpty"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k887",
+            "label": "선택 탭은 History",
+            "actual": "{{ $input.tabs }}",
+            "op": "matches",
+            "expected": "^History(,History)*$"
+          },
+          {
+            "id": "k888",
+            "label": "(이력이 있으면) 아이템 이력 제목 — 없으면 true",
+            "actual": "{{ $input.noTitle }}",
+            "op": "isFalse",
+            "expected": null
+          },
+          {
+            "id": "k889",
+            "label": "(이력이 있으면) Character 열이 있어야 한다 — 없으면 true",
+            "actual": "{{ $input.noCharacter }}",
+            "op": "isFalse",
+            "expected": null
+          },
+          {
+            "id": "k890",
+            "label": "(이력이 있으면) Date 열이 있어야 한다 — 없으면 true",
+            "actual": "{{ $input.noDate }}",
+            "op": "isFalse",
+            "expected": null
+          },
+          {
+            "id": "k891",
+            "label": "(이력이 없으면) 없다고 말해야 한다 — 빈 칸이면 true",
+            "actual": "{{ $input.silentEmpty }}",
+            "op": "isFalse",
+            "expected": null
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "landing",
+        "port": "out"
+      },
+      "to": {
+        "node": "find"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "find",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

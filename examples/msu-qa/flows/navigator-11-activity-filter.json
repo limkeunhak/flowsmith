@@ -1,0 +1,447 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-11-activity-filter",
+  "name": "Navigator · 거래 종류 필터 — 그 종류만 · 주소 반영",
+  "description": "11-activity-history: Mint 를 고르면 Mint 만 남고 activityType=mint 가 주소에, Sale 을 더하면 mint%2Csales 로 넓어지고 Mint 는 남는다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "landing",
+      "type": "web",
+      "name": "랜딩 · 랭킹 첫 아이템",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/navigator"
+        },
+        "actions": [
+          {
+            "id": "a855",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a856",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a857",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "랭킹 첫 아이템 링크",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[contains(@href,\"/navigator/nft/\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "nft",
+            "strategy": "link",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "mint",
+      "type": "web",
+      "name": "Mint 고르기",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "{{ $node.landing.nft }}?tab=activity"
+        },
+        "actions": [
+          {
+            "id": "a861",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a862",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a858",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "거래 종류 «Mint»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "//div[contains(concat(\" \",normalize-space(@class),\" \"),\" chip \") and normalize-space(.)=\"Mint\"]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a859",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 3500
+            }
+          },
+          {
+            "id": "a860",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "거래 종류 «Mint»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "//div[contains(concat(\" \",normalize-space(@class),\" \"),\" chip \") and normalize-space(.)=\"Mint\"]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "cls",
+            "strategy": "attribute",
+            "attribute": "class",
+            "transform": null
+          },
+          {
+            "id": "t3",
+            "kind": "readTable",
+            "risk": "safe",
+            "timeoutMs": 20000,
+            "optional": false,
+            "output": "rows",
+            "table": {
+              "label": "거래 표",
+              "rows": {
+                "label": "거래 표 행",
+                "locators": [
+                  {
+                    "kind": "css",
+                    "value": "tbody tr"
+                  }
+                ],
+                "fingerprint": null,
+                "frames": [],
+                "verifiedAt": null
+              },
+              "columns": [
+                {
+                  "name": "type",
+                  "selector": "td:nth-child(1)",
+                  "strategy": "innerText"
+                }
+              ],
+              "maxRows": 200
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "afterMint",
+      "type": "custom",
+      "name": "주소 · Mint만?",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "code": "const t = input.rows.map((r) => r.type ?? '');\nreturn { url: page.url(), distinct: [...new Set(t)].join(','), count: t.length };",
+        "outputs": [
+          "url",
+          "distinct",
+          "count"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "sale",
+      "type": "web",
+      "name": "Sale 더하기",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a863",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "거래 종류 «Sale»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "//div[contains(concat(\" \",normalize-space(@class),\" \"),\" chip \") and normalize-space(.)=\"Sale\"]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a864",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 3500
+            }
+          },
+          {
+            "id": "t4",
+            "kind": "readTable",
+            "risk": "safe",
+            "timeoutMs": 20000,
+            "optional": false,
+            "output": "rows",
+            "table": {
+              "label": "거래 표",
+              "rows": {
+                "label": "거래 표 행",
+                "locators": [
+                  {
+                    "kind": "css",
+                    "value": "tbody tr"
+                  }
+                ],
+                "fingerprint": null,
+                "frames": [],
+                "verifiedAt": null
+              },
+              "columns": [
+                {
+                  "name": "type",
+                  "selector": "td:nth-child(1)",
+                  "strategy": "innerText"
+                }
+              ],
+              "maxRows": 200
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "afterSale",
+      "type": "custom",
+      "name": "주소",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "code": "return { url: page.url() };",
+        "outputs": [
+          "url"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 1500,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k865",
+            "label": "Mint 가 선택 상태여야 한다",
+            "actual": "{{ $node.mint.cls }}",
+            "op": "matches",
+            "expected": "(^|\\s)selected(\\s|$)"
+          },
+          {
+            "id": "k866",
+            "label": "Mint 가 주소에 반영되어야 한다",
+            "actual": "{{ $node.afterMint.url }}",
+            "op": "contains",
+            "expected": "activityType=mint"
+          },
+          {
+            "id": "k867",
+            "label": "Mint 내역이 있어야 한다",
+            "actual": "{{ $node.mint.rows }}",
+            "op": "countGte",
+            "expected": "1"
+          },
+          {
+            "id": "k868",
+            "label": "Mint 만 남아야 한다",
+            "actual": "{{ $node.afterMint.distinct }}",
+            "op": "eq",
+            "expected": "Mint"
+          },
+          {
+            "id": "k869",
+            "label": "두 종류가 함께 주소에 담겨야 한다",
+            "actual": "{{ $node.afterSale.url }}",
+            "op": "contains",
+            "expected": "activityType=mint%2Csales"
+          },
+          {
+            "id": "k870",
+            "label": "고른 종류를 더하면 내역이 줄면 안 된다",
+            "actual": "{{ $node.sale.rows }}",
+            "op": "countGte",
+            "expected": "{{ $node.afterMint.count }}"
+          },
+          {
+            "id": "k871",
+            "label": "Mint 내역은 그대로 남아야 한다",
+            "actual": "{{ $node.sale.rows }}",
+            "op": "anyEq",
+            "expected": "Mint"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "landing",
+        "port": "out"
+      },
+      "to": {
+        "node": "mint"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "mint",
+        "port": "out"
+      },
+      "to": {
+        "node": "afterMint"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "afterMint",
+        "port": "out"
+      },
+      "to": {
+        "node": "sale"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "sale",
+        "port": "out"
+      },
+      "to": {
+        "node": "afterSale"
+      }
+    },
+    {
+      "id": "e5",
+      "from": {
+        "node": "afterSale",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

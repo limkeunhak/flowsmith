@@ -1,0 +1,506 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-04-owner-tabs",
+  "name": "Navigator · 소유자 상세 탭 4종",
+  "description": "04-detail-pages: 랭킹 아이템의 소유자 상세에 Character · Items · Nicknames · Watchlist 탭이 있고 기본은 Character",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "find",
+      "type": "web",
+      "name": "랜딩에서 랭킹 아이템 고르기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/navigator"
+        },
+        "actions": [
+          {
+            "id": "a608",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a609",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a610",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "첫 nft 링크",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[contains(@href,\"/navigator/nft/\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "nft",
+            "strategy": "link",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "nft",
+      "type": "web",
+      "name": "아이템 상세에서 소유자 링크",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "{{ $node.find.nft }}"
+        },
+        "actions": [
+          {
+            "id": "a611",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a612",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a613",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "첫 owner 링크",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[contains(@href,\"/navigator/owner/\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "owner",
+            "strategy": "link",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "owner",
+      "type": "web",
+      "name": "소유자 상세",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "{{ $node.nft.owner }}"
+        },
+        "actions": [
+          {
+            "id": "a614",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a615",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a616",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "«Page Not Found»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//h2[contains(normalize-space(.),\"Page Not Found\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "notFound",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a617",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Character»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Character\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "sCharacter",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a618",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Items»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Items\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "sItems",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a619",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Nicknames»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Nicknames\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "sNicknames",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a620",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Watchlist»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Watchlist\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "sWatchlist",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a621",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "보이는 탭 «Character»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Character\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "tabCharacter",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a622",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "보이는 탭 «Items»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Items\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "tabItems",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a623",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "보이는 탭 «Nicknames»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Nicknames\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "tabNicknames",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a624",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "보이는 탭 «Watchlist»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Watchlist\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "tabWatchlist",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k625",
+            "label": "아이템 상세에 소유자 링크가 있어야 한다",
+            "actual": "{{ $node.nft.owner }}",
+            "op": "contains",
+            "expected": "/navigator/owner/"
+          },
+          {
+            "id": "k626",
+            "label": "404 가 아니어야 한다",
+            "actual": "{{ $node.owner.notFound }}",
+            "op": "empty",
+            "expected": null
+          },
+          {
+            "id": "k627",
+            "label": "기본 탭은 Character — Character 선택",
+            "actual": "{{ $node.owner.sCharacter }}",
+            "op": "eq",
+            "expected": "true"
+          },
+          {
+            "id": "k628",
+            "label": "Character 탭이 있어야 한다",
+            "actual": "{{ $node.owner.tabCharacter }}",
+            "op": "eq",
+            "expected": "Character"
+          },
+          {
+            "id": "k629",
+            "label": "Items 탭이 있어야 한다",
+            "actual": "{{ $node.owner.tabItems }}",
+            "op": "eq",
+            "expected": "Items"
+          },
+          {
+            "id": "k630",
+            "label": "Nicknames 탭이 있어야 한다",
+            "actual": "{{ $node.owner.tabNicknames }}",
+            "op": "eq",
+            "expected": "Nicknames"
+          },
+          {
+            "id": "k631",
+            "label": "Watchlist 탭이 있어야 한다",
+            "actual": "{{ $node.owner.tabWatchlist }}",
+            "op": "eq",
+            "expected": "Watchlist"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "find",
+        "port": "out"
+      },
+      "to": {
+        "node": "nft"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "nft",
+        "port": "out"
+      },
+      "to": {
+        "node": "owner"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "owner",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

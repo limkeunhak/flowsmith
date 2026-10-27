@@ -1,0 +1,294 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-12-nickname-from-wallet",
+  "name": "Navigator · 지갑 Nicknames 탭 → 닉네임 상세",
+  "description": "12-nickname-detail: 지갑의 Nicknames 탭에서 닉네임을 누르면 /navigator/nickname/<이름> 으로 가고, 404가 아니며 이름이 화면에 있다",
+  "params": [
+    {
+      "name": "owner",
+      "label": "닉네임을 가진 지갑",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "0x18B8958F05263D89281f1bdd97AFfc5879394292",
+      "help": "QA — 캐릭터 43개 · 닉네임 evaans"
+    }
+  ],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "owner",
+      "type": "web",
+      "name": "지갑 → Nicknames 탭",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/navigator/owner/{{ $params.owner }}"
+        },
+        "actions": [
+          {
+            "id": "a892",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a893",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a894",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "«Nicknames» 탭",
+              "locators": [
+                {
+                  "kind": "role",
+                  "value": "tab",
+                  "name": "Nicknames"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a895",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 3500
+            }
+          },
+          {
+            "id": "a896",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "첫 닉네임 링크",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[contains(@href,\"/navigator/nickname/\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "href",
+            "strategy": "link",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "go",
+      "type": "web",
+      "name": "닉네임 누르기",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a897",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "첫 닉네임 링크",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[contains(@href,\"/navigator/nickname/\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a898",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": 20000,
+            "optional": false,
+            "wait": {
+              "kind": "url",
+              "pattern": "/navigator/nickname/"
+            }
+          },
+          {
+            "id": "a899",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a900",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "«Page Not Found»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//*[normalize-space(text())=\"Page Not Found\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "notFound",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "here",
+      "type": "custom",
+      "name": "닉네임 · 주소 · 본문",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "code": "const url = decodeURIComponent(page.url()).split('?')[0];\nconst name = url.split('/navigator/nickname/')[1] ?? '';\nconst body = (await page.locator('body').innerText().catch(() => '')).toLowerCase();\nreturn { url, name, bodyHasName: !!name && body.includes(name.toLowerCase()) };",
+        "outputs": [
+          "url",
+          "name",
+          "bodyHasName"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k901",
+            "label": "누른 닉네임의 상세로 간다",
+            "actual": "{{ $node.owner.href }}",
+            "op": "endsWith",
+            "expected": "/navigator/nickname/{{ $input.name }}"
+          },
+          {
+            "id": "k902",
+            "label": "닉네임 상세가 열려야 한다",
+            "actual": "{{ $node.go.notFound }}",
+            "op": "empty",
+            "expected": null
+          },
+          {
+            "id": "k903",
+            "label": "닉네임이 화면에 있어야 한다",
+            "actual": "{{ $input.bodyHasName }}",
+            "op": "isTrue",
+            "expected": null
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "owner",
+        "port": "out"
+      },
+      "to": {
+        "node": "go"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "go",
+        "port": "out"
+      },
+      "to": {
+        "node": "here"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "here",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

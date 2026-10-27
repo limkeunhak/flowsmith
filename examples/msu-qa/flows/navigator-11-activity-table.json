@@ -1,0 +1,343 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-11-activity-table",
+  "name": "Navigator · Activity 탭 거래 표",
+  "description": "11-activity-history: 랭킹 아이템의 Activity 탭에 Price · From · To · Date 열의 거래 표가 있고, 거래 종류는 아는 것만",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "landing",
+      "type": "web",
+      "name": "랜딩 · 랭킹 첫 아이템",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/navigator"
+        },
+        "actions": [
+          {
+            "id": "a843",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a844",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a845",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "랭킹 첫 아이템 링크",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[contains(@href,\"/navigator/nft/\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "nft",
+            "strategy": "link",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "act",
+      "type": "web",
+      "name": "Activity 탭",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "{{ $node.landing.nft }}?tab=activity"
+        },
+        "actions": [
+          {
+            "id": "a846",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a847",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "t1",
+            "kind": "readTable",
+            "risk": "safe",
+            "timeoutMs": 20000,
+            "optional": false,
+            "output": "heads",
+            "table": {
+              "label": "표 머리",
+              "rows": {
+                "label": "표 머리 행",
+                "locators": [
+                  {
+                    "kind": "css",
+                    "value": "thead tr"
+                  }
+                ],
+                "fingerprint": null,
+                "frames": [],
+                "verifiedAt": null
+              },
+              "columns": [
+                {
+                  "name": "c1",
+                  "selector": "th:nth-child(1)",
+                  "strategy": "innerText"
+                },
+                {
+                  "name": "c2",
+                  "selector": "th:nth-child(2)",
+                  "strategy": "innerText"
+                },
+                {
+                  "name": "c3",
+                  "selector": "th:nth-child(3)",
+                  "strategy": "innerText"
+                },
+                {
+                  "name": "c4",
+                  "selector": "th:nth-child(4)",
+                  "strategy": "innerText"
+                },
+                {
+                  "name": "c5",
+                  "selector": "th:nth-child(5)",
+                  "strategy": "innerText"
+                },
+                {
+                  "name": "c6",
+                  "selector": "th:nth-child(6)",
+                  "strategy": "innerText"
+                },
+                {
+                  "name": "c7",
+                  "selector": "th:nth-child(7)",
+                  "strategy": "innerText"
+                },
+                {
+                  "name": "c8",
+                  "selector": "th:nth-child(8)",
+                  "strategy": "innerText"
+                }
+              ],
+              "maxRows": 200
+            }
+          },
+          {
+            "id": "t2",
+            "kind": "readTable",
+            "risk": "safe",
+            "timeoutMs": 20000,
+            "optional": false,
+            "output": "rows",
+            "table": {
+              "label": "거래 표",
+              "rows": {
+                "label": "거래 표 행",
+                "locators": [
+                  {
+                    "kind": "css",
+                    "value": "tbody tr"
+                  }
+                ],
+                "fingerprint": null,
+                "frames": [],
+                "verifiedAt": null
+              },
+              "columns": [
+                {
+                  "name": "type",
+                  "selector": "td:nth-child(1)",
+                  "strategy": "innerText"
+                }
+              ],
+              "maxRows": 200
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "kinds",
+      "type": "custom",
+      "name": "모르는 거래 종류",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "code": "const known = ['All', 'Mint', 'Sale', 'Transfer'];\nconst t = input.rows.map((r) => r.type ?? '');\nreturn { types: t.join(', '), unknown: t.filter((x) => !known.includes(x)).join(', ') };",
+        "outputs": [
+          "types",
+          "unknown"
+        ],
+        "usesPage": false,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k848",
+            "label": "거래 표가 있어야 한다",
+            "actual": "{{ $node.act.rows }}",
+            "op": "countGte",
+            "expected": "1"
+          },
+          {
+            "id": "k849",
+            "label": "Price 열이 있어야 한다",
+            "actual": "{{ $node.act.heads }}",
+            "op": "anyEq",
+            "expected": "Price"
+          },
+          {
+            "id": "k850",
+            "label": "From 열이 있어야 한다",
+            "actual": "{{ $node.act.heads }}",
+            "op": "anyEq",
+            "expected": "From"
+          },
+          {
+            "id": "k851",
+            "label": "To 열이 있어야 한다",
+            "actual": "{{ $node.act.heads }}",
+            "op": "anyEq",
+            "expected": "To"
+          },
+          {
+            "id": "k852",
+            "label": "Date 열이 있어야 한다",
+            "actual": "{{ $node.act.heads }}",
+            "op": "anyEq",
+            "expected": "Date"
+          },
+          {
+            "id": "k853",
+            "label": "랭킹에 오른 아이템에 거래 내역이 있어야 한다",
+            "actual": "{{ $node.act.rows }}",
+            "op": "countGte",
+            "expected": "1"
+          },
+          {
+            "id": "k854",
+            "label": "알 수 없는 거래 종류가 없어야 한다",
+            "actual": "{{ $node.kinds.unknown }}",
+            "op": "empty",
+            "expected": null
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "landing",
+        "port": "out"
+      },
+      "to": {
+        "node": "act"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "act",
+        "port": "out"
+      },
+      "to": {
+        "node": "kinds"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "kinds",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

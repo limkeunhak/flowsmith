@@ -1,0 +1,317 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-10-boards-link",
+  "name": "Navigator · 랭킹 보드 노출 · 항목이 상세로",
+  "description": "10-ranking: 두 보드가 보이고, 캐릭터 랭킹은 서버가 준 것과 화면이 맞고, 랭킹 아이템 · 캐릭터가 열린다(비면 View All)",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "Navigator 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/navigator"
+        },
+        "actions": [
+          {
+            "id": "a830",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 1000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "served",
+      "type": "custom",
+      "name": "캐릭터 랭킹 — 서버 vs 화면",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "const resp = page.waitForResponse((r) => /\\/api\\/navigator\\/ranking\\/character/.test(r.url()), { timeout: 30000 });\nawait page.reload({ waitUntil: 'domcontentloaded' });\nconst served = ((await (await resp).json()).ranking ?? []).length;\nawait page.getByText('Character Rankings').first().waitFor({ state: 'visible', timeout: 25000 }).catch(() => {});\nawait page.waitForTimeout(3000);\nconst shown = await page.locator('a[href*=\"/navigator/character/\"]').count();\nlet characterNotFound = false, emptyWithoutViewAll = false;\nif (served > 0) {\n  const href = await page.locator('a[href*=\"/navigator/character/\"]').first().getAttribute('href');\n  const p = await page.context().newPage();\n  try { await p.goto(new URL(href, page.url()).toString(), { waitUntil: 'domcontentloaded' });\n    characterNotFound = await p.locator('text=Page Not Found').first().isVisible({ timeout: 10000 }).catch(() => false); } finally { await p.close(); }\n} else {\n  emptyWithoutViewAll = !(await page.locator('a[href*=\"/gamestatus/ranking\"], a:has(button:has-text(\"View All\"))').first().waitFor({ state: 'visible', timeout: 15000 }).then(() => true, () => false));\n}\nreturn { served, shown, agree: (shown > 0) === (served > 0), characterNotFound, emptyWithoutViewAll };",
+        "outputs": [
+          "served",
+          "shown",
+          "agree",
+          "characterNotFound",
+          "emptyWithoutViewAll"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "boards",
+      "type": "web",
+      "name": "보드 · 첫 아이템",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a831",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a832",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "«Highest Price» 보드",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//*[contains(normalize-space(text()),\"Highest Price\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "highest",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a833",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "«Character Rankings» 보드",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//*[contains(normalize-space(text()),\"Character Rankings\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "characters",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a834",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "랭킹 첫 아이템 링크",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[contains(@href,\"/navigator/nft/\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "nft",
+            "strategy": "link",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "item",
+      "type": "web",
+      "name": "랭킹 아이템 열기",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "{{ $input.nft }}"
+        },
+        "actions": [
+          {
+            "id": "a835",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a836",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "«Page Not Found»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//*[normalize-space(text())=\"Page Not Found\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "notFound",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k837",
+            "label": "Highest Price 보드가 있어야 한다",
+            "actual": "{{ $node.boards.highest }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k838",
+            "label": "Character Rankings 보드가 있어야 한다",
+            "actual": "{{ $node.boards.characters }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k839",
+            "label": "서버가 준 캐릭터 랭킹과 화면 항목이 맞아야 한다(있음/없음)",
+            "actual": "{{ $node.served.agree }}",
+            "op": "isTrue",
+            "expected": null
+          },
+          {
+            "id": "k840",
+            "label": "랭킹의 아이템이 열려야 한다",
+            "actual": "{{ $node.item.notFound }}",
+            "op": "empty",
+            "expected": null
+          },
+          {
+            "id": "k841",
+            "label": "(랭킹이 있으면) 랭킹의 캐릭터가 열려야 한다 — 404면 true",
+            "actual": "{{ $node.served.characterNotFound }}",
+            "op": "isFalse",
+            "expected": null
+          },
+          {
+            "id": "k842",
+            "label": "(랭킹이 비면) View All 로 나갈 수 있어야 한다 — 없으면 true",
+            "actual": "{{ $node.served.emptyWithoutViewAll }}",
+            "op": "isFalse",
+            "expected": null
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "served"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "served",
+        "port": "out"
+      },
+      "to": {
+        "node": "boards"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "boards",
+        "port": "out"
+      },
+      "to": {
+        "node": "item"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "item",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

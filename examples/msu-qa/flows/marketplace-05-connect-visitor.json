@@ -1,0 +1,464 @@
+{
+  "schemaVersion": 1,
+  "id": "marketplace-05-connect-visitor",
+  "name": "마켓플레이스 · 탭마다 로그인 진입점",
+  "description": "05-explore-tabs: 비회원에게 NFT · 캐릭터 · Bid 탭 모두 헤더에 Connect가 보인다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "start",
+      "type": "web",
+      "name": "마켓플레이스",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/marketplace"
+        },
+        "actions": [
+          {
+            "id": "a453",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 1000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "t_nft",
+      "type": "web",
+      "name": "nft 탭 열기",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a454",
+            "kind": "goto",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "url": "https://qa.msu.io/marketplace/nft"
+          },
+          {
+            "id": "a455",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a456",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a457",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "헤더의 Connect",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "header button:has-text(\"Connect\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "connect",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "w_nft",
+      "type": "custom",
+      "name": "로그인 상태 · 지금 주소",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "code": "const raw = await page.evaluate(() => localStorage.getItem('msu_auth_store'));\nlet isLogin = false; try { isLogin = JSON.parse(raw)?.state?.isLogin === true; } catch {}\nreturn { isLogin, path: new URL(page.url()).pathname, url: decodeURIComponent(page.url()), title: await page.title() };",
+        "outputs": [
+          "isLogin",
+          "path",
+          "url",
+          "title"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "t_character",
+      "type": "web",
+      "name": "character 탭 열기",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a458",
+            "kind": "goto",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "url": "https://qa.msu.io/marketplace/character"
+          },
+          {
+            "id": "a459",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a460",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a461",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "헤더의 Connect",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "header button:has-text(\"Connect\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "connect",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "w_character",
+      "type": "custom",
+      "name": "로그인 상태 · 지금 주소",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "code": "const raw = await page.evaluate(() => localStorage.getItem('msu_auth_store'));\nlet isLogin = false; try { isLogin = JSON.parse(raw)?.state?.isLogin === true; } catch {}\nreturn { isLogin, path: new URL(page.url()).pathname, url: decodeURIComponent(page.url()), title: await page.title() };",
+        "outputs": [
+          "isLogin",
+          "path",
+          "url",
+          "title"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "t_bid",
+      "type": "web",
+      "name": "bid 탭 열기",
+      "position": {
+        "x": 1500,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a462",
+            "kind": "goto",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "url": "https://qa.msu.io/marketplace/bid"
+          },
+          {
+            "id": "a463",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a464",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a465",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "헤더의 Connect",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "header button:has-text(\"Connect\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "connect",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "w_bid",
+      "type": "custom",
+      "name": "로그인 상태 · 지금 주소",
+      "position": {
+        "x": 1800,
+        "y": 0
+      },
+      "config": {
+        "code": "const raw = await page.evaluate(() => localStorage.getItem('msu_auth_store'));\nlet isLogin = false; try { isLogin = JSON.parse(raw)?.state?.isLogin === true; } catch {}\nreturn { isLogin, path: new URL(page.url()).pathname, url: decodeURIComponent(page.url()), title: await page.title() };",
+        "outputs": [
+          "isLogin",
+          "path",
+          "url",
+          "title"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 2100,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k466",
+            "label": "nft: 전제 — 로그인하지 않았다",
+            "actual": "{{ $node.w_nft.isLogin }}",
+            "op": "isFalse",
+            "expected": null
+          },
+          {
+            "id": "k467",
+            "label": "nft 탭에 Connect 버튼",
+            "actual": "{{ $node.t_nft.connect }}",
+            "op": "contains",
+            "expected": "Connect"
+          },
+          {
+            "id": "k468",
+            "label": "character: 전제 — 로그인하지 않았다",
+            "actual": "{{ $node.w_character.isLogin }}",
+            "op": "isFalse",
+            "expected": null
+          },
+          {
+            "id": "k469",
+            "label": "character 탭에 Connect 버튼",
+            "actual": "{{ $node.t_character.connect }}",
+            "op": "contains",
+            "expected": "Connect"
+          },
+          {
+            "id": "k470",
+            "label": "bid: 전제 — 로그인하지 않았다",
+            "actual": "{{ $node.w_bid.isLogin }}",
+            "op": "isFalse",
+            "expected": null
+          },
+          {
+            "id": "k471",
+            "label": "bid 탭에 Connect 버튼",
+            "actual": "{{ $node.t_bid.connect }}",
+            "op": "contains",
+            "expected": "Connect"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "start",
+        "port": "out"
+      },
+      "to": {
+        "node": "t_nft"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "t_nft",
+        "port": "out"
+      },
+      "to": {
+        "node": "w_nft"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "w_nft",
+        "port": "out"
+      },
+      "to": {
+        "node": "t_character"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "t_character",
+        "port": "out"
+      },
+      "to": {
+        "node": "w_character"
+      }
+    },
+    {
+      "id": "e5",
+      "from": {
+        "node": "w_character",
+        "port": "out"
+      },
+      "to": {
+        "node": "t_bid"
+      }
+    },
+    {
+      "id": "e6",
+      "from": {
+        "node": "t_bid",
+        "port": "out"
+      },
+      "to": {
+        "node": "w_bid"
+      }
+    },
+    {
+      "id": "e7",
+      "from": {
+        "node": "w_bid",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

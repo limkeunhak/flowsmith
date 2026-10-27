@@ -1,0 +1,221 @@
+{
+  "schemaVersion": 1,
+  "id": "msuweb-09-img-alt",
+  "name": "MSU 웹 · 이미지 대체 텍스트",
+  "description": "09-accessibility: / 와 /notices 에서 화면에 보이는 이미지에 alt 속성이 있다(alt=\"\"는 장식 이미지로 허용) — 이미지 훑기는 코드로",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "main",
+      "type": "web",
+      "name": "메인 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/"
+        },
+        "actions": [
+          {
+            "id": "a195",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a196",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "altMain",
+      "type": "custom",
+      "name": "alt 없는 이미지",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "const missing = await page.evaluate(() => Array.from(document.querySelectorAll('img')).filter((i) => !!i.offsetParent).filter((i) => i.getAttribute('alt') === null).map((i) => (i.getAttribute('src') || '').split('?')[0].slice(-50)));\nreturn { missing: missing.join(', ') };",
+        "outputs": [
+          "missing"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "notices",
+      "type": "web",
+      "name": "/notices 열기",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a197",
+            "kind": "goto",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "url": "https://qa.msu.io/notices"
+          },
+          {
+            "id": "a198",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a199",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "altNotices",
+      "type": "custom",
+      "name": "alt 없는 이미지",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "code": "const missing = await page.evaluate(() => Array.from(document.querySelectorAll('img')).filter((i) => !!i.offsetParent).filter((i) => i.getAttribute('alt') === null).map((i) => (i.getAttribute('src') || '').split('?')[0].slice(-50)));\nreturn { missing: missing.join(', ') };",
+        "outputs": [
+          "missing"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k200",
+            "label": "/: alt 없는 이미지가 있으면 안 된다",
+            "actual": "{{ $node.altMain.missing }}",
+            "op": "empty",
+            "expected": null
+          },
+          {
+            "id": "k201",
+            "label": "/notices: alt 없는 이미지가 있으면 안 된다",
+            "actual": "{{ $node.altNotices.missing }}",
+            "op": "empty",
+            "expected": null
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "main",
+        "port": "out"
+      },
+      "to": {
+        "node": "altMain"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "altMain",
+        "port": "out"
+      },
+      "to": {
+        "node": "notices"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "notices",
+        "port": "out"
+      },
+      "to": {
+        "node": "altNotices"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "altNotices",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

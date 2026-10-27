@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-05-unknown-no-leak",
+  "name": "Navigator · 없는 id 조회 — 내부 정보 미노출",
+  "description": "05-not-found: 존재하지 않는 NFT · 캐릭터 · 지갑 주소를 열어도 내부 오류 정보가 화면에 나오지 않는다 — 경로는 실행 입력",
+  "params": [
+    {
+      "name": "path",
+      "label": "없는 대상 경로",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "nft/ITEMdoesnotexist000000000",
+      "help": "nft/ITEMdoesnotexist000000000 · character/CHARdoesnotexist000000000 · owner/0xdeadbeef"
+    }
+  ],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "없는 id 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/navigator/{{ $params.path }}"
+        },
+        "actions": [
+          {
+            "id": "a632",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 6000
+            }
+          },
+          {
+            "id": "a633",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "본문 전체",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "body"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "body",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k634",
+            "label": "«TypeError»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "TypeError"
+          },
+          {
+            "id": "k635",
+            "label": "«ReferenceError»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "ReferenceError"
+          },
+          {
+            "id": "k636",
+            "label": "«at Object.»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "at Object."
+          },
+          {
+            "id": "k637",
+            "label": "«ECONNREFUSED»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "ECONNREFUSED"
+          },
+          {
+            "id": "k638",
+            "label": "«ETIMEDOUT»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "ETIMEDOUT"
+          },
+          {
+            "id": "k639",
+            "label": "«Internal Server»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "Internal Server"
+          },
+          {
+            "id": "k640",
+            "label": "«stacktrace»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "stacktrace"
+          },
+          {
+            "id": "k641",
+            "label": "«Traceback»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "Traceback"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

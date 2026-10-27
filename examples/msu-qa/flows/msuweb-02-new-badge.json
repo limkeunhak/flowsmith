@@ -1,0 +1,238 @@
+{
+  "schemaVersion": 1,
+  "id": "msuweb-02-new-badge",
+  "name": "MSU 웹 · MSU Space 의 NEW 배지",
+  "description": "02-navigation-links: NEW 배지는 MSU Space 에만 붙어 있다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "메인 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/"
+        },
+        "actions": [
+          {
+            "id": "a34",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a35",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a36",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "GNB «MSU Space»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//header//a[@data-link=\"gnb-link\"][contains(normalize-space(.),\"MSU Space\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "space",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a37",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "MSU Space 의 New",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//header//a[@data-link=\"gnb-link\"][contains(normalize-space(.),\"MSU Space\")])[1]//*[normalize-space(.)=\"New\" and not(*)]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "spaceNew",
+            "strategy": "text",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a38",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "About 의 New",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//header//a[@data-link=\"gnb-link\"][contains(normalize-space(.),\"About\")])[1]//*[normalize-space(.)=\"New\" and not(*)]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "AboutNew",
+            "strategy": "text",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a39",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "Notices 의 New",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//header//a[@data-link=\"gnb-link\"][contains(normalize-space(.),\"Notices\")])[1]//*[normalize-space(.)=\"New\" and not(*)]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "NoticesNew",
+            "strategy": "text",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a40",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "Builder Apps 의 New",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//header//a[@data-link=\"gnb-link\"][contains(normalize-space(.),\"Builder Apps\")])[1]//*[normalize-space(.)=\"New\" and not(*)]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "BuilderAppsNew",
+            "strategy": "text",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k41",
+            "label": "MSU Space 메뉴가 있어야 한다",
+            "actual": "{{ $node.open.space }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k42",
+            "label": "MSU Space 에 NEW 배지가 있어야 한다",
+            "actual": "{{ $node.open.spaceNew }}",
+            "op": "eq",
+            "expected": "New"
+          },
+          {
+            "id": "k43",
+            "label": "About 에는 NEW 배지가 없어야 한다",
+            "actual": "{{ $node.open.AboutNew }}",
+            "op": "empty",
+            "expected": null
+          },
+          {
+            "id": "k44",
+            "label": "Notices 에는 NEW 배지가 없어야 한다",
+            "actual": "{{ $node.open.NoticesNew }}",
+            "op": "empty",
+            "expected": null
+          },
+          {
+            "id": "k45",
+            "label": "Builder Apps 에는 NEW 배지가 없어야 한다",
+            "actual": "{{ $node.open.BuilderAppsNew }}",
+            "op": "empty",
+            "expected": null
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

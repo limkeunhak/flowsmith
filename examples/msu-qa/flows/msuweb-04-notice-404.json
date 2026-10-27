@@ -1,0 +1,279 @@
+{
+  "schemaVersion": 1,
+  "id": "msuweb-04-notice-404",
+  "name": "MSU 웹 · 없는 공지 번호는 404",
+  "description": "04-notices: /notices/999999999 · /notices/not-a-thread-id 는 404 로 처리되고 내부 정보를 흘리지 않는다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "없는 공지 두 곳",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/notices/999999999"
+        },
+        "actions": [
+          {
+            "id": "a165",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a166",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a167",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "본문 전체",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "body"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "num",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a168",
+            "kind": "goto",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "url": "https://qa.msu.io/notices/not-a-thread-id"
+          },
+          {
+            "id": "a169",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a170",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "본문 전체",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "body"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "word",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k171",
+            "label": "/notices/999999999 는 404 여야 한다",
+            "actual": "{{ $node.open.num }}",
+            "op": "matches",
+            "expected": "[Nn][Oo][Tt] [Ff][Oo][Uu][Nn][Dd]|404"
+          },
+          {
+            "id": "k172",
+            "label": "«TypeError»가 노출되지 않는다",
+            "actual": "{{ $node.open.num }}",
+            "op": "notContains",
+            "expected": "TypeError"
+          },
+          {
+            "id": "k173",
+            "label": "«ReferenceError»가 노출되지 않는다",
+            "actual": "{{ $node.open.num }}",
+            "op": "notContains",
+            "expected": "ReferenceError"
+          },
+          {
+            "id": "k174",
+            "label": "«at Object.»가 노출되지 않는다",
+            "actual": "{{ $node.open.num }}",
+            "op": "notContains",
+            "expected": "at Object."
+          },
+          {
+            "id": "k175",
+            "label": "«ECONNREFUSED»가 노출되지 않는다",
+            "actual": "{{ $node.open.num }}",
+            "op": "notContains",
+            "expected": "ECONNREFUSED"
+          },
+          {
+            "id": "k176",
+            "label": "«ETIMEDOUT»가 노출되지 않는다",
+            "actual": "{{ $node.open.num }}",
+            "op": "notContains",
+            "expected": "ETIMEDOUT"
+          },
+          {
+            "id": "k177",
+            "label": "«Internal Server»가 노출되지 않는다",
+            "actual": "{{ $node.open.num }}",
+            "op": "notContains",
+            "expected": "Internal Server"
+          },
+          {
+            "id": "k178",
+            "label": "«stacktrace»가 노출되지 않는다",
+            "actual": "{{ $node.open.num }}",
+            "op": "notContains",
+            "expected": "stacktrace"
+          },
+          {
+            "id": "k179",
+            "label": "«Traceback»가 노출되지 않는다",
+            "actual": "{{ $node.open.num }}",
+            "op": "notContains",
+            "expected": "Traceback"
+          },
+          {
+            "id": "k180",
+            "label": "/notices/not-a-thread-id 는 404 여야 한다",
+            "actual": "{{ $node.open.word }}",
+            "op": "matches",
+            "expected": "[Nn][Oo][Tt] [Ff][Oo][Uu][Nn][Dd]|404"
+          },
+          {
+            "id": "k181",
+            "label": "«TypeError»가 노출되지 않는다",
+            "actual": "{{ $node.open.word }}",
+            "op": "notContains",
+            "expected": "TypeError"
+          },
+          {
+            "id": "k182",
+            "label": "«ReferenceError»가 노출되지 않는다",
+            "actual": "{{ $node.open.word }}",
+            "op": "notContains",
+            "expected": "ReferenceError"
+          },
+          {
+            "id": "k183",
+            "label": "«at Object.»가 노출되지 않는다",
+            "actual": "{{ $node.open.word }}",
+            "op": "notContains",
+            "expected": "at Object."
+          },
+          {
+            "id": "k184",
+            "label": "«ECONNREFUSED»가 노출되지 않는다",
+            "actual": "{{ $node.open.word }}",
+            "op": "notContains",
+            "expected": "ECONNREFUSED"
+          },
+          {
+            "id": "k185",
+            "label": "«ETIMEDOUT»가 노출되지 않는다",
+            "actual": "{{ $node.open.word }}",
+            "op": "notContains",
+            "expected": "ETIMEDOUT"
+          },
+          {
+            "id": "k186",
+            "label": "«Internal Server»가 노출되지 않는다",
+            "actual": "{{ $node.open.word }}",
+            "op": "notContains",
+            "expected": "Internal Server"
+          },
+          {
+            "id": "k187",
+            "label": "«stacktrace»가 노출되지 않는다",
+            "actual": "{{ $node.open.word }}",
+            "op": "notContains",
+            "expected": "stacktrace"
+          },
+          {
+            "id": "k188",
+            "label": "«Traceback»가 노출되지 않는다",
+            "actual": "{{ $node.open.word }}",
+            "op": "notContains",
+            "expected": "Traceback"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

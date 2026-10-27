@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 1,
+  "id": "swapnwarp-01-visitor",
+  "name": "Swap & Warp · 비회원 스왑 화면 — 지갑 연결 안내",
+  "description": "01-swap-page: 비회원에게 스왑 화면이 열리고 폼이 지갑 연결을 요구한다 · 헤더에 Connect",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "Swap & Warp 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/swapnwarp"
+        },
+        "actions": [
+          {
+            "id": "a511",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a512",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a513",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "«Connect Wallet to Swap»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Connect Wallet to Swap\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "cta",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a514",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "헤더의 Connect",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "header button:has-text(\"Connect\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "connect",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "auth",
+      "type": "custom",
+      "name": "로그인 상태 · 지금 주소",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "const raw = await page.evaluate(() => localStorage.getItem('msu_auth_store'));\nlet isLogin = false; try { isLogin = JSON.parse(raw)?.state?.isLogin === true; } catch {}\nreturn { isLogin, url: decodeURIComponent(page.url()), title: await page.title() };",
+        "outputs": [
+          "isLogin",
+          "url",
+          "title"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k515",
+            "label": "제목이 Swap & Warp",
+            "actual": "{{ $input.title }}",
+            "op": "matches",
+            "expected": "[Ss][Ww][Aa][Pp]\\s*&\\s*[Ww][Aa][Rr][Pp]"
+          },
+          {
+            "id": "k516",
+            "label": "전제: 로그인하지 않았다",
+            "actual": "{{ $input.isLogin }}",
+            "op": "isFalse",
+            "expected": null
+          },
+          {
+            "id": "k517",
+            "label": "스왑 폼이 지갑 연결을 요구한다",
+            "actual": "{{ $node.open.cta }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k518",
+            "label": "헤더에 Connect 버튼",
+            "actual": "{{ $node.open.connect }}",
+            "op": "contains",
+            "expected": "Connect"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "auth"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "auth",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

@@ -1,0 +1,354 @@
+{
+  "schemaVersion": 1,
+  "id": "msuweb-05-rsc-failure",
+  "name": "MSU 웹 · _rsc 요청이 실패해도 공지 상세가 열린다",
+  "description": "05-content-failure: 목록에서 첫 공지를 고른 뒤 `?_rsc=` 요청을 500으로 막고 누른다 — 전체 로드로라도 글이 보여야 한다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "공지 목록",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/notices"
+        },
+        "actions": [
+          {
+            "id": "a202",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a203",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a204",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "첫 공지 링크",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[starts-with(@href,'/notices/')])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "href",
+            "strategy": "attribute",
+            "attribute": "href",
+            "transform": null
+          },
+          {
+            "id": "a205",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "첫 공지 제목",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[starts-with(@href,'/notices/')])[1]//h4"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "title",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "route",
+      "type": "custom",
+      "name": "_rsc 요청을 500으로",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "page.__rscHits = 0;\nawait page.route('**/notices/*', (route) => { if (route.request().url().includes('_rsc=')) { page.__rscHits++; return route.fulfill({ status: 500, body: '{}' }); } return route.continue(); });\nreturn { routed: true };",
+        "outputs": [
+          "routed"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "click",
+      "type": "web",
+      "name": "첫 공지 누르기",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a206",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "첫 공지 링크",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[starts-with(@href,'/notices/')])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "where",
+      "type": "custom",
+      "name": "상세 주소 기다리기",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "code": "const arrived = await page.waitForURL((u) => /^\\/notices\\/\\d+$/.test(new URL(u).pathname), { timeout: 30000 }).then(() => true, () => false);\nawait page.waitForTimeout(arrived ? 5000 : 0);\nreturn { path: new URL(page.url()).pathname, rscHits: page.__rscHits ?? 0 };",
+        "outputs": [
+          "path",
+          "rscHits"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "detail",
+      "type": "web",
+      "name": "상세 본문",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a207",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "본문 전체",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "body"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "body",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 1500,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k208",
+            "label": "고른 공지의 주소로 왔다",
+            "actual": "{{ $node.where.path }}",
+            "op": "eq",
+            "expected": "{{ $node.open.href }}"
+          },
+          {
+            "id": "k209",
+            "label": "전체 로드로 되돌아가서라도 글이 보여야 한다",
+            "actual": "{{ $node.detail.body }}",
+            "op": "contains",
+            "expected": "{{ $node.open.title }}"
+          },
+          {
+            "id": "k210",
+            "label": "«TypeError»가 노출되지 않는다",
+            "actual": "{{ $node.detail.body }}",
+            "op": "notContains",
+            "expected": "TypeError"
+          },
+          {
+            "id": "k211",
+            "label": "«ReferenceError»가 노출되지 않는다",
+            "actual": "{{ $node.detail.body }}",
+            "op": "notContains",
+            "expected": "ReferenceError"
+          },
+          {
+            "id": "k212",
+            "label": "«at Object.»가 노출되지 않는다",
+            "actual": "{{ $node.detail.body }}",
+            "op": "notContains",
+            "expected": "at Object."
+          },
+          {
+            "id": "k213",
+            "label": "«ECONNREFUSED»가 노출되지 않는다",
+            "actual": "{{ $node.detail.body }}",
+            "op": "notContains",
+            "expected": "ECONNREFUSED"
+          },
+          {
+            "id": "k214",
+            "label": "«ETIMEDOUT»가 노출되지 않는다",
+            "actual": "{{ $node.detail.body }}",
+            "op": "notContains",
+            "expected": "ETIMEDOUT"
+          },
+          {
+            "id": "k215",
+            "label": "«Internal Server»가 노출되지 않는다",
+            "actual": "{{ $node.detail.body }}",
+            "op": "notContains",
+            "expected": "Internal Server"
+          },
+          {
+            "id": "k216",
+            "label": "«stacktrace»가 노출되지 않는다",
+            "actual": "{{ $node.detail.body }}",
+            "op": "notContains",
+            "expected": "stacktrace"
+          },
+          {
+            "id": "k217",
+            "label": "«Traceback»가 노출되지 않는다",
+            "actual": "{{ $node.detail.body }}",
+            "op": "notContains",
+            "expected": "Traceback"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "route"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "route",
+        "port": "out"
+      },
+      "to": {
+        "node": "click"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "click",
+        "port": "out"
+      },
+      "to": {
+        "node": "where"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "where",
+        "port": "out"
+      },
+      "to": {
+        "node": "detail"
+      }
+    },
+    {
+      "id": "e5",
+      "from": {
+        "node": "detail",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

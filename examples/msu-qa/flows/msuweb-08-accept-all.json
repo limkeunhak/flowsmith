@@ -1,0 +1,271 @@
+{
+  "schemaVersion": 1,
+  "id": "msuweb-08-accept-all",
+  "name": "MSU 웹 · 쿠키 전체 동의",
+  "description": "08-cookie-consent: 전체 동의 — 네 항목이 동의로 기록되고 같은 세션의 다른 페이지에서 다시 묻지 않는다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "첫 방문",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/"
+        },
+        "actions": [
+          {
+            "id": "a281",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a278",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "배너 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:visible:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a279",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 2500
+            }
+          },
+          {
+            "id": "a280",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 배너",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "#cookiebotBanner"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "banner",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "consent",
+      "type": "custom",
+      "name": "기록된 쿠키 동의",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "const raw = (await page.context().cookies()).find((c) => c.name === 'CookieConsent')?.value ?? '';\nconst text = decodeURIComponent(raw);\nconst v = (k) => { const m = text.match(new RegExp(k + ':(true|false)')); return m ? m[1] : ''; };\nconst consent = { recorded: raw !== '', raw: text, necessary: v('necessary'), preferences: v('preferences'), statistics: v('statistics'), marketing: v('marketing') };\nreturn consent;",
+        "outputs": [
+          "recorded",
+          "raw",
+          "necessary",
+          "preferences",
+          "statistics",
+          "marketing"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "next",
+      "type": "web",
+      "name": "같은 세션에서 /notices",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a282",
+            "kind": "goto",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "url": "https://qa.msu.io/notices"
+          },
+          {
+            "id": "a283",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a284",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 배너",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "#cookiebotBanner"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "bannerNext",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k285",
+            "label": "배너가 닫혀야 한다",
+            "actual": "{{ $node.open.banner }}",
+            "op": "empty",
+            "expected": null
+          },
+          {
+            "id": "k286",
+            "label": "동의가 기록되어야 한다",
+            "actual": "{{ $node.consent.recorded }}",
+            "op": "isTrue",
+            "expected": null
+          },
+          {
+            "id": "k287",
+            "label": "necessary 가 동의로 기록되어야 한다",
+            "actual": "{{ $node.consent.necessary }}",
+            "op": "isTrue",
+            "expected": null
+          },
+          {
+            "id": "k288",
+            "label": "preferences 가 동의로 기록되어야 한다",
+            "actual": "{{ $node.consent.preferences }}",
+            "op": "isTrue",
+            "expected": null
+          },
+          {
+            "id": "k289",
+            "label": "statistics 가 동의로 기록되어야 한다",
+            "actual": "{{ $node.consent.statistics }}",
+            "op": "isTrue",
+            "expected": null
+          },
+          {
+            "id": "k290",
+            "label": "marketing 가 동의로 기록되어야 한다",
+            "actual": "{{ $node.consent.marketing }}",
+            "op": "isTrue",
+            "expected": null
+          },
+          {
+            "id": "k291",
+            "label": "같은 세션의 다른 페이지에서 다시 묻지 않아야 한다",
+            "actual": "{{ $node.next.bannerNext }}",
+            "op": "empty",
+            "expected": null
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "consent"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "consent",
+        "port": "out"
+      },
+      "to": {
+        "node": "next"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "next",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

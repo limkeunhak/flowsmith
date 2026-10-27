@@ -1,0 +1,203 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-search-name",
+  "name": "Navigator · 이름 검색 → 상세",
+  "description": "03-search: 이름을 검색하면 매칭된 대상의 상세로 이동한다 — 이름은 실행 입력(원본은 화면에서 고름)",
+  "params": [
+    {
+      "name": "name",
+      "label": "검색할 이름",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "blahh",
+      "help": "캐릭터 · 닉네임 · 아이템 이름"
+    }
+  ],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "검색",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/navigator"
+        },
+        "actions": [
+          {
+            "id": "a1005",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a1006",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a1007",
+            "kind": "fill",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "헤더 검색 칸",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "#global_search_input"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "value": "{{ $params.name }}"
+          },
+          {
+            "id": "a1008",
+            "kind": "press",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "헤더 검색 칸",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "#global_search_input"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "key": "Enter"
+          },
+          {
+            "id": "a1009",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": 15000,
+            "optional": false,
+            "wait": {
+              "kind": "url",
+              "pattern": "/navigator/(nickname|character|nft|owner)/"
+            }
+          },
+          {
+            "id": "a1010",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 2000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "where",
+      "type": "custom",
+      "name": "지금 주소",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "return { path: new URL(page.url()).pathname, url: decodeURIComponent(page.url()), title: await page.title() };",
+        "outputs": [
+          "path",
+          "url",
+          "title"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k1011",
+            "label": "상세 페이지로 간다",
+            "actual": "{{ $input.url }}",
+            "op": "matches",
+            "expected": "/navigator/(nickname|character|nft|owner)/"
+          },
+          {
+            "id": "k1012",
+            "label": "제목이 MSU Navigator",
+            "actual": "{{ $input.title }}",
+            "op": "contains",
+            "expected": "MSU Navigator"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "where"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "where",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

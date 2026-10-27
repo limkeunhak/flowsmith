@@ -1,0 +1,368 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-13-marketplace-handoff",
+  "name": "Navigator · 아이템 상세 → 마켓플레이스의 같은 아이템",
+  "description": "13-links-and-a11y: 아이템 상세의 Marketplace 링크가 /marketplace/nft/<토큰> 을 새 창으로 가리키고, 따라가면 같은 이름의 아이템이다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "landing",
+      "type": "web",
+      "name": "랜딩 · 랭킹 첫 아이템",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/navigator"
+        },
+        "actions": [
+          {
+            "id": "a936",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a937",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a938",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "랭킹 첫 아이템 링크",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[contains(@href,\"/navigator/nft/\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "nft",
+            "strategy": "link",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "detail",
+      "type": "web",
+      "name": "아이템 상세",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "{{ $input.nft }}"
+        },
+        "actions": [
+          {
+            "id": "a939",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a940",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a941",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "마켓플레이스 링크",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "a[href*=\"/marketplace/\"]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "href",
+            "strategy": "attribute",
+            "attribute": "href",
+            "transform": null
+          },
+          {
+            "id": "a942",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "마켓플레이스 링크",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "a[href*=\"/marketplace/\"]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "target",
+            "strategy": "attribute",
+            "attribute": "target",
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "name",
+      "type": "custom",
+      "name": "아이템 이름(문서 제목 앞)",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "code": "const title = await page.title(); return { name: title.split('|')[0].trim(), title };",
+        "outputs": [
+          "name",
+          "title"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "follow",
+      "type": "web",
+      "name": "링크 따라가기",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a943",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": 45000,
+            "optional": false,
+            "target": {
+              "label": "마켓플레이스 링크",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "a[href*=\"/marketplace/\"]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": true
+          },
+          {
+            "id": "a944",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": 45000,
+            "optional": false,
+            "wait": {
+              "kind": "url",
+              "pattern": "/marketplace/nft/"
+            }
+          },
+          {
+            "id": "a945",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "arrived",
+      "type": "custom",
+      "name": "지금 주소",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "code": "return { path: new URL(page.url()).pathname, url: decodeURIComponent(page.url()), title: await page.title() };",
+        "outputs": [
+          "path",
+          "url",
+          "title"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 1500,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k946",
+            "label": "마켓플레이스의 아이템 페이지를 가리켜야 한다",
+            "actual": "{{ $node.detail.href }}",
+            "op": "matches",
+            "expected": "/marketplace/nft/\\d+"
+          },
+          {
+            "id": "k947",
+            "label": "새 창으로 열려야 한다",
+            "actual": "{{ $node.detail.target }}",
+            "op": "eq",
+            "expected": "_blank"
+          },
+          {
+            "id": "k948",
+            "label": "새 창이 그 토큰의 페이지에 도착한다",
+            "actual": "{{ $input.url }}",
+            "op": "startsWith",
+            "expected": "{{ $node.detail.href }}"
+          },
+          {
+            "id": "k949",
+            "label": "마켓플레이스에도 같은 아이템이어야 한다",
+            "actual": "{{ $input.title }}",
+            "op": "contains",
+            "expected": "{{ $node.name.name }}"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "landing",
+        "port": "out"
+      },
+      "to": {
+        "node": "detail"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "detail",
+        "port": "out"
+      },
+      "to": {
+        "node": "name"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "name",
+        "port": "out"
+      },
+      "to": {
+        "node": "follow"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "follow",
+        "port": "out"
+      },
+      "to": {
+        "node": "arrived"
+      }
+    },
+    {
+      "id": "e5",
+      "from": {
+        "node": "arrived",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}
