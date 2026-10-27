@@ -185,6 +185,8 @@ async function saveFile(
   value: (template: string, what: string) => string, timeoutMs: number,
 ): Promise<{ path: string; note: string }> {
   const fail = (message: string) => new StepError({ problem: "other", message, label: "파일로 저장", locator: null, candidates: [] });
+  // 다시 해도 같은 것(거부 · PDF 아님) — 다시 해 보지 않는다
+  const refuse = (message: string) => new StepError({ problem: "mismatch", message, label: "파일로 저장", locator: null, candidates: [] });
   if (!files) throw fail("파일을 둘 곳이 없습니다 — 서버에 등록된 워크플로우로 돌리세요");
   if (!files.flowUid || !UID_RE.test(files.flowUid)) throw new FileStoreError("이 워크플로우의 폴더(uuid)를 모릅니다 — 서버에 등록된 워크플로우로 돌리세요");
   const rel = safeFilePath(value(a.path, "저장할 경로"));
@@ -197,13 +199,18 @@ async function saveFile(
   if (a.source === "url") {
     const url = new URL(value(a.url, "받을 주소"), page.url()).toString();
     // ★이 브라우저의 로그인(쿠키)으로 받는다 — 화면은 옮기지 않는다
-    const res = await page.context().request.get(url, { timeout: timeoutMs, maxRedirects: 10 });
-    if (!res.ok()) throw fail(`${url}을(를) 받지 못했습니다 — HTTP ${res.status()}`);
+    const res = await page.context().request.get(url, { timeout: timeoutMs, maxRedirects: 10, headers: { referer: page.url(), ...(a.headers ?? {}) } });
+    if (!res.ok()) {
+      // 서버가 말한 까닭을 붙인다(권한 없음 · 요청 보호 · 내보내기 꺼짐을 가르게)
+      const said = (await res.text().catch(() => "")).replace(/<(script|style)[\s\S]*?<\/\1>/giu, " ").replace(/<[^>]+>/gu, " ").replace(/\s+/gu, " ").trim().slice(0, 160);
+      const msg = `${url}을(를) 받지 못했습니다 — HTTP ${res.status()}${said ? ` «${said}»` : ""}`;
+      throw res.status() >= 400 && res.status() < 500 ? refuse(msg) : fail(msg);
+    }
     bytes = await res.body();
     how = `${res.headers()["content-type"]?.split(";")[0] ?? "?"}`;
     // 같은 사이트의 로그인 화면으로 돌아왔다(주소가 바뀜) — 내용 검사보다 먼저 알린다
     if (/login|signin|sso/iu.test(new URL(res.url()).pathname) && !/login|signin|sso/iu.test(new URL(url).pathname)) {
-      throw fail(`받으려던 주소가 로그인 화면(${res.url()})으로 넘어갔습니다 — 로그인이 풀렸거나 권한이 없습니다`);
+      throw refuse(`받으려던 주소가 로그인 화면(${res.url()})으로 넘어갔습니다 — 로그인이 풀렸거나 권한이 없습니다`);
     }
   } else {
     bytes = await page.pdf({ printBackground: true, format: "A4", timeout: timeoutMs } as Parameters<Page["pdf"]>[0]).catch((e: Error) => {
@@ -214,7 +221,7 @@ async function saveFile(
   // ★.pdf인데 PDF가 아니면 쓰지 않는다 — 로그인 화면 · 오류 화면(HTML)을 PDF 이름으로 남기지 않게
   if (rel.toLowerCase().endsWith(".pdf") && bytes.subarray(0, 5).toString("latin1") !== "%PDF-") {
     const head = bytes.subarray(0, 200).toString("utf8").replace(/\s+/gu, " ").trim().slice(0, 80);
-    throw fail(`받은 것이 PDF가 아닙니다(${how} · ${bytes.length}바이트 · «${head}») — 로그인이 풀렸거나 권한이 없거나 내보내기가 꺼져 있습니다`);
+    throw refuse(`받은 것이 PDF가 아닙니다(${how} · ${bytes.length}바이트 · «${head}») — 로그인이 풀렸거나 권한이 없거나 내보내기가 꺼져 있습니다`);
   }
   await fs.writeBytes(full, bytes);
   return { path: rel, note: `${rel}에 저장했습니다 — ${Math.max(1, Math.round(bytes.length / 1024))}KB(${how})` };
