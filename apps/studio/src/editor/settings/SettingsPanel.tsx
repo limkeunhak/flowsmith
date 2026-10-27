@@ -126,6 +126,18 @@ export function SettingsPanel({ flow, update, dirty, onToast, team, onMoveTeam, 
         onChange={(e) => setSettings({ forbiddenLabels: e.target.value.split("\n").filter((x) => x.trim() !== "") })} />
       <span className="small muted">한 줄에 하나. 커스텀 노드는 이 검사 밖입니다.</span>
 
+      <div className="row wrap">
+        <Field label="동작 사이 쉬기(초) — 최소">
+          <input type="number" min={0} max={60} step={0.5} style={{ width: 80 }} aria-label="동작 사이 쉬기 최소(초)" value={s.actionPause.minMs / 1000}
+            onChange={(e) => { const minMs = Math.max(0, Math.min(60_000, Math.round((Number(e.target.value) || 0) * 1000))); setSettings({ actionPause: { minMs, maxMs: Math.max(minMs, s.actionPause.maxMs) } }); }} />
+        </Field>
+        <Field label="최대">
+          <input type="number" min={0} max={60} step={0.5} style={{ width: 80 }} aria-label="동작 사이 쉬기 최대(초)" value={s.actionPause.maxMs / 1000}
+            onChange={(e) => { const maxMs = Math.max(0, Math.min(60_000, Math.round((Number(e.target.value) || 0) * 1000))); setSettings({ actionPause: { minMs: Math.min(maxMs, s.actionPause.minMs), maxMs } }); }} />
+        </Field>
+        <span className="small muted">웹페이지 동작을 하나 마칠 때마다 이 사이에서 무작위로 쉽니다(사람이 하는 빠르기). 0이면 쉬지 않습니다.</span>
+      </div>
+
       <div className="row">
         <Field label="동작 기본 시간 제한(ms)"><input type="number" value={s.defaultTimeoutMs} onChange={(e) => setSettings({ defaultTimeoutMs: Math.max(100, Number(e.target.value)) })} /></Field>
         <Field label="변경 감시 주기(분) — 5 이상, 비우면 끔"><input type="number" min={5} value={s.monitorIntervalMin ?? ""} placeholder="끔" onChange={(e) => setSettings({ monitorIntervalMin: e.target.value === "" ? null : Number(e.target.value) })} /></Field>

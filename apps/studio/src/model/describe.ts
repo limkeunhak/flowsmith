@@ -48,7 +48,7 @@ export function describeAction(a: WebAction, ctx?: { flow: Flow; nodeId: string 
 function describeBare(a: WebAction, h: H): string {
   switch (a.kind) {
     case "goto": return `${josa(q(h(a.url)), "으로")} 갑니다`;
-    case "click": return `${opt(a)}${josa(q(a.target.label), "을를")} 누릅니다${a.popup ? " — 새 창으로 옮겨 갑니다" : ""}`;
+    case "click": return `${opt(a)}${josa(q(a.target.label), "을를")} 누릅니다${a.popup ? " — 새 창으로 옮겨 갑니다" : ""}${a.dialog ? ` — 확인창${a.dialog.expect ? `(${q(a.dialog.expect)})` : ""}에 ${a.dialog.accept ? "«확인»" : "«취소»"}` : ""}`;
     case "fill": return `${q(a.target.label)}에 ${josa(q(h(a.value)), "을를")} 넣습니다`;
     case "select": return `${q(a.target.label)}에서 ${josa(q(h(a.value)), "을를")} 고릅니다`;
     case "check": return `${josa(q(a.target.label), "을를")} ${a.checked ? "켭니다" : "끕니다"}`;
@@ -67,6 +67,7 @@ function describeBare(a: WebAction, h: H): string {
     case "read": return `${josa(q(a.target.label), "을를")} ${a.transform === "number" ? "숫자로 " : ""}읽어 ${josa(`「${q(a.output)}」`, "으로")} 내보냅니다`;
     case "readTable": return `${q(a.table.label)} 표를 ${a.table.scroll ? "스크롤하며 " : ""}읽어 ${josa(`「${q(a.output)}」`, "으로")} 내보냅니다`;
     case "closeWindow": return "이 창을 닫고 연 창으로 돌아갑니다";
+    case "switchWindow": return "새로 열린 창으로 옮겨 갑니다";
     case "recheck": return "이 창에 넣은 칸이 그대로인지 다시 보고, 바뀐 칸은 한 번 다시 넣습니다";
     case "pickRow": {
       const p = a.pick;

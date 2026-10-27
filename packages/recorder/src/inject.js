@@ -102,8 +102,11 @@ function relayRecorder(opts) {
   // ── 위치 후보 ──
   const esc = (s) => CSS.escape(s);
   const q = (s) => s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-  // 매번 바뀌어 보이는 id는 믿지 않는다 — 숫자 덩어리 · 해시 · 프레임워크가 지은 이름
-  const unstable = (s) => /\d{4,}|[0-9a-f]{8,}|^(ember|react|ng|mui|css|jsx|radix|headlessui)[-_:]/i.test(s) || s.includes(":");
+  // 매번 바뀌어 보이는 id는 믿지 않는다 — 숫자 덩어리 · 해시 · 프레임워크가 지은 이름(WebSquare가 그릴 때 붙이는 wq_uuid_N 포함).
+  // ★글자에 바로 붙은 숫자는 화면 코드다 — WebSquare 격자 칸 «grd_cipa0032VOList_cell_0_3»의 cipa0032. 그것만으로 버리면
+  //  구조 경로(#wq_uuid_98 > div:nth-of-type(2) > …)가 남아 오히려 바뀐다(NexusStudio 2026-10-27)
+  const unstable = (s) => /(^|[^a-z])\d{4,}|[0-9a-f]{8,}|^(ember|react|ng|mui|css|jsx|radix|headlessui|wq_uuid)[-_:]/i.test(s) || s.includes(":");
+  window.__relayUnstable = unstable;   // 서버가 iframe 경로를 지을 때도 같은 규칙으로(session.ts #framePath)
   function cssPath(el) {
     const parts = [];
     let cur = el;
@@ -435,7 +438,10 @@ function relayRecorder(opts) {
     if (isForbidden(el)) { emit({ kind: "blocked", label: humanLabel(el) }); return; }
     const type = (el.type || "").toLowerCase();
     if (el.tagName === "INPUT" && (type === "checkbox" || type === "radio")) {
-      emit({ kind: "check", ...describe(el), checked: type === "radio" ? true : !el.checked });
+      // ★체크 칸을 직접 누르면 브라우저가 click 이벤트 **전에** 값을 먼저 바꾼다(막으면 되돌린다) — 지금 값이 곧 사람이 바란 값이다.
+      //  라벨을 눌렀으면 아직 안 바뀌었다(라벨이 뒤에 칸을 누른다) — 반대 값. 예전에는 늘 반대 값을 남겨 «켜기»가 «끄기»로 녹화됐다(NexusStudio 2026-10-26)
+      const wanted = type === "radio" ? true : e.target === el ? el.checked : !el.checked;
+      emit({ kind: "check", ...describe(el), checked: wanted });
       return;
     }
     // ☆POST 제출이라고 다 위험하지 않다 — 로그인도 POST다. 낱말로만 미리 켠다(사람이 바꿀 수 있다)
