@@ -105,13 +105,24 @@ export const HUMAN_DONE_KINDS = ["hidden", "visible", "url"] as const;
 /** 사람을 기다리는 시간 — 기본 5분 · 10초~30분 */
 export const HUMAN_TIMEOUT = { defaultMs: 5 * 60_000, minMs: 10_000, maxMs: 30 * 60_000 } as const;
 
+/**
+ * **누르면 뜨는 브라우저 확인창**(alert · confirm)에 답하기 — 등록 · 삭제 앞의 «정말 하시겠습니까?» 같은 것.
+ *   accept  참이면 «확인», 거짓이면 «취소»
+ *   expect  확인창 문구에 들어 있어야 할 글자 — 다르면 «취소»로 닫고 **멈춘다**(다른 경고 알림을 등록 확인으로 넘기지 않게). 비우면 보지 않는다
+ * ★확인창이 뜨지 않으면 멈춘다. 이 칸이 없는 누르기에서 뜬 확인창은 브라우저 기본대로 «취소»로 닫힌다(Playwright)
+ */
+export interface DialogAnswer {
+  accept: boolean;
+  expect: string;
+}
+
 /** 읽은 글자를 바꾸는 법 — number: 숫자 · 부호 · 소수점만 남겨 숫자로(「651,170원」→ 651170) */
 export const READ_TRANSFORMS = ["number"] as const;
 export type ReadTransform = (typeof READ_TRANSFORMS)[number];
 
 export type WebAction =
   | (ActionBase & { kind: "goto"; url: string })
-  | (ActionBase & { kind: "click"; target: Target; popup: boolean })
+  | (ActionBase & { kind: "click"; target: Target; popup: boolean; dialog?: DialogAnswer })
   | (ActionBase & { kind: "fill"; target: Target; value: string })
   | (ActionBase & { kind: "select"; target: Target; value: string })
   | (ActionBase & { kind: "check"; target: Target; checked: boolean })

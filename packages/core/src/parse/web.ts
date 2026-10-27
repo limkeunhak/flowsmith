@@ -134,7 +134,13 @@ function action(c: Checker, v: unknown, where: string): WebAction {
   const tgt = () => target(c, o["target"], `${where}.target`);
   switch (kind) {
     case "goto": return { ...base, kind, url: c.text(o, "url", where) };
-    case "click": return { ...base, kind, target: tgt(), popup: c.bool(o, "popup", where, false) };
+    case "click": {
+      const d = o["dialog"] == null ? null : c.obj(o["dialog"], `${where}.dialog`);
+      return {
+        ...base, kind, target: tgt(), popup: c.bool(o, "popup", where, false),
+        ...(d ? { dialog: { accept: c.bool(d, "accept", `${where}.dialog`, true), expect: c.str(d, "expect", `${where}.dialog`, "") } } : {}),
+      };
+    }
     case "fill": return { ...base, kind, target: tgt(), value: c.str(o, "value", where) };
     case "select": return { ...base, kind, target: tgt(), value: c.text(o, "value", where) };
     case "check": return { ...base, kind, target: tgt(), checked: c.bool(o, "checked", where, true) };

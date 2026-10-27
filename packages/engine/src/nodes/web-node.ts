@@ -7,7 +7,7 @@
  *  노드가 끝날 때 머문 창을 실행기에 알린다 — 다음 노드의 «이어서»가 거기서 시작한다.
  */
 import type { Page } from "playwright";
-import { checkRule, durationText, evaluate, HUMAN_TIMEOUT, WALLET_APPROVE_TIMEOUT, type HumanDone, type Output, type ProbeFinding, type Scope, type Target, type WebAction, type WebNode } from "@flowsmith/core";
+import { checkRule, durationText, evaluate, HUMAN_TIMEOUT, WALLET_APPROVE_TIMEOUT, type DialogAnswer, type HumanDone, type Output, type ProbeFinding, type Scope, type Target, type WebAction, type WebNode } from "@flowsmith/core";
 import { describeLocator, locateAll } from "../browser/locate.ts";
 import { pause, PROBLEMS, retryable, RunStopped, StepError, toFailure } from "../errors.ts";
 import type { Primitives } from "../browser/primitives.ts";
@@ -57,6 +57,38 @@ async function humanFinished(page: Page, a: Extract<WebAction, { kind: "human" }
   return !(a.appears && (await seen(page, a.appears)));
 }
 
+/** 누른 뒤 확인창이 늦게 뜰 수 있어 이만큼 더 기다린다 */
+const DIALOG_WAIT_MS = 5_000;
+
+/**
+ * 누르기가 띄우는 브라우저 확인창(alert · confirm)에 답한다 — 듣기는 바로 시작하고, done()이 «떴나 · 문구가 맞나»를 본다.
+ * ★문구가 기대와 다르면 «취소»로 닫고 멈춘다 — 다른 경고 알림을 등록 확인으로 넘기지 않는다
+ */
+function answerDialog(page: Page, d: DialogAnswer, label: string): { done(): Promise<string>; stop(): void } {
+  let seen: { type: string; message: string } | null = null;
+  let wrong = false;
+  const onDialog = (dlg: import("playwright").Dialog): void => {
+    seen = { type: dlg.type(), message: dlg.message() };
+    wrong = d.expect.trim() !== "" && !norm(dlg.message()).includes(norm(d.expect));
+    void (wrong || !d.accept ? dlg.dismiss() : dlg.accept()).catch(() => undefined);
+  };
+  page.once("dialog", onDialog);
+  const stop = (): void => { page.off("dialog", onDialog); };
+  return {
+    stop,
+    async done() {
+      const until = Date.now() + DIALOG_WAIT_MS;
+      while (!seen && Date.now() < until && !page.isClosed()) await new Promise((r) => setTimeout(r, 100));
+      stop();
+      const s = seen as { type: string; message: string } | null;
+      if (!s) throw new StepError({ problem: "other", message: `${label}: 누른 뒤 브라우저 확인창이 뜨지 않았습니다${d.expect ? ` — 기대한 문구 "${d.expect}"` : ""}`, label, locator: null, candidates: [] });
+      const first = norm(s.message).slice(0, 60);
+      if (wrong) throw new StepError({ problem: "mismatch", message: `${label}: 확인창 문구가 다릅니다 — 기대 "${d.expect}" · 화면 "${first}" — «취소»로 닫았습니다`, label, locator: null, candidates: [] });
+      return `확인창 «${first}»에 ${d.accept ? "«확인»" : "«취소»"}`;
+    },
+  };
+}
+
 export interface StepLog {
   index: number;
   id: string;
@@ -73,6 +105,8 @@ export interface NodeEnv {
   primFor(page: Page): Primitives;
   /** 지금 머무는 창이 바뀌었다 — 실행기가 기억한다(다음 노드의 «이어서») */
   onPage?(page: Page, opened: boolean): void;
+  /** 그 창을 연 창(아직 열린 것) — 앞 노드가 연 팝업이 이 노드에서 닫혔을 때 돌아갈 곳 */
+  openerOf?(page: Page): Page | null;
   scope: Scope;
   defaultTimeoutMs: number;
   step(s: StepLog): void;
@@ -127,7 +161,9 @@ export async function runWebNode(node: WebNode, env: NodeEnv): Promise<Output> {
   /** 연 창들 — 팝업으로 옮겨 가면 쌓고, 닫히면 꺼낸다 */
   const stack: Primitives[] = [];
   const goBack = (): boolean => {
-    const back = stack.pop();
+    // 이 노드가 연 창이 없으면 — 앞 노드가 연 팝업에서 시작했는데 그 창이 닫혔다. 그 창을 연 창으로
+    const opener = stack.length === 0 && prim.page.isClosed() ? env.openerOf?.(prim.page) ?? null : null;
+    const back = stack.pop() ?? (opener ? env.primFor(opener) : undefined);
     if (!back) return false;
     prim = back;
     env.onPage?.(prim.page, false);
@@ -169,6 +205,8 @@ export async function runWebNode(node: WebNode, env: NodeEnv): Promise<Output> {
 
   for (const [i, a] of node.config.actions.entries()) {
     if (env.signal?.aborted) throw new RunStopped();
+    // 앞 동작 뒤에 팝업이 스스로 닫혔다(서버 응답을 받고 닫는 창) — 연 창에서 이어 간다
+    if (prim.page.isClosed()) goBack();
     const index = i + 1;
     const timeout = a.timeoutMs ?? env.defaultTimeoutMs;
     const started = Date.now();
@@ -232,18 +270,23 @@ export async function runWebNode(node: WebNode, env: NodeEnv): Promise<Output> {
         }
         case "click": {
           label = a.target.label;
-          if (a.popup) {
-            // 팝업 — 누르는 것과 새 창을 같이 기다린다(누른 뒤에 기다리면 이미 열린 창을 놓친다)
-            const [popup, r] = await Promise.all([prim.page.waitForEvent("popup", { timeout }), prim.click(a.target, timeout)]);
-            await popup.waitForLoadState("domcontentloaded", { timeout }).catch(() => undefined);
-            stack.push(prim);
-            prim = env.primFor(popup);
-            env.onPage?.(popup, true);
-            note = `${label} 눌렀습니다 — 새 창으로 옮겼습니다(${popup.url()})${r.how === "이벤트" ? " · 이벤트로 누름" : ""}`;
-          } else {
-            const r = await prim.click(a.target, timeout);
-            note = `${label} 눌렀습니다${r.how === "이벤트" ? " (좌표가 안 먹어 이벤트로)" : ""}`;
-          }
+          // 확인창에 답하기 — 누르기 전에 듣기 시작한다(확인창이 떠 있는 동안 누르기가 끝나지 않는다)
+          const dialog = a.dialog ? answerDialog(prim.page, a.dialog, label) : null;
+          try {
+            if (a.popup) {
+              // 팝업 — 누르는 것과 새 창을 같이 기다린다(누른 뒤에 기다리면 이미 열린 창을 놓친다)
+              const [popup, r] = await Promise.all([prim.page.waitForEvent("popup", { timeout }), prim.click(a.target, timeout)]);
+              await popup.waitForLoadState("domcontentloaded", { timeout }).catch(() => undefined);
+              stack.push(prim);
+              prim = env.primFor(popup);
+              env.onPage?.(popup, true);
+              note = `${label} 눌렀습니다 — 새 창으로 옮겼습니다(${popup.url()})${r.how === "이벤트" ? " · 이벤트로 누름" : ""}`;
+            } else {
+              const r = await prim.click(a.target, timeout);
+              note = `${label} 눌렀습니다${r.how === "이벤트" ? " (좌표가 안 먹어 이벤트로)" : ""}`;
+            }
+            if (dialog) note += ` — ${await dialog.done()}`;
+          } finally { dialog?.stop(); }
           break;
         }
         case "fill": {
@@ -403,6 +446,8 @@ export async function runWebNode(node: WebNode, env: NodeEnv): Promise<Output> {
       break;
     } catch (e) {
       if (env.signal?.aborted || e instanceof RunStopped) throw new RunStopped();
+      // 팝업이 닫히는 중에 이 동작이 그 창에서 시작했다 — 동작은 일어나지 않았다. 연 창으로 돌아가 다시 한다(창이 쌓인 만큼만)
+      if (prim.page.isClosed() && goBack()) { attempt--; continue; }
       const f = toFailure(e);
       if (attempt < tries && retryable(f.problem)) {
         env.step({ index, id: a.id, kind: a.kind, label: label || a.kind, ms: Date.now() - started, note: `다시 해 봅니다(${attempt + 1}/${tries}) — ${f.message.split("\n")[0]}` });

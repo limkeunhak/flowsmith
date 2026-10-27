@@ -140,6 +140,22 @@ function ActionForm({ flow, nodeId, action: a, onChange }: { flow: Flow; nodeId:
           <TargetEditor target={a.target} onChange={(target) => onChange({ ...a, target })} title="누를 것" />
           <label className="check"><input type="checkbox" checked={a.popup} onChange={(e) => onChange({ ...a, popup: e.target.checked })} />
             새 창(팝업)을 엽니다 — 그 창으로 옮겨 가서 뒤 동작을 합니다. 창이 닫히면 연 창으로 돌아옵니다</label>
+          <div className="row wrap">
+            <span className="small muted">브라우저 확인창</span>
+            <select aria-label="브라우저 확인창" value={a.dialog ? (a.dialog.accept ? "accept" : "dismiss") : ""}
+              onChange={(e) => {
+                const { dialog: _drop, ...rest } = a;
+                onChange(e.target.value === "" ? rest : { ...rest, dialog: { accept: e.target.value === "accept", expect: a.dialog?.expect ?? "" } });
+              }}>
+              <option value="">답하지 않음(뜨면 취소로 닫힘)</option>
+              <option value="accept">«확인»으로 답한다</option>
+              <option value="dismiss">«취소»로 답한다</option>
+            </select>
+            {a.dialog && (
+              <input aria-label="확인창 문구" style={{ flex: 1, minWidth: 200 }} value={a.dialog.expect} placeholder="문구에 들어 있어야 할 글자 — 다르면 취소하고 멈춤"
+                onChange={(e) => onChange({ ...a, dialog: { ...a.dialog!, expect: e.target.value } })} />
+            )}
+          </div>
         </>
       );
       break;

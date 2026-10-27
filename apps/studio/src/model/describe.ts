@@ -48,7 +48,7 @@ export function describeAction(a: WebAction, ctx?: { flow: Flow; nodeId: string 
 function describeBare(a: WebAction, h: H): string {
   switch (a.kind) {
     case "goto": return `${josa(q(h(a.url)), "으로")} 갑니다`;
-    case "click": return `${opt(a)}${josa(q(a.target.label), "을를")} 누릅니다${a.popup ? " — 새 창으로 옮겨 갑니다" : ""}`;
+    case "click": return `${opt(a)}${josa(q(a.target.label), "을를")} 누릅니다${a.popup ? " — 새 창으로 옮겨 갑니다" : ""}${a.dialog ? ` — 확인창${a.dialog.expect ? `(${q(a.dialog.expect)})` : ""}에 ${a.dialog.accept ? "«확인»" : "«취소»"}` : ""}`;
     case "fill": return `${q(a.target.label)}에 ${josa(q(h(a.value)), "을를")} 넣습니다`;
     case "select": return `${q(a.target.label)}에서 ${josa(q(h(a.value)), "을를")} 고릅니다`;
     case "check": return `${josa(q(a.target.label), "을를")} ${a.checked ? "켭니다" : "끕니다"}`;
