@@ -89,6 +89,8 @@ export function newAction(kind: WebAction["kind"], taken: Iterable<string>): Web
     case "read": return { ...base, kind, target: emptyTarget(), output: "", strategy: "auto", attribute: null, transform: null };
     case "readTable": return { ...base, kind, output: "", table: { label: "", rows: emptyTarget(), columns: [{ name: "", selector: "", strategy: "auto" }], maxRows: 100 } };
     case "closeWindow": return { ...base, kind };
+    case "recheck": return { ...base, kind };
+    case "switchWindow": return { ...base, kind };
     case "pickRow": return { ...base, kind, pick: { label: "", rows: emptyTarget(), keyColumn: "", keyLabel: "", value: "", click: "", refuse: null } };
     case "assert": return { ...base, kind, target: emptyTarget(), strategy: "auto", equals: "" };
     // 사람 기다리기 — 끝났다는 표시는 녹화로 고르는 것이 쉽다(로그인 화면이 사라지면). 손으로 넣으면 주소부터
@@ -115,7 +117,7 @@ export function normalize(draft: unknown): Flow {
     vars: d.vars ?? {},
     secrets: (d.secrets ?? []).map((s) => ({ ...s, shared: s.shared ?? false })),
     sharedVars: d.sharedVars ?? [],
-    settings: { forbiddenLabels: [], defaultTimeoutMs: 15000, monitorIntervalMin: null, probeParams: {}, browser: "launch", schedules: [], retries: 0, retryDelayMs: 2000, runTimeoutMin: 60, locks: [], after: [], fileTriggers: [], ...(d.settings ?? {}), wallet: d.settings?.wallet ?? null,
+    settings: { forbiddenLabels: [], defaultTimeoutMs: 15000, monitorIntervalMin: null, probeParams: {}, browser: "launch", schedules: [], retries: 0, retryDelayMs: 2000, actionPause: { minMs: 0, maxMs: 0 }, runTimeoutMin: 60, locks: [], after: [], fileTriggers: [], ...(d.settings ?? {}), wallet: d.settings?.wallet ?? null,
       // 알림 규칙 — 빠진 칸은 검문소와 같은 기본값(켬 · 처음만)
       notify: (d.settings?.notify ?? []).map((r) => ({ ...r, on: r.on ?? [], url: r.url ?? "", channel: r.channel ?? "slack", attach: r.attach ?? false, firstOnly: r.firstOnly ?? true, enabled: r.enabled ?? true })) },
   };

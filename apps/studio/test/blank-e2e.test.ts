@@ -69,3 +69,19 @@ describe("빈 워크플로우 — 바로 캔버스로 · 이름은 창에서", (
     expect(await flows()).toHaveLength(1);
   });
 });
+
+describe("복제 — 목록의 복제 단추", () => {
+  it("★«이름 (사본)»으로 새 워크플로우를 만들고 그 캔버스로 — 원래 것은 그대로 · 이름을 묻지 않는다", async () => {
+    await page.goto(`${app.url}/#/`);
+    const row = page.locator(".flow-row", { hasText: "주문 상태 확인" }).first();
+    await row.waitFor();
+    const before = (await flows()).length;
+    await row.getByRole("button", { name: /^복제/ }).click();
+    await expect.poll(() => page.url()).toMatch(/#\/flows\/flow[^/]*-copy$/);
+    await expect.poll(() => page.getByLabel("워크플로우 이름").inputValue()).toBe("주문 상태 확인 (사본)");
+    expect(await page.getByRole("dialog").count()).toBe(0);
+    const list = await flows();
+    expect(list).toHaveLength(before + 1);
+    expect(list.map((f) => f.name)).toEqual(expect.arrayContaining(["주문 상태 확인", "주문 상태 확인 (사본)"]));
+  });
+});

@@ -10,7 +10,7 @@ export const NODE_TYPE_LABEL: Record<NodeType, string> = { web: "웹페이지", 
 export const ACTION_LABEL: Record<WebAction["kind"], string> = {
   goto: "주소로 가기", click: "누르기", fill: "넣기", select: "고르기", check: "체크",
   press: "키 누르기", wait: "기다리기", read: "읽기", readTable: "표 읽기",
-  closeWindow: "창 닫기", pickRow: "행 고르기", assert: "확인", human: "사람 기다리기", walletApprove: "MetaMask 승인",
+  closeWindow: "창 닫기", switchWindow: "새 창으로 옮기기", recheck: "넣은 칸 다시 확인", pickRow: "행 고르기", assert: "확인", human: "사람 기다리기", walletApprove: "MetaMask 승인",
 };
 
 /** 어느 브라우저에서 도나(settings.browser) */

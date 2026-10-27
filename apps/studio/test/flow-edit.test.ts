@@ -24,6 +24,13 @@ describe("조사", () => {
     const a = newAction("read", []);
     if (a.kind !== "read") throw new Error();
     expect(describeAction({ ...a, target: { ...a.target, label: "주문 상태" }, output: "status" })).toBe("주문 상태를 읽어 「status」(으)로 내보냅니다");
+    // 누르면 뜨는 브라우저 확인창에 답하기
+    const c = newAction("click", []);
+    if (c.kind !== "click") throw new Error();
+    const reg = { ...c, target: { ...c.target, label: "등록 단추" } };
+    expect(describeAction(reg)).toBe("등록 단추를 누릅니다");
+    expect(describeAction({ ...reg, dialog: { accept: true, expect: "등록하시겠습니까" } })).toBe("등록 단추를 누릅니다 — 확인창(등록하시겠습니까)에 «확인»");
+    expect(describeAction({ ...reg, dialog: { accept: false, expect: "" } })).toBe("등록 단추를 누릅니다 — 확인창에 «취소»");
   });
 });
 

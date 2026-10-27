@@ -72,7 +72,25 @@ export class BrowserSession {
     }
   }
 
-  get page(): Page | null { return this.#current; }
+  /** 팝업 → 그 팝업을 연 창 — 지금 창이 닫혔으면 여기로 돌아간다 */
+  readonly #openerOf = new Map<Page, Page>();
+
+  /**
+   * 지금 페이지. ★팝업이 스스로 닫혔으면(서버 응답을 받은 뒤 창을 닫는 사이트 — 앞 노드가 끝난 뒤에 닫힐 수 있다) 그 창을 연 창으로 돌아간다
+   */
+  get page(): Page | null {
+    const p = this.#current && this.#current.isClosed() ? this.openerOf(this.#current) : this.#current;
+    if (p && p !== this.#current) this.#use(p);
+    return p;
+  }
+
+  /** 그 창을 연 창 중 아직 열린 것 — 노드가 막 시작한 팝업이 닫히는 중일 때 돌아갈 곳. 없으면 null */
+  openerOf(page: Page): Page | null {
+    let p: Page | null = page;
+    do p = this.#openerOf.get(p) ?? (p !== this.#main ? this.#main : null);
+    while (p && p.isClosed());
+    return p;
+  }
 
   /** 지금 페이지가 바뀌면 알린다 — 실행 화면 보기가 따라간다 */
   onCurrent: ((page: Page) => void) | null = null;
@@ -166,6 +184,7 @@ export class BrowserSession {
   /** 노드가 창을 옮겼다(팝업으로 · 팝업에서 돌아옴) — 다음 노드의 «이어서»가 여기서 */
   follow(page: Page, opened: boolean): void {
     if (opened && !this.#popups.includes(page)) this.#popups.push(page);
+    if (opened && this.#current && this.#current !== page) this.#openerOf.set(page, this.#current);
     this.#use(page);
   }
 

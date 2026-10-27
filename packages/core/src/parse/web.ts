@@ -1,6 +1,6 @@
 /** 검문소 — 웹페이지 노드(위치 · 지문 · 기다리기 · 표 · 행 고르기 · 동작) */
 import {
-  ACTION_KINDS, HUMAN_DONE_KINDS, HUMAN_TIMEOUT, type HumanDone, LOCATOR_KINDS, READ_STRATEGIES, READ_TRANSFORMS, RISKS, ROW_PICK_BY, WAIT_KINDS, WALLET_APPROVE_TIMEOUT, type Fingerprint, type Locator, type RowPick, type TableColumn, type TableTarget, type Target, type Wait, type WebAction, type WebConfig,
+  ACTION_KINDS, HUMAN_DONE_KINDS, HUMAN_TIMEOUT, type HumanDone, LOCATOR_KINDS, READ_STRATEGIES, READ_TRANSFORMS, RISKS, ROW_PICK_BY, STABLE_WAIT, WAIT_KINDS, WALLET_APPROVE_TIMEOUT, type Fingerprint, type Locator, type RowPick, type TableColumn, type TableTarget, type Target, type Wait, type WebAction, type WebConfig,
 } from "../model.ts";
 import { Checker, type Obj } from "./checker.ts";
 import { rule } from "./condition.ts";
@@ -58,6 +58,12 @@ function wait(c: Checker, v: unknown, where: string): Wait {
     }
     case "networkIdle": return { kind };
     case "filled": return { kind, target: target(c, o["target"], `${where}.target`) };
+    case "stable": {
+      const ms = c.int(o, "ms", where, STABLE_WAIT.defaultMs, 1);
+      if (ms < STABLE_WAIT.minMs || ms > STABLE_WAIT.maxMs) c.fail(where, `그대로여야 하는 시간(ms)은 ${STABLE_WAIT.minMs}~${STABLE_WAIT.maxMs}입니다`);
+      return { kind, target: target(c, o["target"], `${where}.target`), ms };
+    }
+    case "changed": return { kind, target: target(c, o["target"], `${where}.target`) };
   }
 }
 
@@ -70,11 +76,14 @@ function table(c: Checker, v: unknown, where: string): TableTarget {
   });
   if (Array.isArray(o["columns"]) && columns.length === 0) c.fail(where, "열이 하나도 없습니다");
   c.noDup(columns.map((x) => x.name), "열 이름", where);
+  const scroll = c.strOrNull(o, "scroll", where);
   return {
     label: c.text(o, "label", where),
     rows: target(c, o["rows"], `${where}.rows`),
     columns,
     maxRows: c.int(o, "maxRows", where, 100, 1),
+    ...(o["empty"] != null ? { empty: target(c, o["empty"], `${where}.empty`) } : {}),
+    ...(scroll !== null && scroll.trim() !== "" ? { scroll } : {}),
   };
 }
 
@@ -125,7 +134,13 @@ function action(c: Checker, v: unknown, where: string): WebAction {
   const tgt = () => target(c, o["target"], `${where}.target`);
   switch (kind) {
     case "goto": return { ...base, kind, url: c.text(o, "url", where) };
-    case "click": return { ...base, kind, target: tgt(), popup: c.bool(o, "popup", where, false) };
+    case "click": {
+      const d = o["dialog"] == null ? null : c.obj(o["dialog"], `${where}.dialog`);
+      return {
+        ...base, kind, target: tgt(), popup: c.bool(o, "popup", where, false),
+        ...(d ? { dialog: { accept: c.bool(d, "accept", `${where}.dialog`, true), expect: c.str(d, "expect", `${where}.dialog`, "") } } : {}),
+      };
+    }
     case "fill": return { ...base, kind, target: tgt(), value: c.str(o, "value", where) };
     case "select": return { ...base, kind, target: tgt(), value: c.text(o, "value", where) };
     case "check": return { ...base, kind, target: tgt(), checked: c.bool(o, "checked", where, true) };
@@ -141,6 +156,8 @@ function action(c: Checker, v: unknown, where: string): WebAction {
     }
     case "readTable": return { ...base, kind, table: table(c, o["table"], `${where}.table`), output: c.name(o, "output", where) };
     case "closeWindow": return { ...base, kind };
+    case "recheck": return { ...base, kind };
+    case "switchWindow": return { ...base, kind };
     case "pickRow": return { ...base, kind, pick: rowPick(c, o["pick"], `${where}.pick`) };
     case "assert": return { ...base, kind, target: tgt(), strategy: c.oneOf(READ_STRATEGIES, o, "strategy", where, "auto"), equals: c.text(o, "equals", where) };
     case "human": {
@@ -169,6 +186,10 @@ export function webConfig(c: Checker, o: Obj, where: string): WebConfig {
     : { kind };
   const actions = c.arr(o, "actions", where).map((x, i) => action(c, x, `${where}.actions[${i}]`));
   c.noDup(actions.map((a) => a.id), "동작 id", where);
+  // «바뀔 때까지»는 바로 앞 동작 직전의 값과 견준다 — 앞 동작이 없으면 견줄 값이 없다
+  actions.forEach((a, i) => {
+    if (i === 0 && a.kind === "wait" && a.wait.kind === "changed") c.fail(`${where}.actions[0]`, "«값이 바뀔 때까지»는 바로 앞 동작(조회 단추 누르기 같은 것) 뒤에 둡니다 — 첫 동작일 수 없습니다");
+  });
   c.noDup(actions.flatMap((a) => (a.kind === "read" || a.kind === "readTable" ? [a.output] : [])), "출력 이름", where);
   // ★주소로 · 사람이 연 탭에서 시작하면 동작이 없어도 된다 — «페이지 접속»만 하는 노드(사용자 요청 2026-10-22 · 노드 나누기).
   //   앞 페이지에서 이어서 아무것도 안 하는 노드는 뜻이 없다
