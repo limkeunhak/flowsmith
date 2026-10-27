@@ -127,10 +127,35 @@ describe("단계 실행", () => {
 });
 
 describe("워크플로우 목록", () => {
-  it("쓰인 노드 종류 · 켜 둔 일정 · 마지막 실행을 함께 준다", async () => {
+  it("쓰인 노드 종류 · 켜 둔 일정 · 마지막 실행 · 설명 첫 줄을 함께 준다", async () => {
     const list = (await call("GET", "/api/flows")).body as any[];
     const quick = list.find((f) => f.id === "quick");
-    expect(quick).toMatchObject({ nodeTypes: ["web"], schedules: [], lastRun: { status: "success" } });
+    expect(quick).toMatchObject({ nodeTypes: ["web"], schedules: [], lastRun: { status: "success" }, description: expect.any(String) });
+    expect(quick.description).not.toContain("\n");
     expect(list.find((f) => f.id === "caller").nodeTypes).toEqual(["flowCall"]);
+  });
+
+  it("★묶음 — 여럿을 한 번에 옮기고(고친 때는 그대로) · 복제는 원래 묶음 · 없는 것이 섞이면 아무것도 안 옮긴다", async () => {
+    const before = ((await call("GET", "/api/flows")).body as any[]).find((f) => f.id === "quick");
+    expect(before.group).toBeNull();
+    const ok = await call("PUT", "/api/flow-group", { ids: ["quick", "caller"], group: "  느린 것들 " });
+    expect(ok).toMatchObject({ status: 200, body: { ids: ["quick", "caller"], group: "느린 것들" } });
+    const list = (await call("GET", "/api/flows")).body as any[];
+    expect(list.filter((f) => f.group === "느린 것들").map((f) => f.id).sort()).toEqual(["caller", "quick"]);
+    expect(list.find((f) => f.id === "quick").updatedAt).toBe(before.updatedAt);
+    expect((await call("GET", "/api/flows/quick")).body.group).toBe("느린 것들");
+
+    const copy = (await call("POST", "/api/flows/quick/duplicate", {})).body;
+    expect(copy.group).toBe("느린 것들");
+    await call("DELETE", `/api/flows/${copy.id}`);
+
+    expect((await call("PUT", "/api/flow-group", { ids: ["quick", "없음"], group: null })).status).toBe(404);
+    expect(((await call("GET", "/api/flows/quick")).body).group).toBe("느린 것들");
+    expect((await call("PUT", "/api/flow-group", { ids: ["quick"], group: "가".repeat(41) })).status).toBe(400);
+    expect((await call("PUT", "/api/flow-group", { ids: [], group: "x" })).status).toBe(400);
+
+    // 빈 이름은 묶음 없음
+    await call("PUT", "/api/flow-group", { ids: ["quick", "caller"], group: "" });
+    expect(((await call("GET", "/api/flows")).body as any[]).filter((f) => f.group !== null)).toEqual([]);
   });
 });

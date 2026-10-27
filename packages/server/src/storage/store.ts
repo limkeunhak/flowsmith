@@ -1,7 +1,7 @@
 /**
  * **저장소** — SQLite (`node:sqlite`). 나중에 Postgres로 옮긴다 (PLAN §4.2).
  *
- *   flow          플로우마다 **초안** 하나 — 고쳐 쓴다. 틀려 있어도 저장된다(편집 중이니까)
+ *   flow          플로우마다 **초안** 하나 — 고쳐 쓴다. 틀려 있어도 저장된다(편집 중이니까). 묶음(group_name)은 초안 밖의 이름표
  *   flow_version  초안을 굳힌 것 — ★검문소를 통과한 것만, 덮어쓰지 않는다
  *   (배포)        flow.active_version — «이 버전을 활성으로»
  *   secret        잠긴 시크릿 값. 평문은 이 파일 어디에도 없다
@@ -98,6 +98,7 @@ export class Store {
   activeFlows: FlowRepo["activeFlows"] = (...a) => this.#flows.activeFlows(...a);
   flowTeam: FlowRepo["flowTeam"] = (...a) => this.#flows.flowTeam(...a);
   setFlowTeam: FlowRepo["setFlowTeam"] = (...a) => this.#flows.setFlowTeam(...a);
+  setFlowGroup: FlowRepo["setFlowGroup"] = (...a) => this.#flows.setFlowGroup(...a);
   flowIdByUid: FlowRepo["flowIdByUid"] = (...a) => this.#flows.flowIdByUid(...a);
   flowRow: FlowRepo["flowRow"] = (...a) => this.#flows.flowRow(...a);
 

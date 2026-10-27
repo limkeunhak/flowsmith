@@ -230,6 +230,8 @@ function migrate(db: DatabaseSync): void {
   if (!cols.includes("team_id")) db.exec("ALTER TABLE flow ADD COLUMN team_id TEXT");
   // 워커 — 어디서 도나 · 어디서 돌았나(2026-10-17)
   if (!cols.includes("run_on")) db.exec("ALTER TABLE flow ADD COLUMN run_on TEXT");
+  // 묶음 — 목록을 정돈하는 이름표(2026-10-27). 초안 · 버전 밖에 둔다: 옮겨도 «저장 안 됨» · 새 버전이 생기지 않는다
+  if (!cols.includes("group_name")) db.exec("ALTER TABLE flow ADD COLUMN group_name TEXT");
   // 게시 — 언제 · 누가(감사 기록 · 밖에서 받아 가는 게시본, 2026-10-17). 옛 기록은 비어 있다
   if (!cols.includes("deployed_at")) db.exec("ALTER TABLE flow ADD COLUMN deployed_at TEXT");
   // 고정된 출력(pin data, 2026-10-18) — 초안과 따로 둔다: 버전에 들어가지 않고(버전 = 초안 원문), 초안 시험에서만 쓴다

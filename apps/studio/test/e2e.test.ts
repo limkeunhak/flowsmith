@@ -331,7 +331,8 @@ describe("편집 화면", () => {
 
 describe("첫 화면 — 템플릿", () => {
   it("★«무엇을 자동화할까요?»에서 고르고 몇 가지만 답하면 뼈대가 짜이고, «다음 할 일»이 녹화부터 이끈다", async () => {
-    await page.goto(app.url);
+    // 앞 시험이 만든 워크플로우가 있다 — 그때 템플릿은 템플릿 화면에만
+    await page.goto(`${app.url}/#/templates`);
     await page.locator(".tpl-card", { hasText: "사이트에서 값 읽어 엑셀로 쌓기" }).click();
     const form = page.locator(".tpl-form");
     await form.getByPlaceholder("https://…").fill("example.com");
