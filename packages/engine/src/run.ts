@@ -13,7 +13,7 @@ import { randomUUID } from "node:crypto";
 import type { Browser, Page } from "playwright";
 import {
   BLOCKED_PORT, checkSummary, compile, decide, evaluate, runChecks, httpSafe, paramProblem, redact, RunState, withParamDefaults,
-  reportStatus,
+  reportStatus, walletSecretName,
   type CheckResult, type ExtensionNode, type Flow, type FlowNode, type NodeStatus, type Output, type ProbeFinding, type ProbeReport, type Scope, type SecretValue,
 } from "@flowsmith/core";
 import { probeReport, ProbeStop } from "./probe.ts";
@@ -196,12 +196,17 @@ export async function runFlow(flow: Flow, opts: RunOptions = {}): Promise<RunRes
   let walletNode: string | null = null;
   const walletLog = (text: string) => { const r = walletNode ? records.get(walletNode) : undefined; if (r) { r.logs.push(text); emit({ kind: "log", nodeId: r.id, text }); } };
   const wallet = flow.settings.wallet;
+  // 키 시크릿 — 실행 입력으로 고를 수 있다(두 지갑이 차례를 주고받는 거래 · core wallet.ts)
+  const walletSecret = wallet ? walletSecretName(wallet.secret, params, flow.params) : "";
+  if (wallet && walletSecret !== wallet.secret && !flow.secrets.some((x) => x.name === walletSecret)) {
+    throw new RunInputError([`지갑: 실행 입력이 고른 시크릿 "${walletSecret}"은(는) 이 워크플로우의 시크릿이 아닙니다`]);
+  }
   // 지갑 브라우저(MetaMask) — 처음 필요할 때 연다. 키는 여기서만 풀린다
   const mm = flow.settings.browser === "wallet" && wallet?.mode === "metamask" ? wallet : null;
   const mmEnv = opts.metamask;
   const openWallet = mm && mmEnv ? async () => {
-    const key = secrets[mm.secret];
-    if (typeof key !== "string") throw new Error(`MetaMask 지갑: 시크릿 "${mm.secret}"에 키가 없습니다`);
+    const key = secrets[walletSecret];
+    if (typeof key !== "string") throw new Error(`MetaMask 지갑: 시크릿 "${walletSecret}"에 키가 없습니다`);
     return openWalletBrowser(mmEnv, key, { log: walletLog });
   } : undefined;
   // 브라우저는 처음 필요할 때 마련한다 — 띄우거나(launch) 사람의 크롬에 붙거나(attach) 지갑 브라우저를 연다(wallet)
@@ -221,16 +226,16 @@ export async function runFlow(flow: Flow, opts: RunOptions = {}): Promise<RunRes
   const prepareChain = async (page: Page) => { if (!chainReady) { await ensureChain(walletBase(page)); chainReady = true; } };
   const walletHook = mm ? {
     prepare: prepareChain,
-    approve: async (page: Page, done: () => Promise<boolean>, timeoutMs: number) => {
+    approve: async (page: Page, done: () => Promise<boolean>, timeoutMs: number, atLeast?: number) => {
       await prepareChain(page);   // «앞 페이지에서 이어서»로만 시작했으면 여기서
-      return (await approveUntil({ ...walletBase(page), done, timeoutMs })).length;
+      return (await approveUntil({ ...walletBase(page), done, timeoutMs, ...(atLeast ? { atLeast } : {}) })).length;
     },
   } : null;
   // 테스트 지갑(페이지에 넣는 것) — 우리가 띄운 브라우저에만(core wallet.ts)
   if (wallet && wallet.mode === "inject") {
-    const key = secrets[wallet.secret];
+    const key = secrets[walletSecret];
     session.onContext = async (ctx) => {
-      if (typeof key !== "string") throw new Error(`테스트 지갑: 시크릿 "${wallet.secret}"에 개인키가 없습니다`);
+      if (typeof key !== "string") throw new Error(`테스트 지갑: 시크릿 "${walletSecret}"에 개인키가 없습니다`);
       await installWallet(ctx, wallet, key, { probe: opts.probe ?? false, log: walletLog });
     };
   }

@@ -1,7 +1,7 @@
 /** 웹페이지 노드 — 시작 · 동작 목록 · 동작마다의 칸 (레코더가 채운 것을 다듬는 자리) */
 import { useState } from "react";
 import {
-  ACTION_KINDS, CONDITION_OPS, HUMAN_TIMEOUT, WALLET_APPROVE_TIMEOUT, READ_STRATEGIES, STABLE_WAIT, UNARY_OPS, WAIT_KINDS, type ConditionOp, type HumanDone, type Flow, type ProbeFinding, type Rule, type Wait, type WebAction, type WebNode,
+  ACTION_KINDS, CONDITION_OPS, HUMAN_TIMEOUT, WALLET_APPROVE_TIMEOUT, READ_STRATEGIES, RELOAD_WAIT, STABLE_WAIT, UNARY_OPS, WAIT_KINDS, type ConditionOp, type HumanDone, type Flow, type ProbeFinding, type Rule, type Wait, type WebAction, type WebNode,
 } from "@flowsmith/core";
 import { FindingCard } from "../monitor/Monitor.tsx";
 import { ACTION_LABEL, describeAction, emptyTarget, newAction } from "../../model/index.ts";
@@ -383,6 +383,15 @@ function WalletApproveForm({ flow, action: a, onChange }: { flow: Flow; action: 
         모르는 화면은 누르지 않고 멈춥니다. 이미 끝났다는 표시가 보이면(연결돼 있으면) 아무것도 누르지 않고 지나갑니다.
       </div>
       <DoneEditor done={a.done} labels={WALLET_DONE_LABEL} onChange={(done) => onChange({ ...a, done })} />
+      <label className="check">
+        <input type="checkbox" checked={a.atLeast !== undefined} onChange={(e) => { const { atLeast: _old, ...rest } = a; onChange(e.target.checked ? { ...rest, atLeast: 1 } : rest); }} />
+        지갑이 꼭 불려야 끝으로 칩니다 — 구매 · 등록처럼. 누른 단추가 처리 중으로 바뀌어 끝 표시가 먼저 맞아도, 승인 화면이 오기 전에는 끝내지 않습니다
+      </label>
+      {a.atLeast !== undefined && (
+        <Field label="적어도 승인할 화면 수" hint="1~10 · 끝 표시가 와도 이만큼 승인하기 전에는 기다리고, 시간이 다 되면 «사이트가 지갑을 부르지 않았다»로 멈춥니다">
+          <input type="number" min={1} max={10} style={{ width: 70 }} value={a.atLeast} onChange={(e) => onChange({ ...a, atLeast: Math.min(10, Math.max(1, Math.round(Number(e.target.value)) || 1)) })} />
+        </Field>
+      )}
       <Field label="기다리는 시간(분)" hint={`${WALLET_APPROVE_TIMEOUT.minMs / 1000}초~${WALLET_APPROVE_TIMEOUT.maxMs / 60_000}분 · 넘으면 실행이 실패합니다`}>
         <input type="number" min={0.5} max={10} step={0.5} style={{ width: 90 }} value={minutes}
           onChange={(e) => { const m = Number(e.target.value); onChange({ ...a, timeoutMs: Number.isFinite(m) && m > 0 ? Math.round(Math.min(WALLET_APPROVE_TIMEOUT.maxMs, Math.max(WALLET_APPROVE_TIMEOUT.minMs, m * 60_000))) : null }); }} />
@@ -410,6 +419,23 @@ function WaitForm({ wait, onChange }: { wait: Wait; onChange: (w: Wait) => void 
           <input type="number" min={STABLE_WAIT.minMs / 1000} max={STABLE_WAIT.maxMs / 1000} step={0.5} style={{ width: 80 }} value={wait.ms / 1000}
             onChange={(e) => { const s = Number(e.target.value); onChange({ ...wait, ms: Number.isFinite(s) ? Math.round(Math.min(STABLE_WAIT.maxMs, Math.max(STABLE_WAIT.minMs, s * 1000))) : STABLE_WAIT.defaultMs }); }} />
         </Field>
+      )}
+      {(wait.kind === "visible" || wait.kind === "hidden") && (
+        <>
+          <label className="check">
+            <input type="checkbox" checked={wait.reloadEveryMs !== undefined} onChange={(e) => {
+              const { reloadEveryMs: _old, ...rest } = wait;
+              onChange(e.target.checked ? { ...rest, reloadEveryMs: 20_000 } : rest);
+            }} />
+            새로고침하며 기다리기 — 다른 실행 · 다른 사람이 바꾼 것이 화면에 저절로 오지 않을 때(올린 매물 · 거래 정산)
+          </label>
+          {wait.reloadEveryMs !== undefined && (
+            <Field label="새로고침 간격(초)" hint={`${RELOAD_WAIT.minMs / 1000}초~${RELOAD_WAIT.maxMs / 60_000}분 · 다 기다리는 시간은 이 동작의 «시간 제한»(넉넉히 — 3분이면 180000ms)`}>
+              <input type="number" min={RELOAD_WAIT.minMs / 1000} max={RELOAD_WAIT.maxMs / 1000} step={1} style={{ width: 80 }} value={wait.reloadEveryMs / 1000}
+                onChange={(e) => { const sec = Number(e.target.value); onChange({ ...wait, reloadEveryMs: Number.isFinite(sec) ? Math.round(Math.min(RELOAD_WAIT.maxMs, Math.max(RELOAD_WAIT.minMs, sec * 1000))) : 20_000 }); }} />
+            </Field>
+          )}
+        </>
       )}
       {wait.kind === "changed" && <span className="small muted">바로 앞 동작(조회 누르기 같은 것) 직전의 값과 달라지면, 그대로가 될 때까지 더 본 뒤 이어 갑니다. 앞 결과가 남아 있는 화면에서 묵은 값을 읽지 않게 합니다. 시간이 다 돼도 안 바뀌면 멈추지 않고 그 사실을 기록에 남깁니다.</span>}
       {wait.kind === "url" && <Field label="주소 정규식"><input className="mono" value={wait.pattern} onChange={(e) => onChange({ kind: "url", pattern: e.target.value })} /></Field>}

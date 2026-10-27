@@ -59,6 +59,8 @@ export interface ApproveOptions {
   /** 끝났다는 표시가 왔나 */
   done: () => Promise<boolean>;
   timeoutMs: number;
+  /** 적어도 이만큼 승인해야 끝 표시를 믿는다 — 지갑이 꼭 불려야 하는 자리(구매 · 등록) */
+  atLeast?: number;
   probe?: boolean;
   signal?: AbortSignal;
   log: Log;
@@ -73,7 +75,8 @@ export async function approveUntil(o: ApproveOptions): Promise<MetaMaskScreen[]>
   const pressed = new Map<string, number>();
   while (Date.now() < deadline) {
     if (o.signal?.aborted) throw new Error("멈췄습니다");
-    if (await o.done().catch(() => false)) return approved;
+    const enough = approved.length >= (o.atLeast ?? 0);
+    if (enough && await o.done().catch(() => false)) return approved;
     let acted = false;
     for (const page of o.context.pages()) {
       if (page.isClosed() || !page.url().startsWith("chrome-extension://")) continue;
@@ -105,7 +108,12 @@ export async function approveUntil(o: ApproveOptions): Promise<MetaMaskScreen[]>
     }
     if (!acted) await sleep(800);
   }
-  if (await o.done().catch(() => false)) return approved;
+  const markOk = await o.done().catch(() => false);
+  if (markOk && approved.length >= (o.atLeast ?? 0)) return approved;
+  if (markOk) {
+    throw new Error(`끝났다는 표시는 왔지만 MetaMask 화면을 ${approved.length}개만 승인했습니다(적어도 ${o.atLeast}개) — 사이트가 지갑을 부르지 않았습니다. ` +
+      "거절 · 막힘(정책 대기 · 잔고) 안내가 화면에 떴는지 보세요");
+  }
   const did = approved.length ? `승인한 화면: ${approved.map((s) => SCREEN_LABEL[s.kind]).join(" → ")}` : "승인할 MetaMask 화면이 오지 않았습니다";
   throw new Error(`MetaMask 승인을 ${Math.round(o.timeoutMs / 1000)}초 기다렸지만 끝났다는 표시가 오지 않았습니다 — ${did}${seen ? ` · 마지막 화면: ${seen}` : ""}. 지갑에 그 사이트의 계정이 있는지, 끝 표시가 맞는지 보세요`);
 }
@@ -122,13 +130,20 @@ export async function ensureChain(o: Omit<ApproveOptions, "done" | "timeoutMs"> 
   const injected = await o.dapp.waitForFunction(() => typeof (globalThis as any).ethereum !== "undefined", null, { timeout: 10_000 }).then(() => true, () => false);
   if (!injected) { o.log("MetaMask: 이 페이지에 지갑(window.ethereum)이 없어 체인을 맞추지 않았습니다"); return; }
   if ((await chainIdOf(o.dapp)) === target.chainId) return;
-  // 승인이 끝나야 답이 오니 기다리지 않는다
+  // 승인이 끝나야 답이 오니 기다리지 않는다 — 다만 곧바로 거절되면(MetaMask가 모르는 체인 · 4902) 승인 창도 오지 않으니 그 까닭으로 멈춘다
+  let refused: string | null = null;
   void o.dapp.evaluate(({ hex, name, rpcUrl, symbol }) => {
     const eth = (globalThis as any).ethereum;
-    return rpcUrl
+    return (rpcUrl
       ? eth.request({ method: "wallet_addEthereumChain", params: [{ chainId: hex, chainName: name, rpcUrls: [rpcUrl], nativeCurrency: { name: symbol, symbol, decimals: 18 } }] })
-      : eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: hex }] });
-  }, { hex, name: target.name, rpcUrl: target.rpcUrl, symbol: target.symbol ?? "ETH" }).catch(() => undefined);
+      : eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: hex }] })
+    ).then(() => null, (e: { code?: number; message?: string }) => `${e?.code ?? ""} ${e?.message ?? String(e)}`.trim());
+  }, { hex, name: target.name, rpcUrl: target.rpcUrl, symbol: target.symbol ?? "ETH" }).then((r) => { refused = r; }, () => undefined);
+  await o.dapp.waitForTimeout(1_500);
+  if (refused !== null && (await chainIdOf(o.dapp)) !== target.chainId) {
+    throw new Error(`MetaMask가 체인 «${target.name}»(${target.chainId})으로 바꾸기를 곧바로 거절했습니다(${refused})` +
+      (target.rpcUrl ? "" : " — MetaMask가 모르는 체인입니다. 지갑 설정의 그 체인에 RPC 주소를 넣으면 먼저 더합니다"));
+  }
   await approveUntil({ ...o, done: async () => (await chainIdOf(o.dapp)) === target.chainId, timeoutMs: 45_000 });
   o.log(`MetaMask: 체인을 «${target.name}»(${target.chainId})로 맞췄습니다`);
 }

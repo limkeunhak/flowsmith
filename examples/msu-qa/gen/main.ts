@@ -7,7 +7,7 @@
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import type { Service } from "./lib.ts";
 
-const ALL = ["msuweb", "marketplace", "swapnwarp", "navigator"];
+const ALL = ["msuweb", "marketplace", "swapnwarp", "navigator", "trade"];
 const only = process.argv.slice(2);
 const root = new URL("../", import.meta.url);
 mkdirSync(new URL("flows/", root), { recursive: true });

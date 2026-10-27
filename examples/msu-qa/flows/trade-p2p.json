@@ -1,0 +1,434 @@
+{
+  "schemaVersion": 1,
+  "id": "trade-p2p",
+  "name": "거래 · P2P — 등록하고 상대 지갑이 사면 소유권이 넘어간다",
+  "description": "03-p2p-trade-flow: 역할 → 판매 등록(판매자) → 구매(구매자) → 소유권 확인 → 정리 → 판정. 부품은 trade-p2p-*. 지갑 주소 둘은 실행 입력",
+  "params": [
+    {
+      "name": "addressA",
+      "label": "지갑 A 주소",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "",
+      "help": "msu_qa_wallet_a의 주소(원본 SELLER_ADDRESS)"
+    },
+    {
+      "name": "addressB",
+      "label": "지갑 B 주소",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "",
+      "help": "msu_qa_wallet_b의 주소(원본 BUYER_ADDRESS)"
+    },
+    {
+      "name": "kind",
+      "label": "자산 종류",
+      "required": true,
+      "type": "select",
+      "options": [
+        "nft",
+        "character"
+      ],
+      "default": "nft",
+      "help": "상세 경로 /marketplace/<kind>/<tokenId>"
+    },
+    {
+      "name": "tokenType",
+      "label": "인벤토리 구분",
+      "required": true,
+      "type": "select",
+      "options": [
+        "items",
+        "characters"
+      ],
+      "default": "items",
+      "help": "nft → items · character → characters"
+    },
+    {
+      "name": "price",
+      "label": "가격(NESO)",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "1",
+      "help": ""
+    }
+  ],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": [],
+    "locks": [
+      "msu-qa-wallets"
+    ]
+  },
+  "nodes": [
+    {
+      "id": "roles",
+      "type": "flowCall",
+      "name": "역할 정하기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "flowId": "trade-p2p-roles",
+        "version": "active",
+        "items": "",
+        "params": {
+          "addressA": "{{ $params.addressA }}",
+          "addressB": "{{ $params.addressB }}",
+          "tokenType": "{{ $params.tokenType }}"
+        },
+        "concurrency": 1,
+        "onError": "stop"
+      }
+    },
+    {
+      "id": "list",
+      "type": "flowCall",
+      "name": "판매 등록(판매자)",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "flowId": "trade-p2p-list",
+        "version": "active",
+        "items": "",
+        "params": {
+          "wallet": "{{ $node.roles.results.0.output.seller }}",
+          "kind": "{{ $params.kind }}",
+          "tokenId": "{{ $node.roles.results.0.output.tokenId }}",
+          "price": "{{ $params.price }}",
+          "alreadyListed": "{{ $node.roles.results.0.output.alreadyListed }}"
+        },
+        "concurrency": 1,
+        "onError": "continue"
+      }
+    },
+    {
+      "id": "listed",
+      "type": "custom",
+      "name": "등록 결과",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "code": "const r = input.results?.[0];\nconst o = r?.output ?? {};\nreturn { ok: String(r?.status === 'success'), message: r?.message ?? '', listedAt: String(o.listedAt ?? ''), created: String(o.created ?? '') };",
+        "outputs": [
+          "ok",
+          "message",
+          "listedAt",
+          "created"
+        ],
+        "usesPage": false,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "buy",
+      "type": "flowCall",
+      "name": "구매(구매자)",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "flowId": "trade-p2p-buy",
+        "version": "active",
+        "items": "",
+        "params": {
+          "wallet": "{{ $node.roles.results.0.output.buyer }}",
+          "kind": "{{ $params.kind }}",
+          "tokenId": "{{ $node.roles.results.0.output.tokenId }}",
+          "listed": "{{ $node.listed.ok }}",
+          "listedAt": "{{ $node.listed.listedAt }}"
+        },
+        "concurrency": 1,
+        "onError": "continue"
+      }
+    },
+    {
+      "id": "tried",
+      "type": "custom",
+      "name": "첫 구매 결과",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "code": "const r = input.results?.[0];\nconst o = r?.output ?? {};\nreturn { ok: String(r?.status === 'success'), message: r?.message ?? '',  };",
+        "outputs": [
+          "ok",
+          "message"
+        ],
+        "usesPage": false,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "buyAgain",
+      "type": "flowCall",
+      "name": "구매 다시(구매자)",
+      "position": {
+        "x": 1500,
+        "y": 0
+      },
+      "config": {
+        "flowId": "trade-p2p-buy",
+        "version": "active",
+        "items": "",
+        "params": {
+          "wallet": "{{ $node.roles.results.0.output.buyer }}",
+          "kind": "{{ $params.kind }}",
+          "tokenId": "{{ $node.roles.results.0.output.tokenId }}",
+          "listed": "{{ $node.listed.ok }}",
+          "listedAt": "{{ $node.listed.listedAt }}",
+          "skip": "{{ $node.tried.ok }}"
+        },
+        "concurrency": 1,
+        "onError": "continue"
+      }
+    },
+    {
+      "id": "bought",
+      "type": "custom",
+      "name": "구매 결과",
+      "position": {
+        "x": 1800,
+        "y": 0
+      },
+      "config": {
+        "code": "const r = input.results?.[0];\nconst o = r?.output ?? {};\nreturn { ok: String(r?.status === 'success'), message: r?.message ?? '',  };",
+        "outputs": [
+          "ok",
+          "message"
+        ],
+        "usesPage": false,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "owned",
+      "type": "flowCall",
+      "name": "소유권 확인",
+      "position": {
+        "x": 2100,
+        "y": 0
+      },
+      "config": {
+        "flowId": "trade-p2p-owned",
+        "version": "active",
+        "items": "",
+        "params": {
+          "sellerAddress": "{{ $node.roles.results.0.output.sellerAddress }}",
+          "buyerAddress": "{{ $node.roles.results.0.output.buyerAddress }}",
+          "tokenId": "{{ $node.roles.results.0.output.tokenId }}",
+          "tokenType": "{{ $params.tokenType }}",
+          "bought": "{{ $node.bought.ok }}"
+        },
+        "concurrency": 1,
+        "onError": "continue"
+      }
+    },
+    {
+      "id": "moved",
+      "type": "custom",
+      "name": "소유권 결과",
+      "position": {
+        "x": 2400,
+        "y": 0
+      },
+      "config": {
+        "code": "const r = input.results?.[0];\nconst o = r?.output ?? {};\nreturn { ok: String(r?.status === 'success'), message: r?.message ?? '', sold: String(o.sold ?? ''), arrived: String(o.arrived ?? ''), left: String(o.left ?? '') };",
+        "outputs": [
+          "ok",
+          "message",
+          "sold",
+          "arrived",
+          "left"
+        ],
+        "usesPage": false,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "cleanup",
+      "type": "flowCall",
+      "name": "정리(판매자)",
+      "position": {
+        "x": 2700,
+        "y": 0
+      },
+      "config": {
+        "flowId": "trade-p2p-cancel",
+        "version": "active",
+        "items": "",
+        "params": {
+          "wallet": "{{ $node.roles.results.0.output.seller }}",
+          "kind": "{{ $params.kind }}",
+          "tokenId": "{{ $node.roles.results.0.output.tokenId }}",
+          "created": "{{ $node.listed.created }}",
+          "sold": "{{ $node.moved.sold }}"
+        },
+        "concurrency": 1,
+        "onError": "continue"
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 3000,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k1074",
+            "label": "판매 등록이 반영됐다",
+            "actual": "{{ $node.listed.ok }}",
+            "op": "isTrue",
+            "expected": null
+          },
+          {
+            "id": "k1075",
+            "label": "구매자가 샀다(지갑 승인까지)",
+            "actual": "{{ $node.bought.ok }}",
+            "op": "isTrue",
+            "expected": null
+          },
+          {
+            "id": "k1076",
+            "label": "구매자 보유 목록에 들어왔다",
+            "actual": "{{ $node.moved.arrived }}",
+            "op": "isTrue",
+            "expected": null
+          },
+          {
+            "id": "k1077",
+            "label": "판매자 보유 목록에서 빠졌다",
+            "actual": "{{ $node.moved.left }}",
+            "op": "isTrue",
+            "expected": null
+          },
+          {
+            "id": "k1078",
+            "label": "정리가 끝났다",
+            "actual": "{{ $node.cleanup.failed }}",
+            "op": "eq",
+            "expected": "0"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "roles",
+        "port": "out"
+      },
+      "to": {
+        "node": "list"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "list",
+        "port": "out"
+      },
+      "to": {
+        "node": "listed"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "listed",
+        "port": "out"
+      },
+      "to": {
+        "node": "buy"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "buy",
+        "port": "out"
+      },
+      "to": {
+        "node": "tried"
+      }
+    },
+    {
+      "id": "e5",
+      "from": {
+        "node": "tried",
+        "port": "out"
+      },
+      "to": {
+        "node": "buyAgain"
+      }
+    },
+    {
+      "id": "e6",
+      "from": {
+        "node": "buyAgain",
+        "port": "out"
+      },
+      "to": {
+        "node": "bought"
+      }
+    },
+    {
+      "id": "e7",
+      "from": {
+        "node": "bought",
+        "port": "out"
+      },
+      "to": {
+        "node": "owned"
+      }
+    },
+    {
+      "id": "e8",
+      "from": {
+        "node": "owned",
+        "port": "out"
+      },
+      "to": {
+        "node": "moved"
+      }
+    },
+    {
+      "id": "e9",
+      "from": {
+        "node": "moved",
+        "port": "out"
+      },
+      "to": {
+        "node": "cleanup"
+      }
+    },
+    {
+      "id": "e10",
+      "from": {
+        "node": "cleanup",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

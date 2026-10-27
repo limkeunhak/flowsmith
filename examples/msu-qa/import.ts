@@ -53,11 +53,20 @@ const existing = (await api("GET", "/suites")).data as { id: string; name: strin
 const word: Record<string, string> = { pass: "통과", fail: "불통과", error: "오류" };
 for (const file of readdirSync(new URL("suites/", dir)).filter((f) => f.endsWith(".json") && picked(f.replace(/\.json$/, ""))).sort()) {
   const suite = JSON.parse(readFileSync(new URL(`suites/${file}`, dir), "utf8"));
-  const id = existing.find((s) => s.name === suite.name)?.id ?? (await api("POST", "/suites", { name: suite.name })).data.id;
-  await api("PUT", `/suites/${id}`, { description: suite.description, items: suite.items });
-  console.log(`Suite ${suite.name} — 시나리오 ${suite.items.length}개 · ${server}/#/tests/${id}`);
+  const known = existing.find((s) => s.name === suite.name)?.id;
+  const id = known ?? (await api("POST", "/suites", { name: suite.name })).data.id;
+  // 비워 둔 입력(지갑 주소처럼 여기 적지 않는 것)은 서버에서 넣은 값을 지킨다
+  const before = known ? ((await api("GET", `/suites/${id}`)).data.suite.items ?? []) as { id: string; params: Record<string, string> }[] : [];
+  const items = suite.items.map((it: { id: string; params: Record<string, string> }) => {
+    const was = before.find((b) => b.id === it.id)?.params ?? {};
+    return { ...it, params: Object.fromEntries(Object.entries(it.params).map(([k, v]) => [k, v === "" ? was[k] ?? "" : v])) };
+  });
+  await api("PUT", `/suites/${id}`, { description: suite.description, items });
+  console.log(`Suite ${suite.name} — 시나리오 ${items.length}개 · ${server}/#/tests/${id}`);
 
   if (!argv.includes("--run")) continue;
+  const blank = items.filter((it: { params: Record<string, string> }) => Object.values(it.params).some((v) => v === ""));
+  if (blank.length) { console.log(`  돌리지 않음 — 비어 있는 입력이 있습니다(${blank.length}개 시나리오). 서버에서 Suite를 열어 넣으세요`); continue; }
   const { suiteRunId } = (await api("POST", `/suites/${id}/runs`, {})).data;
   let run: any;
   do {

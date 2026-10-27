@@ -23,6 +23,8 @@ const PAGES: Record<string, string> = {
   "/empty": `<table id="list"><tbody></tbody></table><p id="none">조회 결과가 없습니다</p>`,
   "/empty-row": `<table id="list"><tbody><tr><td class="empty" colspan="2">조회 결과가 없습니다</td></tr></tbody></table>`,
   "/no-rows": `<table id="list"><tbody></tbody></table>`,
+  // 세 번째로 열 때부터 «판매 중» — 다른 실행이 올린 매물이 새로고침해야 보이는 것처럼
+  "/later": "",
   // 30행짜리 표 — 높이 100px 상자에 보이는 행(+ 앞뒤 하나)만 그린다. 스크롤 자리를 #top에 적는다
   "/virtual": virtual(1),
   // 상자는 5행 높이인데 2행만 그린다 — 반 화면씩 내리면 행을 건너뛴다
@@ -46,6 +48,7 @@ function virtual(extra: number, shown?: number): string {
 }
 
 let site: Server;
+let hits = 0;
 let url: string;
 let browser: Browser;
 
@@ -60,7 +63,9 @@ const table = (rows: string, extra: Record<string, unknown> = {}) => ({ label: "
 
 beforeAll(async () => {
   site = createServer((q, res) => {
-    const body = PAGES[new URL(q.url ?? "/", "http://x").pathname];
+    const path = new URL(q.url ?? "/", "http://x").pathname;
+    if (path === "/later") hits++;
+    const body = path === "/later" ? (hits >= 3 ? `<p id="sale">판매 중</p>` : `<p>준비 중</p>`) : PAGES[path];
     res.writeHead(body ? 200 : 404, { "content-type": "text/html; charset=utf-8" });
     res.end(`<!doctype html><meta charset="utf-8">${body ?? ""}`);
   });
@@ -88,6 +93,28 @@ describe("값이 그대로일 때까지", () => {
     expect(() => flow("/twice", [{ id: "w", kind: "wait", wait: { kind: "stable", target: target("금액", "#amt"), ms: 100 } }])).toThrow(/300~30000/);
     expect(flow("/twice", [{ id: "w", kind: "wait", wait: { kind: "stable", target: target("금액", "#amt") } }]).nodes[0]).toMatchObject({ config: { actions: [{ wait: { ms: 2000 } }] } });
   });
+});
+
+describe("새로고침하며 기다리기", () => {
+  it("★저절로 오지 않는 변화를 간격마다 다시 열어 본다 · 몇 번 열었나 남긴다", async () => {
+    hits = 0;
+    const r = await runFlow(flow("/later", [
+      { id: "w", kind: "wait", timeoutMs: 15_000, wait: { kind: "visible", target: target("판매 중", "#sale"), reloadEveryMs: 2000 } },
+      { id: "r", kind: "read", output: "sale", target: target("판매 중", "#sale") },
+    ]), { browser });
+    expect(r.status, JSON.stringify(r.nodes[0]!.failure)).toBe("success");
+    expect(r.output).toEqual({ sale: "판매 중" });
+    expect(steps(r).find((s) => s.id === "w")!.note).toMatch(/새로고침 2번 만에 나타났습니다/);
+  }, 30_000);
+
+  it("시간이 다 되면 몇 번 열었나와 함께 멈춘다 · 검문소 — 간격 2초~10분", async () => {
+    const r = await runFlow(flow("/no-rows", [
+      { id: "w", kind: "wait", timeoutMs: 5000, wait: { kind: "visible", target: target("판매 중", "#sale"), reloadEveryMs: 2000 } },
+    ]), { browser });
+    expect(r.status).toBe("failure");
+    expect(r.nodes[0]!.failure!.message).toMatch(/나타나지 않았습니다 — 새로고침 2번/);
+    expect(() => flow("/later", [{ id: "w", kind: "wait", wait: { kind: "visible", target: target("x", "#x"), reloadEveryMs: 500 } }])).toThrow(/2초~10분/);
+  }, 30_000);
 });
 
 describe("값이 바뀔 때까지", () => {

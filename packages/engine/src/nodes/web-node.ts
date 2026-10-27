@@ -130,7 +130,7 @@ export interface NodeEnv {
   wallet?: {
     /** 시작 주소를 연 직후 — 사이트가 지갑을 부르기 전에 처음 체인으로 맞춘다(승인이 겹치지 않게) */
     prepare(page: Page): Promise<void>;
-    approve(page: Page, done: () => Promise<boolean>, timeoutMs: number): Promise<number>;
+    approve(page: Page, done: () => Promise<boolean>, timeoutMs: number, atLeast?: number): Promise<number>;
   };
 }
 
@@ -449,11 +449,11 @@ export async function runWebNode(node: WebNode, env: NodeEnv): Promise<Output> {
         case "walletApprove": {
           label = "MetaMask 승인";
           const page = prim.page;
-          if (await humanDone(page, a.done)) { note = "이미 끝나 있어 승인하지 않았습니다"; break; }
+          if (!a.atLeast && await humanDone(page, a.done)) { note = "이미 끝나 있어 승인하지 않았습니다"; break; }
           if (!env.wallet) {
             throw new StepError({ problem: "other", label, locator: null, candidates: [], message: "MetaMask 승인은 지갑 브라우저(MetaMask)에서만 됩니다 — 워크플로우 설정의 브라우저를 확인하세요" });
           }
-          const n = await env.wallet.approve(page, () => humanDone(page, a.done), a.timeoutMs ?? WALLET_APPROVE_TIMEOUT.defaultMs);
+          const n = await env.wallet.approve(page, () => humanDone(page, a.done), a.timeoutMs ?? WALLET_APPROVE_TIMEOUT.defaultMs, a.atLeast);
           note = n > 0 ? `MetaMask 화면 ${n}개를 승인했습니다 — ${durationText(Date.now() - started)}` : "승인할 화면 없이 끝났다는 표시가 왔습니다";
           break;
         }
