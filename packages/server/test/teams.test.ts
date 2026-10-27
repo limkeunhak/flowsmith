@@ -131,3 +131,20 @@ describe("팀을 넘는 부르기 · 읽기", () => {
     expect((await run("callPub")).status).toBe("success");
   }, 30_000);
 });
+
+describe("복제", () => {
+  it("★초안만 새 워크플로우로 — id «-copy» · 이름 «(사본)» · 같은 팀 · 새 uid · 버전 없음 · 또 하면 -copy2 · 남의 팀 것은 없는 것처럼 · 보는 사람은 못 한다", async () => {
+    await call("POST", "/api/flows", { draft: flowOf("dup1"), team: team["A"] }, c["alice"]);
+    await call("POST", "/api/flows/dup1/versions", { note: "v1" }, c["alice"]);
+    const src = (await call("GET", "/api/flows/dup1", undefined, c["alice"])).body;
+    const r = await call("POST", "/api/flows/dup1/duplicate", {}, c["alice"]);
+    expect(r.status).toBe(201);
+    expect(r.body).toMatchObject({ id: "dup1-copy", name: "dup1 (사본)", team: { id: team["A"] }, versions: [], activeVersion: null });
+    expect(r.body.uid).not.toBe(src.uid);
+    expect({ ...r.body.draft, id: "dup1", name: "dup1" }).toEqual(src.draft);   // 노드 · 설정 그대로
+    expect((await call("POST", "/api/flows/dup1/duplicate", { name: "다른 이름" }, c["alice"])).body).toMatchObject({ id: "dup1-copy2", name: "다른 이름" });
+    expect((await call("POST", "/api/flows/dup1/duplicate", {}, c["bob"])).status).toBe(404);   // 남의 팀
+    expect((await call("POST", "/api/flows/dup1/duplicate", { team: team["B"] }, c["alice"])).body.error).toMatch(/내가 속한 팀에만/);
+    expect((await call("POST", "/api/flows/dup1/duplicate", {}, c["carol"])).status).toBe(403);   // 보는 사람
+  });
+});

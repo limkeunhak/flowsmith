@@ -203,6 +203,8 @@ export const api = {
   getVersionJson: (id: string, version: number) => call<unknown>("GET", `/flows/${encodeURIComponent(id)}/versions/${version}`),
   saveDraft: (id: string, draft: unknown) => call<FlowDetail>("PUT", `/flows/${encodeURIComponent(id)}/draft`, { draft }),
   deleteFlow: (id: string) => call<null>("DELETE", `/flows/${encodeURIComponent(id)}`),
+  /** 복제 — 초안만 새 워크플로우로(버전 · 실행 기록 · 시크릿 값은 안 가져간다) */
+  duplicateFlow: (id: string, name?: string) => call<FlowDetail>("POST", `/flows/${encodeURIComponent(id)}/duplicate`, name ? { name } : {}),
   createVersion: (id: string, note: string) => call<{ version: number }>("POST", `/flows/${encodeURIComponent(id)}/versions`, { note }),
   deploy: (id: string, version: number | null) => call<{ activeVersion: number | null }>("POST", `/flows/${encodeURIComponent(id)}/deploy`, { version }),
   listSecrets: (id: string) => call<SecretStatus[]>("GET", `/flows/${encodeURIComponent(id)}/secrets`),

@@ -15,9 +15,9 @@ import { readFileSync } from "node:fs";
 import { chromium, type Browser, type BrowserContext, type Dialog, type Frame, type Page } from "playwright";
 import {
   evaluate, FlowError, parseFlow,
-  type Flow, type Locator, type Output, type SecretValue, type Target, type WebAction, type WebNode,
+  type DialogAnswer, type Flow, type Locator, type Output, type SecretValue, type Target, type WebAction, type WebNode,
 } from "@flowsmith/core";
-import { approveUntil, build, ensureChain, Primitives, rootOf, RunInputError, runFlow, runWebNode, startScreencast, toFailure, type Screencast, installWallet } from "@flowsmith/engine";
+import { approveUntil, build, ensureChain, locateOne, Primitives, rootOf, RunInputError, runFlow, runWebNode, startScreencast, toFailure, type Screencast, installWallet } from "@flowsmith/engine";
 import { keyColumnOf, readLabel, toName, withoutContentLocators } from "./suggest.ts";
 import { replayDraft } from "./replay.ts";
 import type { ClientMessage, OpenRequest, Recorded, RecordMode, ServerMessage } from "./protocol.ts";
@@ -105,6 +105,11 @@ export class RecorderSession {
   #seq = 0;
   #selects = new Map<string, { frame: Frame; raw: Raw; record: boolean; options: { value: string; label: string }[] }>();
   #dialog: Dialog | null = null;
+  /**
+   * 녹화 중 누르기가 띄운 브라우저 확인창(alert · confirm) — 사람이 라이브 화면에서 답하면 그 답을 **그 누르기에** «확인창에 답하기»로 남긴다.
+   * 답을 남기지 않으면 실행할 때 «취소»로 닫혀 등록 같은 일이 되지 않는다. answer는 사람이 답하기 전까지 null
+   */
+  #dialogSeen: { type: string; message: string; answer: boolean | null } | null = null;
   #closed = false;
   /**
    * 사람의 크롬에 붙었나(B2). ★그 크롬은 사람의 것이다 — 컨텍스트를 닫지 않고 · 창 크기를 바꾸지 않고 ·
@@ -280,12 +285,23 @@ export class RecorderSession {
     this.#stack.push(this.#page);
     this.#watch(p);
     void this.#switchTo(p, "새 창이 열려 그 창으로 옮겼습니다 — 창을 닫으면 연 창으로 돌아옵니다");
+    // 누르기가 곧바로 연 창이 아니면(늦게 열림 · 확인창에 답한 뒤) «새 창으로 옮기기»로 남긴다 — 안 남기면 실행은 연 창에 머물러
+    //  뒤 동작이 엉뚱한 창에서 실패한다. 누르기 처리가 끝난 뒤에 본다(줄을 선다) — 그 누르기가 이 창을 가져갔으면 남기지 않는다
+    this.#queue = this.#queue.then(async () => {
+      await new Promise((r) => setTimeout(r, POPUP_GRACE_MS + 100));
+      if (this.#closed || this.#claimed.has(p) || this.#mode !== "record" || p.isClosed()) return;
+      this.#claimed.add(p);
+      this.#record({ ...BASE, kind: "switchWindow" }, null, [], null, undefined, { hints: ["누르기와 바로 이어지지 않고 열린 창이라 «새 창으로 옮기기»로 남겼습니다 — 실행할 때도 창이 열릴 때까지 기다렸다 옮겨 갑니다"] });
+    });
   }
+  /** 누르기가 «새 창을 엽니다»로 가져간 창 */
+  readonly #claimed = new WeakSet<Page>();
 
   #watch(page: Page): void {
     page.on("framenavigated", (f) => { if (page === this.#page && f === page.mainFrame()) void this.#sendPage(); });
     page.on("dialog", (d) => {
       this.#dialog = d;
+      this.#dialogSeen = { type: d.type(), message: d.message(), answer: null };
       this.#io.send({ t: "dialog", kind: d.type(), message: d.message(), defaultValue: d.defaultValue() });
     });
     page.on("close", () => {
@@ -482,6 +498,7 @@ export class RecorderSession {
         case "dialog": {
           const d = this.#dialog;
           this.#dialog = null;
+          if (d && this.#dialogSeen && this.#dialogSeen.answer === null) this.#dialogSeen.answer = m.accept;
           if (d) await (m.accept ? d.accept(m.text) : d.dismiss()).catch(() => undefined);
           break;
         }
@@ -530,13 +547,24 @@ export class RecorderSession {
     };
   }
 
-  /** 프레임 경로 — 바깥부터 iframe을 가리키는 css. 각 단계가 정확히 하나여야 한다 */
+  /**
+   * 프레임 경로 — 바깥부터 iframe을 가리키는 css. 각 단계가 정확히 하나여야 한다.
+   * ★이름(name)을 id보다 먼저 쓴다 — iframe의 이름은 화면을 가리키고(WebSquare MDI는 화면 코드 «ZZUF0105U»), id는 열린 차례인 경우가 많다
+   *  («mdi_subWindow1_iframe» — 다른 화면을 먼저 열어 두면 번호가 바뀐다). 둘 다 바뀌어 보이는 글자면 예전대로 id부터 쓴다
+   */
   async #framePath(frame: Frame): Promise<string[]> {
     const path: string[] = [];
     let f = frame;
     for (let parent = f.parentFrame(); parent; parent = f.parentFrame()) {
       const el = await f.frameElement();
-      let sel = await el.evaluate((e: any) => (e.id ? `#${(globalThis as any).CSS.escape(e.id)}` : e.getAttribute("name") ? `iframe[name="${e.getAttribute("name")}"]` : ""));
+      let sel = await el.evaluate((e: any) => {
+        const g = globalThis as any;
+        const shaky = (s: string) => (g.__relayUnstable ? g.__relayUnstable(s) : false);
+        const name = e.getAttribute("name");
+        if (name && !shaky(name)) return `iframe[name="${name.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"]`;
+        if (e.id && !shaky(e.id)) return `#${g.CSS.escape(e.id)}`;
+        return e.id ? `#${g.CSS.escape(e.id)}` : name ? `iframe[name="${name}"]` : "";
+      });
       if (!sel || (await parent.locator(sel).count()) !== 1) sel = await el.evaluate((e: any) => (globalThis as any).__relayCssPath?.(e) ?? "iframe");
       path.unshift(sel);
       f = parent;
@@ -588,7 +616,9 @@ export class RecorderSession {
         await fallback(h);
       }
     } catch (e) {
-      this.#notice("error", `녹화는 했지만 페이지에서 해 보지 못했습니다 — ${toFailure(e).message.split("\n")[0]}`);
+      if (DEBUG) console.log(`[live] 대신 하기 실패 — ${toFailure(e).message.split("\n")[0]}`);
+      // 확인창이 떠 있으면 누르기가 끝나지 않은 것뿐이다(사람이 답하면 끝난다) — 실패가 아니다
+      if (!this.#dialog) this.#notice("error", `녹화는 했지만 페이지에서 해 보지 못했습니다 — ${toFailure(e).message.split("\n")[0]}`);
     } finally {
       await frame.evaluate(() => { (globalThis as any).__relayPass = 0; }).catch(() => undefined);
     }
@@ -606,14 +636,24 @@ export class RecorderSession {
         // ★먼저 해 보고 남긴다 — 팝업이 열렸는지 알아야 «팝업 열기»로 남길 수 있다
         const opener = this.#page;
         this.#popupSeen = null;
-        await this.#perform(frame, p, target, () => this.#prim.click(target, PERFORM_TIMEOUT_MS), (h) => h.click({ timeout: PERFORM_TIMEOUT_MS }));
+        this.#dialogSeen = null;
+        await this.#perform(frame, p, target, async () => {
+          const el = await locateOne(this.page, target, PERFORM_TIMEOUT_MS);
+          await this.#prim.assertClickable(el, target.label, target.locators[0]!);
+          await this.#clickFor(el);
+        }, (h) => this.#clickFor(h));
         for (let t = 0; !this.#popupSeen && !opener.isClosed() && t < POPUP_GRACE_MS; t += 50) await new Promise((r) => setTimeout(r, 50));
+        const dialog = await this.#dialogAnswer();
+        // 확인창에 답한 뒤에 열리는 창도 이 누르기의 것이다 — 답한 뒤 한 번 더 본다
+        if (dialog) for (let t = 0; !this.#popupSeen && !opener.isClosed() && t < POPUP_GRACE_MS; t += 50) await new Promise((r) => setTimeout(r, 50));
+        if (this.#popupSeen) this.#claimed.add(this.#popupSeen);
         const popup = this.#popupSeen !== null;
         const hints: string[] = [];
         if (popup) hints.push("새 창을 여는 단추입니다 — 실행할 때도 그 창으로 옮겨 갑니다");
         if (p.floating) hints.push("떠 있는 창(안내창) 안의 단추라 «있을 때만»으로 남겼습니다 — 늘 뜨는 창이면 끄세요");
+        if (dialog) hints.push(`누른 뒤 뜬 브라우저 확인창(«${dialog.expect}»)에 ${dialog.accept ? "«확인»" : "«취소»"}으로 답한 것을 함께 남겼습니다 — 실행할 때도 같은 확인창이 떠야 하고, 문구가 다르면 멈춥니다. 늘 뜨는 창이 아니면 노드 설정에서 «답하지 않음»으로`);
         const row = p.row && !popup ? this.#rowSuggestion(p.row, target.frames) : null;
-        this.#record({ ...base, risk: p.risky ? "unsafe" : "safe", optional: p.floating, kind: "click", target, popup }, null, warnings, null, undefined, { hints, ...(row ? { row } : {}) });
+        this.#record({ ...base, risk: p.risky ? "unsafe" : "safe", optional: p.floating, kind: "click", target, popup, ...(dialog ? { dialog } : {}) }, null, warnings, null, undefined, { hints, ...(row ? { row } : {}) });
         return;
       }
       case "check": {
@@ -677,6 +717,46 @@ export class RecorderSession {
         return;
       }
     }
+  }
+
+  /**
+   * 대신 누르기 — Primitives.press_처럼 좌표로 먼저, 안 되면 이벤트로. 창이 닫히면 성공. 꺼진 단추는 이벤트로 누르지 않는다(press_와 같은 까닭).
+   * ★확인창이 뜨면 그 자리에서 끝낸 것으로 본다 — 페이지가 멈춰 누르기가 돌아오지 않는데, 시간이 넘었다고 이벤트로 한 번 더 누르면 확인창이 **두 번** 뜬다(등록이 두 번)
+   */
+  async #clickFor(el: { click(o: { timeout: number }): Promise<void>; dispatchEvent(type: string): Promise<void>; isEnabled(): Promise<boolean> }): Promise<void> {
+    const page = this.page;
+    const attempt = (op: Promise<void>) => this.#untilDialog(op.then(() => "done" as const, (e: unknown) => (page.isClosed() ? "done" as const : e)));
+    const first = await attempt(el.click({ timeout: PERFORM_TIMEOUT_MS }));
+    if (first === "done" || first === "dialog") return;
+    if (DEBUG) console.log(`[live] 좌표로 안 눌려 이벤트로 — ${toFailure(first).message.split("\n")[0]}`);
+    if (!(await el.isEnabled().catch(() => true))) throw new Error("꺼져 있는 단추입니다 — 이벤트로 눌러도 화면이 무시하므로 누르지 않았습니다");
+    const second = await attempt(el.dispatchEvent("click"));
+    if (second === "done" || second === "dialog") return;
+    throw second;
+  }
+
+  /** 그 일이 끝나거나 확인창이 뜰 때까지 — 확인창이 뜨면 «dialog»(그 일은 사람이 답한 뒤에야 돌아온다) */
+  async #untilDialog<T>(p: Promise<T>): Promise<T | "dialog"> {
+    const tick = () => new Promise<"tick">((r) => setTimeout(() => r("tick"), 50));
+    for (;;) {
+      const r = await Promise.race([p, tick()]);
+      if (r !== "tick") return r;
+      if (this.#dialogSeen) { p.catch(() => undefined); return "dialog"; }
+    }
+  }
+
+  /**
+   * 이번 누르기가 띄운 확인창에 사람이 답하기를 기다린다 — 답하면 «확인창에 답하기»(문구는 첫 줄 40자 — 실행이 「들어 있나」로 본다).
+   * 안 떴으면 null. ★확인창이 떠 있는 동안 페이지는 멈춰 있어 사람이 답하는 것 말고는 할 일이 없다 — 세션이 닫히면 그만둔다
+   */
+  async #dialogAnswer(): Promise<DialogAnswer | null> {
+    const seen = this.#dialogSeen;
+    if (!seen) return null;
+    while (seen.answer === null && !this.#closed && this.#dialog) await new Promise((r) => setTimeout(r, 100));
+    this.#dialogSeen = null;
+    if (seen.answer === null) return null;
+    const first = seen.message.split(/\r?\n/).find((l) => l.trim() !== "") ?? "";
+    return { accept: seen.answer, expect: first.replace(/\s+/g, " ").trim().slice(0, 40) };
   }
 
   async #frameOffset(frame: Frame): Promise<{ x: number; y: number }> {

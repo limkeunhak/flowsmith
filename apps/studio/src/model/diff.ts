@@ -65,7 +65,7 @@ function nodeChanges(a: FlowNode, b: FlowNode, ctx: { flow: Flow }): Change[] {
 
 const SETTING_LABEL: Record<string, string> = {
   forbiddenLabels: "금지 버튼", defaultTimeoutMs: "기본 시간 제한", monitorIntervalMin: "변경 감시 주기", probeParams: "점검용 입력값", browser: "브라우저",
-  schedules: "일정", retries: "다시 해 보기", retryDelayMs: "다시 해 보기 간격", runTimeoutMin: "전체 시간 제한", notify: "알림", locks: "자원 잠금",
+  schedules: "일정", retries: "다시 해 보기", retryDelayMs: "다시 해 보기 간격", actionPause: "동작 사이 쉬기", runTimeoutMin: "전체 시간 제한", notify: "알림", locks: "자원 잠금",
   after: "다른 워크플로우가 끝나면", fileTriggers: "파일이 생기면", wallet: "테스트 지갑",
 };
 
