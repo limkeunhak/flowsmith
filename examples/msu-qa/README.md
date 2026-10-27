@@ -9,7 +9,7 @@ msu-e2e-test(사내 GitLab `webtest-automation` — Playwright로 qa.msu.io를 �
 | MSU QA · 마켓플레이스 | `tests/marketplace/` 03 · 04 · 05 · 06 · 07 · 09 | 7 |
 | MSU QA · Swap & Warp | `tests/swapnwarp/` 01 · 04 | 4 |
 
-지갑 · 로그인이 필요한 시나리오(member · wallet)는 아직 옮기지 않았다.
+두 지갑 거래(member)는 P2P 하나를 옮겼다(«MSU QA · 거래» — 아래 «두 지갑 거래»). 나머지 지갑 시나리오는 아직이다.
 
 ## 올리기 · 돌리기
 
@@ -21,6 +21,28 @@ FLOWSMITH_TOKEN=fsa_… node examples/msu-qa/import.ts --server https://studio.�
 ```
 
 워크플로우를 만들거나(있으면 초안을 바꿔) 서비스 묶음(이름 앞말 — Navigator · MSU 웹 …)에 넣고 버전으로 굳혀 게시하고, 같은 이름의 Suite가 있으면 시나리오를 바꾸고 없으면 만든다. 편집 화면의 **테스트**에서 Suite를 열어 돌려도 된다.
+
+## 두 지갑 거래
+
+원본(`03-p2p-trade-flow`)은 판매자 · 구매자 브라우저를 둘 다 띄워 두지만 **동시에 조작하지 않는다** — 차례를 주고받는다. 그래서 «실행 하나 = 브라우저 하나 = 지갑 하나»로 쪼개 지휘 워크플로우가 차례로 부른다.
+
+| 워크플로우 | 지갑 | 하는 일 |
+|---|---|---|
+| `trade-p2p` | — | **지휘**(Suite에 넣는 것) — 아래를 차례로 부르고(실패해도 이어 감) 판정. 자원 잠금 `msu-qa-wallets` |
+| `trade-p2p-roles` | 없음 | 두 지갑의 보유 목록을 읽어 토큰을 가진 쪽이 판매자 |
+| `trade-p2p-list` | 판매자 | 로그인 → List for sale → 가격 → Confirm → MetaMask 승인(끝: «Cancel Listing») |
+| `trade-p2p-buy` | 구매자 | Buy Now가 보일 때까지 **새로고침하며 기다리기** → 등록 뒤 120초 → Buy Now → Buy → 승인 |
+| `trade-p2p-owned` | 없음 | 구매자 보유 목록에 들어오고(180초) 판매자 것에서 빠질 때까지 다시 읽기 |
+| `trade-p2p-cancel` | 판매자 | 우리가 올렸고 안 팔렸으면 내린다(원본 `finally`) |
+
+지갑 워크플로우는 지갑 시크릿을 **실행 입력으로 고른다**(`{{ $params.wallet }}` — 보기 `msu_qa_wallet_a` · `msu_qa_wallet_b`). 역할이 실행마다 바뀌어도 한 벌로 된다.
+
+돌리려면:
+1. 서버의 시크릿 `msu_qa_wallet_a` · `msu_qa_wallet_b`에 QA 지갑 키(복구 문구 또는 개인키)를 넣는다 — 지갑 워크플로우 넷이 같은 이름을 쓴다
+2. «MSU QA · 거래» Suite를 열어 시나리오마다 `addressA` · `addressB`(두 지갑 주소)를 넣는다 — `import.ts`는 비워 둔 입력을 덮지 않는다
+3. **화면이 있는 워커**(데스크톱 앱 · `--headed`)에서 돌린다 — MetaMask 승인 창은 창 없는 브라우저에서 열리지 않는다
+
+확인한 것: 지갑 없는 부품(역할 · 소유권)은 QA에서 돌았다 · 키 없이 지휘를 돌리면 지갑 단계가 «시크릿 값 없음»으로 실패하고도 정리 · 판정까지 간다(9초). **지갑 단계는 아직 QA에서 돌려 보지 않았다.**
 
 ## 고치기
 

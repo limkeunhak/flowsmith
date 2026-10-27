@@ -1,0 +1,32 @@
+{
+  "name": "MSU QA · 거래 (msu-e2e-test)",
+  "description": "msu-e2e-test tests/marketplace/의 두 지갑 거래 — 지휘 워크플로우가 지갑마다 역할 워크플로우를 차례로 부른다. 대상 qa.msu.io/marketplace · 화면 있는 워커 필요",
+  "items": [
+    {
+      "id": "t1",
+      "flowId": "trade-p2p",
+      "label": "[03-p2p-trade-flow] NFT 아이템을 등록하고 상대 지갑이 사면 소유권이 넘어간다",
+      "params": {
+        "addressA": "",
+        "addressB": "",
+        "kind": "nft",
+        "tokenType": "items",
+        "price": "1"
+      },
+      "enabled": true
+    },
+    {
+      "id": "t2",
+      "flowId": "trade-p2p",
+      "label": "[03-p2p-trade-flow] 캐릭터를 등록하고 상대 지갑이 사면 소유권이 넘어간다",
+      "params": {
+        "addressA": "",
+        "addressB": "",
+        "kind": "character",
+        "tokenType": "characters",
+        "price": "1"
+      },
+      "enabled": true
+    }
+  ]
+}

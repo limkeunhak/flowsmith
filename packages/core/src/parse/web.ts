@@ -1,6 +1,6 @@
 /** 검문소 — 웹페이지 노드(위치 · 지문 · 기다리기 · 표 · 행 고르기 · 동작) */
 import {
-  ACTION_KINDS, HUMAN_DONE_KINDS, HUMAN_TIMEOUT, type HumanDone, LOCATOR_KINDS, READ_STRATEGIES, READ_TRANSFORMS, RISKS, ROW_PICK_BY, STABLE_WAIT, WAIT_KINDS, WALLET_APPROVE_TIMEOUT, type Fingerprint, type Locator, type RowPick, type TableColumn, type TableTarget, type Target, type Wait, type WebAction, type WebConfig,
+  ACTION_KINDS, HUMAN_DONE_KINDS, HUMAN_TIMEOUT, type HumanDone, LOCATOR_KINDS, READ_STRATEGIES, READ_TRANSFORMS, RISKS, ROW_PICK_BY, RELOAD_WAIT, STABLE_WAIT, WAIT_KINDS, WALLET_APPROVE_TIMEOUT, type Fingerprint, type Locator, type RowPick, type TableColumn, type TableTarget, type Target, type Wait, type WebAction, type WebConfig,
 } from "../model.ts";
 import { Checker, type Obj } from "./checker.ts";
 import { rule } from "./condition.ts";
@@ -50,7 +50,13 @@ function wait(c: Checker, v: unknown, where: string): Wait {
       return { kind, ms };
     }
     case "visible":
-    case "hidden": return { kind, target: target(c, o["target"], `${where}.target`) };
+    case "hidden": {
+      const t = target(c, o["target"], `${where}.target`);
+      if (o["reloadEveryMs"] === undefined || o["reloadEveryMs"] === null) return { kind, target: t };
+      const reloadEveryMs = c.int(o, "reloadEveryMs", where, RELOAD_WAIT.minMs, 1);
+      if (reloadEveryMs < RELOAD_WAIT.minMs || reloadEveryMs > RELOAD_WAIT.maxMs) c.fail(where, `새로고침 간격(reloadEveryMs)은 ${RELOAD_WAIT.minMs / 1000}초~${RELOAD_WAIT.maxMs / 60_000}분입니다`);
+      return { kind, target: t, reloadEveryMs };
+    }
     case "url": {
       const pattern = c.text(o, "pattern", where);
       c.regex(pattern, `${where}.pattern`);

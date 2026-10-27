@@ -1,0 +1,155 @@
+{
+  "schemaVersion": 1,
+  "id": "trade-p2p-roles",
+  "name": "거래 · 역할 정하기 — 토큰을 가진 쪽이 판매자",
+  "description": "03-p2p-trade-flow resolveRoles: 지갑 둘의 보유 목록에서 거래할 토큰을 고른다. 이미 판매 중이면(앞 실행이 죽음) 그것을 이어 쓴다",
+  "params": [
+    {
+      "name": "addressA",
+      "label": "지갑 A 주소",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "",
+      "help": ""
+    },
+    {
+      "name": "addressB",
+      "label": "지갑 B 주소",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "",
+      "help": ""
+    },
+    {
+      "name": "walletA",
+      "label": "지갑 A 시크릿",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "msu_qa_wallet_a",
+      "help": ""
+    },
+    {
+      "name": "walletB",
+      "label": "지갑 B 시크릿",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "msu_qa_wallet_b",
+      "help": ""
+    },
+    {
+      "name": "tokenType",
+      "label": "인벤토리 구분",
+      "required": true,
+      "type": "select",
+      "options": [
+        "items",
+        "characters"
+      ],
+      "default": "items",
+      "help": "nft → items · character → characters"
+    },
+    {
+      "name": "pinnedTokenId",
+      "label": "고정할 토큰 id",
+      "required": false,
+      "type": "text",
+      "options": [],
+      "default": "",
+      "help": "비우면 보유한 첫 토큰"
+    }
+  ],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "마켓 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/marketplace"
+        },
+        "actions": [
+          {
+            "id": "a1033",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 3000
+            }
+          },
+          {
+            "id": "a1034",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "roles",
+      "type": "custom",
+      "name": "인벤토리 읽기",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "const ids = async (address, tab) => {\n  const u = new URL(`https://qa.msu.io/marketplace/inventory/${address}`);\n  if (tab) u.searchParams.set('tab', tab);\n  u.searchParams.set('tokenType', ctx.params.tokenType);\n  await page.goto(u.toString(), { waitUntil: 'domcontentloaded' });\n  await Promise.race([\n    page.locator('button.bookmark[data-gtm-token-id]').first().waitFor({ state: 'attached', timeout: 15000 }),\n    page.locator('text=/No [^.!]{0,60}(yet|found)[.!]/').first().waitFor({ state: 'visible', timeout: 15000 }),\n  ]).catch(() => {});\n  return page.evaluate(() => Array.from(document.querySelectorAll('button.bookmark[data-gtm-token-id]')).map((b) => b.getAttribute('data-gtm-token-id') || '').filter(Boolean));\n};\nconst wallets = [{ wallet: ctx.params.walletA, address: ctx.params.addressA }, { wallet: ctx.params.walletB, address: ctx.params.addressB }];\nfor (const w of wallets) {\n  const owned = await ids(w.address);\n  if (owned.length === 0) continue;\n  const onSale = await ids(w.address, 'onsale');\n  const pool = ctx.params.pinnedTokenId ? owned.filter((id) => id === ctx.params.pinnedTokenId) : owned;\n  const tokenId = pool.find((id) => !onSale.includes(id)) ?? pool[0];\n  if (!tokenId) continue;\n  const other = wallets.find((x) => x !== w);\n  return { seller: w.wallet, sellerAddress: w.address, buyer: other.wallet, buyerAddress: other.address, tokenId, alreadyListed: String(onSale.includes(tokenId)) };\n}\nthrow new Error(`거래할 ${ctx.params.tokenType}이 두 지갑 어디에도 없습니다 — ${ctx.params.addressA} · ${ctx.params.addressB}`);",
+        "outputs": [
+          "seller",
+          "sellerAddress",
+          "buyer",
+          "buyerAddress",
+          "tokenId",
+          "alreadyListed"
+        ],
+        "usesPage": true,
+        "timeoutMs": 120000
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "roles"
+      }
+    }
+  ]
+}

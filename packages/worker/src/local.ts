@@ -6,7 +6,7 @@
  * 앱 안 브라우저(app)는 **데스크톱 앱 안의 워커**만 연다 — 앱이 준 `appViews`로(app-views.ts).
  */
 import { chromium, type Browser } from "playwright";
-import type { SecretValue } from "@flowsmith/core";
+import { walletSecretName, type SecretValue } from "@flowsmith/core";
 import { ExtensionRegistry, openWalletBrowser, runFlow, type MetaMaskEnv, type RunEvent, type RunResult } from "@flowsmith/engine";
 import type { AppSource, WalletSource } from "@flowsmith/recorder";
 import type { AppViews } from "./app-views.ts";
@@ -62,12 +62,17 @@ export class InProcessWorker implements WorkerClient {
    * 녹화를 지갑 브라우저에서 — 이 PC의 MetaMask(처음이면 받는다)와 그 지갑의 프로필로. 못 열면 까닭을 던진다.
    * ★키는 이 PC 안에서만 풀린다(서버가 녹화에 보낸 시크릿)
    */
-  async walletSource(draft: { settings?: { wallet?: { mode?: string; secret?: string } | null } }, secrets: Record<string, SecretValue>, log: (text: string) => void = () => undefined): Promise<WalletSource> {
+  async walletSource(
+    draft: { params?: { name: string; default?: string }[]; settings?: { wallet?: { mode?: string; secret?: string } | null } },
+    secrets: Record<string, SecretValue>, log: (text: string) => void = () => undefined, params: Record<string, string> = {},
+  ): Promise<WalletSource> {
     if (!this.#wallet) throw new Error("이 PC는 지갑 브라우저(MetaMask)를 열 수 없습니다 — 화면이 있는 PC의 워커(데스크톱 앱 · --headed)에서 녹화하세요");
     const w = draft.settings?.wallet;
     if (w?.mode !== "metamask" || !w.secret) throw new Error("워크플로우 설정의 지갑을 «MetaMask 확장» 방식으로 정하세요(키 시크릿)");
-    const key = secrets[w.secret];
-    if (typeof key !== "string") throw new Error(`MetaMask 지갑: 시크릿 "${w.secret}"의 값이 저장되지 않았습니다`);
+    // 실행 입력으로 고르는 지갑이면 녹화의 입력(없으면 기본값)으로
+    const secret = walletSecretName(w.secret, params, draft.params ?? []);
+    const key = secrets[secret];
+    if (typeof key !== "string") throw new Error(`MetaMask 지갑: 시크릿 "${secret}"의 값이 저장되지 않았습니다`);
     const env = { ...this.#wallet, extensionDir: await ensureMetaMask(this.#wallet, log) };
     return { wallet: () => openWalletBrowser(env, key, { log }) };
   }

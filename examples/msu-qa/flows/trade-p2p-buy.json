@@ -1,0 +1,493 @@
+{
+  "schemaVersion": 1,
+  "id": "trade-p2p-buy",
+  "name": "거래 · 구매 — 구매자 지갑",
+  "description": "03-p2p-trade-flow 2/3: Buy Now가 보일 때까지 새로고침 → 등록 뒤 정책 대기(non-KYC 60~120초) → Buy Now → Buy → MetaMask 승인. 끝 표시는 확인 창이 닫히는 것",
+  "params": [
+    {
+      "name": "wallet",
+      "label": "지갑",
+      "required": true,
+      "type": "select",
+      "options": [
+        "msu_qa_wallet_a",
+        "msu_qa_wallet_b"
+      ],
+      "default": "msu_qa_wallet_a",
+      "help": "이 실행이 쓸 지갑(시크릿) — 지휘 워크플로우가 역할에 따라 고른다"
+    },
+    {
+      "name": "kind",
+      "label": "자산 종류",
+      "required": true,
+      "type": "select",
+      "options": [
+        "nft",
+        "character"
+      ],
+      "default": "nft",
+      "help": "상세 경로 /marketplace/<kind>/<tokenId>"
+    },
+    {
+      "name": "tokenId",
+      "label": "토큰 id",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "",
+      "help": ""
+    },
+    {
+      "name": "listed",
+      "label": "판매 등록 됨",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "true",
+      "help": ""
+    },
+    {
+      "name": "listedAt",
+      "label": "등록 시각(ms)",
+      "required": false,
+      "type": "text",
+      "options": [],
+      "default": "0",
+      "help": ""
+    },
+    {
+      "name": "floorMs",
+      "label": "등록 뒤 구매 차단(ms)",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "120000",
+      "help": "non-KYC 지갑 60~120초 무작위 — 최악에 맞춘다(원본 MSU_BUY_FLOOR_MS)"
+    }
+  ],
+  "vars": {},
+  "secrets": [
+    {
+      "name": "msu_qa_wallet_a",
+      "kind": "text",
+      "description": "MSU QA 테스트 지갑 — 복구 문구 또는 개인키(QA 체인 전용)"
+    },
+    {
+      "name": "msu_qa_wallet_b",
+      "kind": "text",
+      "description": "MSU QA 테스트 지갑 — 복구 문구 또는 개인키(QA 체인 전용)"
+    }
+  ],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": [],
+    "browser": "wallet",
+    "wallet": {
+      "mode": "metamask",
+      "secret": "{{ $params.wallet }}",
+      "announceAs": "MetaMask",
+      "defaultChainId": 807424,
+      "chains": [
+        {
+          "chainId": 807424,
+          "name": "MSU QA",
+          "rpcUrl": "",
+          "allowTx": false
+        }
+      ]
+    }
+  },
+  "nodes": [
+    {
+      "id": "go",
+      "type": "condition",
+      "name": "판매 등록이 됐나",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "cases": [
+          {
+            "id": "stop",
+            "label": "판매 등록이 되지 않아 사지 않습니다",
+            "match": "any",
+            "rules": [
+              {
+                "left": "{{ $params.listed }}",
+                "op": "ne",
+                "right": "true"
+              }
+            ],
+            "then": {
+              "kind": "end",
+              "status": "failure",
+              "message": "판매 등록이 되지 않아 사지 않습니다"
+            }
+          }
+        ],
+        "else": {
+          "then": {
+            "kind": "next"
+          }
+        }
+      }
+    },
+    {
+      "id": "login",
+      "type": "web",
+      "name": "로그인(MetaMask)",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/marketplace"
+        },
+        "actions": [
+          {
+            "id": "a1048",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a1049",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a1050",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "헤더의 Connect",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "header button:has-text(\"Connect\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a1051",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 1500
+            }
+          },
+          {
+            "id": "a1052",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "로그인 창의 «MetaMask Installed»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//button[contains(.,\"MetaMask\") and contains(.,\"Installed\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a1053",
+            "kind": "walletApprove",
+            "risk": "safe",
+            "timeoutMs": 120000,
+            "optional": false,
+            "done": {
+              "kind": "hidden",
+              "target": {
+                "label": "헤더의 Connect",
+                "locators": [
+                  {
+                    "kind": "css",
+                    "value": "header button:has-text(\"Connect\")"
+                  }
+                ],
+                "fingerprint": null,
+                "frames": [],
+                "verifiedAt": null
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "watch",
+      "type": "web",
+      "name": "판매 중이 될 때까지",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/marketplace/{{ $params.kind }}/{{ $params.tokenId }}"
+        },
+        "actions": [
+          {
+            "id": "a1054",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a1055",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a1056",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": 300000,
+            "optional": false,
+            "wait": {
+              "kind": "visible",
+              "target": {
+                "label": "Buy Now",
+                "locators": [
+                  {
+                    "kind": "role",
+                    "value": "button",
+                    "name": "Buy Now"
+                  }
+                ],
+                "fingerprint": null,
+                "frames": [],
+                "verifiedAt": null
+              },
+              "reloadEveryMs": 20000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "floor",
+      "type": "custom",
+      "name": "등록 뒤 구매 차단 대기",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "code": "const at = Number(ctx.params.listedAt) || 0;\nconst rest = at ? at + Number(ctx.params.floorMs) - Date.now() : 0;\nif (rest > 0) await page.waitForTimeout(rest);\nreturn { waitedSec: String(Math.max(0, Math.round(rest / 1000))) };",
+        "outputs": [
+          "waitedSec"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "buy",
+      "type": "web",
+      "name": "구매",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a1057",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "Buy Now",
+              "locators": [
+                {
+                  "kind": "role",
+                  "value": "button",
+                  "name": "Buy Now"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a1058",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": 15000,
+            "optional": false,
+            "wait": {
+              "kind": "visible",
+              "target": {
+                "label": "구매 확인의 Buy",
+                "locators": [
+                  {
+                    "kind": "role",
+                    "value": "button",
+                    "name": "Buy"
+                  }
+                ],
+                "fingerprint": null,
+                "frames": [],
+                "verifiedAt": null
+              }
+            }
+          },
+          {
+            "id": "a1059",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "구매 확인의 Buy",
+              "locators": [
+                {
+                  "kind": "role",
+                  "value": "button",
+                  "name": "Buy"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a1060",
+            "kind": "walletApprove",
+            "risk": "safe",
+            "timeoutMs": 180000,
+            "optional": false,
+            "done": {
+              "kind": "hidden",
+              "target": {
+                "label": "구매 확인의 Buy",
+                "locators": [
+                  {
+                    "kind": "role",
+                    "value": "button",
+                    "name": "Buy"
+                  }
+                ],
+                "fingerprint": null,
+                "frames": [],
+                "verifiedAt": null
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "go",
+        "port": "else"
+      },
+      "to": {
+        "node": "login"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "login",
+        "port": "out"
+      },
+      "to": {
+        "node": "watch"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "watch",
+        "port": "out"
+      },
+      "to": {
+        "node": "floor"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "floor",
+        "port": "out"
+      },
+      "to": {
+        "node": "buy"
+      }
+    }
+  ]
+}

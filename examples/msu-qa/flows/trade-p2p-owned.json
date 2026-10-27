@@ -1,0 +1,198 @@
+{
+  "schemaVersion": 1,
+  "id": "trade-p2p-owned",
+  "name": "거래 · 소유권 확인 — 구매자에게 들어오고 판매자에게서 빠진다",
+  "description": "03-p2p-trade-flow 3/3: 구매자 보유 목록에 토큰이 들어올 때까지(정산 최대 180초) · 판매자 보유 목록에서 빠질 때까지(90초) 다시 읽는다. 판정은 지휘 워크플로우가 한다(불통과로 끝나면 읽은 값이 남지 않는다)",
+  "params": [
+    {
+      "name": "sellerAddress",
+      "label": "판매자 주소",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "",
+      "help": ""
+    },
+    {
+      "name": "buyerAddress",
+      "label": "구매자 주소",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "",
+      "help": ""
+    },
+    {
+      "name": "tokenId",
+      "label": "토큰 id",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "",
+      "help": ""
+    },
+    {
+      "name": "tokenType",
+      "label": "인벤토리 구분",
+      "required": true,
+      "type": "select",
+      "options": [
+        "items",
+        "characters"
+      ],
+      "default": "items",
+      "help": "nft → items · character → characters"
+    },
+    {
+      "name": "settleMs",
+      "label": "정산 기다림(ms)",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "180000",
+      "help": "원본 MSU_SETTLE_TIMEOUT_MS — 60초에 끊긴 실행이 모두 실패했다"
+    },
+    {
+      "name": "bought",
+      "label": "구매 됨",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "true",
+      "help": ""
+    }
+  ],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "go",
+      "type": "condition",
+      "name": "샀나",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "cases": [
+          {
+            "id": "stop",
+            "label": "구매가 끝나지 않아 소유권을 보지 않습니다",
+            "match": "any",
+            "rules": [
+              {
+                "left": "{{ $params.bought }}",
+                "op": "ne",
+                "right": "true"
+              }
+            ],
+            "then": {
+              "kind": "end",
+              "status": "failure",
+              "message": "구매가 끝나지 않아 소유권을 보지 않습니다"
+            }
+          }
+        ],
+        "else": {
+          "then": {
+            "kind": "next"
+          }
+        }
+      }
+    },
+    {
+      "id": "open",
+      "type": "web",
+      "name": "마켓 열기",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/marketplace"
+        },
+        "actions": [
+          {
+            "id": "a1061",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 3000
+            }
+          },
+          {
+            "id": "a1062",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "watch",
+      "type": "custom",
+      "name": "보유 목록 다시 읽기",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "code": "const ids = async (address, tab) => {\n  const u = new URL(`https://qa.msu.io/marketplace/inventory/${address}`);\n  if (tab) u.searchParams.set('tab', tab);\n  u.searchParams.set('tokenType', ctx.params.tokenType);\n  await page.goto(u.toString(), { waitUntil: 'domcontentloaded' });\n  await Promise.race([\n    page.locator('button.bookmark[data-gtm-token-id]').first().waitFor({ state: 'attached', timeout: 15000 }),\n    page.locator('text=/No [^.!]{0,60}(yet|found)[.!]/').first().waitFor({ state: 'visible', timeout: 15000 }),\n  ]).catch(() => {});\n  return page.evaluate(() => Array.from(document.querySelectorAll('button.bookmark[data-gtm-token-id]')).map((b) => b.getAttribute('data-gtm-token-id') || '').filter(Boolean));\n};\nconst until = async (address, want, ms) => {\n  const end = Date.now() + ms;\n  for (let polls = 1; ; polls++) {\n    if ((await ids(address)).includes(ctx.params.tokenId) === want) return { ok: true, polls };\n    if (Date.now() >= end) return { ok: false, polls };\n    await page.waitForTimeout(5000);\n  }\n};\nconst arrived = await until(ctx.params.buyerAddress, true, Number(ctx.params.settleMs));\nconst left = arrived.ok ? await until(ctx.params.sellerAddress, false, 90000) : { ok: false, polls: 0 };\nreturn { sold: String(arrived.ok), arrived: String(arrived.ok), left: String(left.ok), polls: String(arrived.polls + left.polls) };",
+        "outputs": [
+          "sold",
+          "arrived",
+          "left",
+          "polls"
+        ],
+        "usesPage": true,
+        "timeoutMs": 360000
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "go",
+        "port": "else"
+      },
+      "to": {
+        "node": "open"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "watch"
+      }
+    }
+  ]
+}

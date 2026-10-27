@@ -29,6 +29,12 @@ export const goto = (url: string) => base("goto", { url });
 export const pause = (ms: number) => base("wait", { wait: { kind: "fixed", ms } });
 export const waitUrl = (pattern: string, timeoutMs = 15000) => base("wait", { wait: { kind: "url", pattern }, timeoutMs });
 export const waitVisible = (target: Json, timeoutMs = 15000) => base("wait", { wait: { kind: "visible", target }, timeoutMs });
+/** 새로고침하며 보일 때까지 — 다른 실행 · 다른 지갑이 바꾼 것(올린 매물 · 정산) */
+export const waitVisibleReloading = (target: Json, everyMs: number, timeoutMs: number) => base("wait", { wait: { kind: "visible", target, reloadEveryMs: everyMs }, timeoutMs });
+/** MetaMask 승인 — 끝 표시가 맞을 때까지 뜨는 승인 창을 누른다(지갑 브라우저만). 처음부터 맞으면 아무것도 누르지 않는다 */
+export const walletApprove = (done: Json, timeoutMs = 120000) => base("walletApprove", { done, timeoutMs });
+export const visible = (target: Json) => ({ kind: "visible", target });
+export const hidden = (target: Json) => ({ kind: "hidden", target });
 export const click = (target: Json, optional = false) => base("click", { target, popup: false, optional });
 export const fill = (target: Json, value: string) => base("fill", { target, value });
 export const press = (target: Json | null, key: string) => base("press", { target, key });
@@ -50,22 +56,31 @@ export const openAt = (url: string) => ({ kind: "url", url });
 /** 커스텀 노드 — (input, page, ctx) 몸통. page는 날 Playwright Page, ctx.params가 실행 입력 */
 export const custom = (nodeId: string, name: string, code: string | string[], outputs: string[], usesPage = true): Json =>
   ({ id: nodeId, type: "custom", name, position: { x: 0, y: 0 }, config: { code: Array.isArray(code) ? code.join("\n") : code, outputs, usesPage, timeoutMs: 60000 } });
+/** 다른 워크플로우 실행 — 게시된 버전을 한 번(행 없이) */
+export const call = (nodeId: string, name: string, flowId: string, params: Record<string, string>, onError: "stop" | "continue" = "continue"): Json =>
+  ({ id: nodeId, type: "flowCall", name, position: { x: 0, y: 0 }, config: { flowId, version: "active", items: "", params, concurrency: 1, onError } });
+/** 조건 — 규칙이 맞으면 그 자리에서 끝낸다(status · 까닭), 아니면 이어 간다 */
+export const endIf = (nodeId: string, name: string, rules: { left: string; op: string; right?: string | null }[], status: "success" | "failure", message: string, match: "all" | "any" = "any"): Json =>
+  ({ id: nodeId, type: "condition", name, position: { x: 0, y: 0 }, config: {
+    cases: [{ id: "stop", label: message, match, rules: rules.map((r) => ({ left: r.left, op: r.op, right: r.right ?? null })), then: { kind: "end", status, message } }],
+    else: { then: { kind: "next" } },
+  } });
 export const judge = (items: Json[]): Json => ({ id: "judge", type: "check", name: "판정", position: { x: 0, y: 0 }, config: { items } });
 /** 지금 주소 · 경로 · 제목 — 웹페이지 동작에 없어서 코드로 */
 export const where = (nodeId = "where") =>
   custom(nodeId, "지금 주소", "return { path: new URL(page.url()).pathname, url: decodeURIComponent(page.url()), title: await page.title() };", ["path", "url", "title"]);
 
-export interface Param { name: string; label: string; default?: string; help?: string }
+export interface Param { name: string; label: string; default?: string; help?: string; type?: "text" | "select"; options?: string[]; required?: boolean }
 export interface Flow { id: string; [k: string]: Json }
 
-/** 노드를 차례로 잇는다(앞 노드의 out → 다음) */
-export function flow(flowId: string, name: string, description: string, nodes: Json[], params: Param[] = []): Flow {
+/** 노드를 차례로 잇는다(앞 노드의 out → 다음 · 조건이면 «그 밖» → 다음 — 맞는 갈래는 그 자리에서 끝난다) */
+export function flow(flowId: string, name: string, description: string, nodes: Json[], params: Param[] = [], more: { settings?: Json; secrets?: Json[] } = {}): Flow {
   nodes.forEach((nd, i) => (nd.position = { x: i * 300, y: 0 }));
-  const edges = nodes.slice(1).map((nd, i) => ({ id: `e${i + 1}`, from: { node: nodes[i].id, port: "out" }, to: { node: nd.id } }));
+  const edges = nodes.slice(1).map((nd, i) => ({ id: `e${i + 1}`, from: { node: nodes[i].id, port: nodes[i].type === "condition" ? "else" : "out" }, to: { node: nd.id } }));
   return {
     schemaVersion: 1, id: flowId, name, description,
-    params: params.map((p) => ({ name: p.name, label: p.label, required: true, type: "text", options: [], default: p.default ?? "", help: p.help ?? "" })),
-    vars: {}, secrets: [], settings: { defaultTimeoutMs: 20000, forbiddenLabels: [] }, nodes, edges,
+    params: params.map((p) => ({ name: p.name, label: p.label, required: p.required ?? true, type: p.type ?? "text", options: p.options ?? [], default: p.default ?? "", help: p.help ?? "" })),
+    vars: {}, secrets: more.secrets ?? [], settings: { defaultTimeoutMs: 20000, forbiddenLabels: [], ...more.settings }, nodes, edges,
   };
 }
 
