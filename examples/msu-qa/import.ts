@@ -56,7 +56,7 @@ for (const file of readdirSync(new URL("suites/", dir)).filter((f) => f.endsWith
   const known = existing.find((s) => s.name === suite.name)?.id;
   const id = known ?? (await api("POST", "/suites", { name: suite.name })).data.id;
   // 비워 둔 입력(지갑 주소처럼 여기 적지 않는 것)은 서버에서 넣은 값을 지킨다
-  const before = known ? ((await api("GET", `/suites/${id}`)).data.items ?? []) as { id: string; params: Record<string, string> }[] : [];
+  const before = known ? ((await api("GET", `/suites/${id}`)).data.suite.items ?? []) as { id: string; params: Record<string, string> }[] : [];
   const items = suite.items.map((it: { id: string; params: Record<string, string> }) => {
     const was = before.find((b) => b.id === it.id)?.params ?? {};
     return { ...it, params: Object.fromEntries(Object.entries(it.params).map(([k, v]) => [k, v === "" ? was[k] ?? "" : v])) };

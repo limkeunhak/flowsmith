@@ -63,6 +63,15 @@
       "options": [],
       "default": "120000",
       "help": "non-KYC 지갑 60~120초 무작위 — 최악에 맞춘다(원본 MSU_BUY_FLOOR_MS)"
+    },
+    {
+      "name": "skip",
+      "label": "이미 삼(다시 시도할 때)",
+      "required": false,
+      "type": "text",
+      "options": [],
+      "default": "false",
+      "help": ""
     }
   ],
   "vars": {},
@@ -70,12 +79,14 @@
     {
       "name": "msu_qa_wallet_a",
       "kind": "text",
-      "description": "MSU QA 테스트 지갑 — 복구 문구 또는 개인키(QA 체인 전용)"
+      "shared": true,
+      "description": "MSU QA 테스트 지갑 — 복구 문구 또는 개인키(QA 체인 전용) · 팀 공용 값에 넣는다"
     },
     {
       "name": "msu_qa_wallet_b",
       "kind": "text",
-      "description": "MSU QA 테스트 지갑 — 복구 문구 또는 개인키(QA 체인 전용)"
+      "shared": true,
+      "description": "MSU QA 테스트 지갑 — 복구 문구 또는 개인키(QA 체인 전용) · 팀 공용 값에 넣는다"
     }
   ],
   "settings": {
@@ -90,20 +101,56 @@
       "chains": [
         {
           "chainId": 807424,
-          "name": "MSU QA",
-          "rpcUrl": "",
-          "allowTx": false
+          "name": "MSUQA",
+          "rpcUrl": "https://qa-testnet-rpc.msu.io",
+          "allowTx": true,
+          "symbol": "NXPC"
         }
       ]
     }
   },
   "nodes": [
     {
+      "id": "done",
+      "type": "condition",
+      "name": "앞 시도에서 샀나",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "cases": [
+          {
+            "id": "stop",
+            "label": "앞 시도에서 이미 샀습니다",
+            "match": "any",
+            "rules": [
+              {
+                "left": "{{ $params.skip }}",
+                "op": "eq",
+                "right": "true"
+              }
+            ],
+            "then": {
+              "kind": "end",
+              "status": "success",
+              "message": "앞 시도에서 이미 샀습니다"
+            }
+          }
+        ],
+        "else": {
+          "then": {
+            "kind": "next"
+          }
+        }
+      }
+    },
+    {
       "id": "go",
       "type": "condition",
       "name": "판매 등록이 됐나",
       "position": {
-        "x": 0,
+        "x": 300,
         "y": 0
       },
       "config": {
@@ -138,7 +185,7 @@
       "type": "web",
       "name": "로그인(MetaMask)",
       "position": {
-        "x": 300,
+        "x": 600,
         "y": 0
       },
       "config": {
@@ -259,7 +306,7 @@
       "type": "web",
       "name": "판매 중이 될 때까지",
       "position": {
-        "x": 600,
+        "x": 900,
         "y": 0
       },
       "config": {
@@ -331,7 +378,7 @@
       "type": "custom",
       "name": "등록 뒤 구매 차단 대기",
       "position": {
-        "x": 900,
+        "x": 1200,
         "y": 0
       },
       "config": {
@@ -340,7 +387,7 @@
           "waitedSec"
         ],
         "usesPage": true,
-        "timeoutMs": 60000
+        "timeoutMs": 180000
       }
     },
     {
@@ -348,7 +395,7 @@
       "type": "web",
       "name": "구매",
       "position": {
-        "x": 1200,
+        "x": 1500,
         "y": 0
       },
       "config": {
@@ -442,7 +489,8 @@
                 "frames": [],
                 "verifiedAt": null
               }
-            }
+            },
+            "atLeast": 1
           }
         ]
       }
@@ -452,6 +500,16 @@
     {
       "id": "e1",
       "from": {
+        "node": "done",
+        "port": "else"
+      },
+      "to": {
+        "node": "go"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
         "node": "go",
         "port": "else"
       },
@@ -460,7 +518,7 @@
       }
     },
     {
-      "id": "e2",
+      "id": "e3",
       "from": {
         "node": "login",
         "port": "out"
@@ -470,7 +528,7 @@
       }
     },
     {
-      "id": "e3",
+      "id": "e4",
       "from": {
         "node": "watch",
         "port": "out"
@@ -480,7 +538,7 @@
       }
     },
     {
-      "id": "e4",
+      "id": "e5",
       "from": {
         "node": "floor",
         "port": "out"

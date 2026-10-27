@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "trade-p2p-cancel",
   "name": "거래 · 정리 — 팔리지 않은 매물 내리기",
-  "description": "03-p2p-trade-flow finally: 우리가 올렸고 팔리지 않았으면 Cancel Listing → Yes → MetaMask 승인. 팔렸으면 그대로(다음 실행이 반대로 돈다)",
+  "description": "03-p2p-trade-flow finally: 우리가 올렸고 팔리지 않았으면 Cancel Listing → Yes(지갑 없이 서버에서) → 사라질 때까지 다시 열기. 팔렸으면 그대로(다음 실행이 반대로 돈다)",
   "params": [
     {
       "name": "wallet",
@@ -61,12 +61,14 @@
     {
       "name": "msu_qa_wallet_a",
       "kind": "text",
-      "description": "MSU QA 테스트 지갑 — 복구 문구 또는 개인키(QA 체인 전용)"
+      "shared": true,
+      "description": "MSU QA 테스트 지갑 — 복구 문구 또는 개인키(QA 체인 전용) · 팀 공용 값에 넣는다"
     },
     {
       "name": "msu_qa_wallet_b",
       "kind": "text",
-      "description": "MSU QA 테스트 지갑 — 복구 문구 또는 개인키(QA 체인 전용)"
+      "shared": true,
+      "description": "MSU QA 테스트 지갑 — 복구 문구 또는 개인키(QA 체인 전용) · 팀 공용 값에 넣는다"
     }
   ],
   "settings": {
@@ -81,9 +83,10 @@
       "chains": [
         {
           "chainId": 807424,
-          "name": "MSU QA",
-          "rpcUrl": "",
-          "allowTx": false
+          "name": "MSUQA",
+          "rpcUrl": "https://qa-testnet-rpc.msu.io",
+          "allowTx": true,
+          "symbol": "NXPC"
         }
       ]
     }
@@ -338,11 +341,11 @@
           },
           {
             "id": "a1073",
-            "kind": "walletApprove",
+            "kind": "wait",
             "risk": "safe",
-            "timeoutMs": 120000,
+            "timeoutMs": 90000,
             "optional": false,
-            "done": {
+            "wait": {
               "kind": "hidden",
               "target": {
                 "label": "Cancel Listing",
@@ -355,7 +358,8 @@
                 "fingerprint": null,
                 "frames": [],
                 "verifiedAt": null
-              }
+              },
+              "reloadEveryMs": 5000
             }
           }
         ]

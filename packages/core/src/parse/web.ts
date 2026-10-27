@@ -179,7 +179,11 @@ function action(c: Checker, v: unknown, where: string): WebAction {
       if (t !== null && (t < WALLET_APPROVE_TIMEOUT.minMs || t > WALLET_APPROVE_TIMEOUT.maxMs)) c.fail(where, `MetaMask 승인을 기다리는 시간(timeoutMs)은 ${WALLET_APPROVE_TIMEOUT.minMs / 1000}초~${WALLET_APPROVE_TIMEOUT.maxMs / 60_000}분입니다`);
       // ★이미 끝 표시가 맞으면(연결돼 있으면) 아무것도 누르지 않고 지나간다 — «있을 때만»이 따로 필요 없다
       if (base.optional) c.fail(where, "MetaMask 승인에는 «있을 때만»을 켜지 않습니다 — 이미 끝났다는 표시가 보이면 저절로 지나갑니다");
-      return { ...base, kind, done: doneMark(c, o["done"], `${where}.done`) };
+      const done = doneMark(c, o["done"], `${where}.done`);
+      if (o["atLeast"] === undefined || o["atLeast"] === null) return { ...base, kind, done };
+      const atLeast = c.int(o, "atLeast", where, 1, 1);
+      if (atLeast > 10) c.fail(where, "적어도 승인할 화면 수(atLeast)는 1~10입니다");
+      return { ...base, kind, done, atLeast };
     }
   }
 }

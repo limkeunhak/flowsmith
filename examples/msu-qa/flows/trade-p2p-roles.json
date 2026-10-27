@@ -6,7 +6,7 @@
   "params": [
     {
       "name": "addressA",
-      "label": "지갑 A 주소",
+      "label": "지갑 A 주소(msu_qa_wallet_a의 주소)",
       "required": true,
       "type": "text",
       "options": [],
@@ -15,29 +15,11 @@
     },
     {
       "name": "addressB",
-      "label": "지갑 B 주소",
+      "label": "지갑 B 주소(msu_qa_wallet_b의 주소)",
       "required": true,
       "type": "text",
       "options": [],
       "default": "",
-      "help": ""
-    },
-    {
-      "name": "walletA",
-      "label": "지갑 A 시크릿",
-      "required": true,
-      "type": "text",
-      "options": [],
-      "default": "msu_qa_wallet_a",
-      "help": ""
-    },
-    {
-      "name": "walletB",
-      "label": "지갑 B 시크릿",
-      "required": true,
-      "type": "text",
-      "options": [],
-      "default": "msu_qa_wallet_b",
       "help": ""
     },
     {
@@ -126,7 +108,7 @@
         "y": 0
       },
       "config": {
-        "code": "const ids = async (address, tab) => {\n  const u = new URL(`https://qa.msu.io/marketplace/inventory/${address}`);\n  if (tab) u.searchParams.set('tab', tab);\n  u.searchParams.set('tokenType', ctx.params.tokenType);\n  await page.goto(u.toString(), { waitUntil: 'domcontentloaded' });\n  await Promise.race([\n    page.locator('button.bookmark[data-gtm-token-id]').first().waitFor({ state: 'attached', timeout: 15000 }),\n    page.locator('text=/No [^.!]{0,60}(yet|found)[.!]/').first().waitFor({ state: 'visible', timeout: 15000 }),\n  ]).catch(() => {});\n  return page.evaluate(() => Array.from(document.querySelectorAll('button.bookmark[data-gtm-token-id]')).map((b) => b.getAttribute('data-gtm-token-id') || '').filter(Boolean));\n};\nconst wallets = [{ wallet: ctx.params.walletA, address: ctx.params.addressA }, { wallet: ctx.params.walletB, address: ctx.params.addressB }];\nfor (const w of wallets) {\n  const owned = await ids(w.address);\n  if (owned.length === 0) continue;\n  const onSale = await ids(w.address, 'onsale');\n  const pool = ctx.params.pinnedTokenId ? owned.filter((id) => id === ctx.params.pinnedTokenId) : owned;\n  const tokenId = pool.find((id) => !onSale.includes(id)) ?? pool[0];\n  if (!tokenId) continue;\n  const other = wallets.find((x) => x !== w);\n  return { seller: w.wallet, sellerAddress: w.address, buyer: other.wallet, buyerAddress: other.address, tokenId, alreadyListed: String(onSale.includes(tokenId)) };\n}\nthrow new Error(`거래할 ${ctx.params.tokenType}이 두 지갑 어디에도 없습니다 — ${ctx.params.addressA} · ${ctx.params.addressB}`);",
+        "code": "const ids = async (address, tab) => {\n  const u = new URL(`https://qa.msu.io/marketplace/inventory/${address}`);\n  if (tab) u.searchParams.set('tab', tab);\n  u.searchParams.set('tokenType', ctx.params.tokenType);\n  await page.goto(u.toString(), { waitUntil: 'domcontentloaded' });\n  await Promise.race([\n    page.locator('button.bookmark[data-gtm-token-id]').first().waitFor({ state: 'attached', timeout: 15000 }),\n    page.locator('text=/No [^.!]{0,60}(yet|found)[.!]/').first().waitFor({ state: 'visible', timeout: 15000 }),\n  ]).catch(() => {});\n  return page.evaluate(() => Array.from(document.querySelectorAll('button.bookmark[data-gtm-token-id]')).map((b) => b.getAttribute('data-gtm-token-id') || '').filter(Boolean));\n};\nconst wallets = [{ wallet: 'msu_qa_wallet_a', address: ctx.params.addressA }, { wallet: 'msu_qa_wallet_b', address: ctx.params.addressB }];\nfor (const w of wallets) {\n  const owned = await ids(w.address);\n  if (owned.length === 0) continue;\n  const onSale = await ids(w.address, 'onsale');\n  const pool = ctx.params.pinnedTokenId ? owned.filter((id) => id === ctx.params.pinnedTokenId) : owned;\n  const tokenId = pool.find((id) => !onSale.includes(id)) ?? pool[0];\n  if (!tokenId) continue;\n  const other = wallets.find((x) => x !== w);\n  return { seller: w.wallet, sellerAddress: w.address, buyer: other.wallet, buyerAddress: other.address, tokenId, alreadyListed: String(onSale.includes(tokenId)) };\n}\nthrow new Error(`거래할 ${ctx.params.tokenType}이 두 지갑 어디에도 없습니다 — ${ctx.params.addressA} · ${ctx.params.addressB}`);",
         "outputs": [
           "seller",
           "sellerAddress",

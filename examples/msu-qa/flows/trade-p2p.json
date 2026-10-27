@@ -81,8 +81,6 @@
         "params": {
           "addressA": "{{ $params.addressA }}",
           "addressB": "{{ $params.addressB }}",
-          "walletA": "msu_qa_wallet_a",
-          "walletB": "msu_qa_wallet_b",
           "tokenType": "{{ $params.tokenType }}"
         },
         "concurrency": 1,
@@ -156,11 +154,53 @@
       }
     },
     {
+      "id": "tried",
+      "type": "custom",
+      "name": "첫 구매 결과",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "code": "const r = input.results?.[0];\nconst o = r?.output ?? {};\nreturn { ok: String(r?.status === 'success'), message: r?.message ?? '',  };",
+        "outputs": [
+          "ok",
+          "message"
+        ],
+        "usesPage": false,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "buyAgain",
+      "type": "flowCall",
+      "name": "구매 다시(구매자)",
+      "position": {
+        "x": 1500,
+        "y": 0
+      },
+      "config": {
+        "flowId": "trade-p2p-buy",
+        "version": "active",
+        "items": "",
+        "params": {
+          "wallet": "{{ $node.roles.results.0.output.buyer }}",
+          "kind": "{{ $params.kind }}",
+          "tokenId": "{{ $node.roles.results.0.output.tokenId }}",
+          "listed": "{{ $node.listed.ok }}",
+          "listedAt": "{{ $node.listed.listedAt }}",
+          "skip": "{{ $node.tried.ok }}"
+        },
+        "concurrency": 1,
+        "onError": "continue"
+      }
+    },
+    {
       "id": "bought",
       "type": "custom",
       "name": "구매 결과",
       "position": {
-        "x": 1200,
+        "x": 1800,
         "y": 0
       },
       "config": {
@@ -178,7 +218,7 @@
       "type": "flowCall",
       "name": "소유권 확인",
       "position": {
-        "x": 1500,
+        "x": 2100,
         "y": 0
       },
       "config": {
@@ -201,7 +241,7 @@
       "type": "custom",
       "name": "소유권 결과",
       "position": {
-        "x": 1800,
+        "x": 2400,
         "y": 0
       },
       "config": {
@@ -222,7 +262,7 @@
       "type": "flowCall",
       "name": "정리(판매자)",
       "position": {
-        "x": 2100,
+        "x": 2700,
         "y": 0
       },
       "config": {
@@ -245,7 +285,7 @@
       "type": "check",
       "name": "판정",
       "position": {
-        "x": 2400,
+        "x": 3000,
         "y": 0
       },
       "config": {
@@ -327,11 +367,31 @@
         "port": "out"
       },
       "to": {
-        "node": "bought"
+        "node": "tried"
       }
     },
     {
       "id": "e5",
+      "from": {
+        "node": "tried",
+        "port": "out"
+      },
+      "to": {
+        "node": "buyAgain"
+      }
+    },
+    {
+      "id": "e6",
+      "from": {
+        "node": "buyAgain",
+        "port": "out"
+      },
+      "to": {
+        "node": "bought"
+      }
+    },
+    {
+      "id": "e7",
       "from": {
         "node": "bought",
         "port": "out"
@@ -341,7 +401,7 @@
       }
     },
     {
-      "id": "e6",
+      "id": "e8",
       "from": {
         "node": "owned",
         "port": "out"
@@ -351,7 +411,7 @@
       }
     },
     {
-      "id": "e7",
+      "id": "e9",
       "from": {
         "node": "moved",
         "port": "out"
@@ -361,7 +421,7 @@
       }
     },
     {
-      "id": "e8",
+      "id": "e10",
       "from": {
         "node": "cleanup",
         "port": "out"

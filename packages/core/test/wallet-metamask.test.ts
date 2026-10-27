@@ -86,6 +86,11 @@ describe("검문소 — MetaMask 승인 동작", () => {
     expect(problems(flowWith(mm, [{ ...approve, timeoutMs: 5_000 }])).join("\n")).toMatch(/10초~10분/);
     expect(problems(flowWith(mm, [{ ...approve, done: { kind: "url", pattern: "(" } }])).length).toBeGreaterThan(0);
   });
+  it("적어도 승인할 화면 수(atLeast) — 1~10", () => {
+    const f = parseFlow(flowWith(mm, [{ ...approve, atLeast: 1 }]));
+    expect(f.nodes[0]!.type === "web" && f.nodes[0]!.config.actions[0]).toMatchObject({ kind: "walletApprove", atLeast: 1 });
+    expect(problems(flowWith(mm, [{ ...approve, atLeast: 11 }])).join("\n")).toMatch(/1~10/);
+  });
   it("«있을 때만»을 켜지 않는다 — 이미 끝나 있으면 저절로 지나간다", () => {
     expect(problems(flowWith(mm, [{ ...approve, optional: true }])).join("\n")).toMatch(/«있을 때만»을 켜지 않습니다/);
   });

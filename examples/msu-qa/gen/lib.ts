@@ -32,7 +32,9 @@ export const waitVisible = (target: Json, timeoutMs = 15000) => base("wait", { w
 /** 새로고침하며 보일 때까지 — 다른 실행 · 다른 지갑이 바꾼 것(올린 매물 · 정산) */
 export const waitVisibleReloading = (target: Json, everyMs: number, timeoutMs: number) => base("wait", { wait: { kind: "visible", target, reloadEveryMs: everyMs }, timeoutMs });
 /** MetaMask 승인 — 끝 표시가 맞을 때까지 뜨는 승인 창을 누른다(지갑 브라우저만). 처음부터 맞으면 아무것도 누르지 않는다 */
-export const walletApprove = (done: Json, timeoutMs = 120000) => base("walletApprove", { done, timeoutMs });
+export const walletApprove = (done: Json, timeoutMs = 120000, atLeast?: number) => base("walletApprove", { done, timeoutMs, ...(atLeast ? { atLeast } : {}) });
+/** 새로고침하며 사라질 때까지 */
+export const waitHiddenReloading = (target: Json, everyMs: number, timeoutMs: number) => base("wait", { wait: { kind: "hidden", target, reloadEveryMs: everyMs }, timeoutMs });
 export const visible = (target: Json) => ({ kind: "visible", target });
 export const hidden = (target: Json) => ({ kind: "hidden", target });
 export const click = (target: Json, optional = false) => base("click", { target, popup: false, optional });

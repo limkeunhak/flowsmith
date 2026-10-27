@@ -11,7 +11,7 @@
  */
 import {
   MARKET, T, call, check, click, cookie, custom, endIf, fill, flow, hidden, item, judge, openAt, pause, visible, waitVisible,
-  waitVisibleReloading, walletApprove, web, type Param, type Service,
+  waitHiddenReloading, waitVisibleReloading, walletApprove, web, type Param, type Service,
 } from "./lib.ts";
 
 /** QA 지갑 둘 — 시크릿 이름. 값(복구 문구 · 개인키)은 서버의 시크릿에 넣는다 */
@@ -19,14 +19,15 @@ const WALLETS = ["msu_qa_wallet_a", "msu_qa_wallet_b"];
 /** 이 거래들끼리 줄을 세운다 — 같은 지갑 · 같은 자산을 동시에 만지지 않게(오퍼 · FT · 비드도 같은 이름을 쓴다) */
 const LOCK = "msu-qa-wallets";
 /**
- * QA 체인 — 등록 · 구매 · 내리기는 서명만 받는다(원본 주석). RPC 주소(원본 .env의 RPC_URL)를 여기 적지 않아 거래는 허용하지 않는다 —
- * MetaMask에 거래 화면(NFT 승인 같은 것)이 뜨면 «MetaMask 승인»이 까닭과 함께 멈춘다. 그때 지갑 설정에 RPC를 넣고 «거래 허용»을 켠다
+ * QA 체인 — 원본 docs/4. METAMASK-NOTES.md(MSUQA · 807424 · NXPC). 새 MetaMask는 이 체인을 몰라 RPC로 먼저 더한다.
+ * 거래(NFT 승인 같은 것)도 이 체인에서만 누른다 — QA 테스트넷 전용
  */
-const QA_CHAIN = { chainId: 807424, name: "MSU QA", rpcUrl: "", allowTx: false };
+const QA_CHAIN = { chainId: 807424, name: "MSUQA", rpcUrl: "https://qa-testnet-rpc.msu.io", allowTx: true, symbol: "NXPC" };
 
 const walletParam: Param = { name: "wallet", label: "지갑", type: "select", options: WALLETS, default: WALLETS[0], help: "이 실행이 쓸 지갑(시크릿) — 지휘 워크플로우가 역할에 따라 고른다" };
 const walletFlow = {
-  secrets: WALLETS.map((name) => ({ name, kind: "text", description: "MSU QA 테스트 지갑 — 복구 문구 또는 개인키(QA 체인 전용)" })),
+  // 팀 공용 값 — 키는 한 번만 넣고 지갑 워크플로우 셋이 같이 쓴다(워크플로우마다 넣지 않는다)
+  secrets: WALLETS.map((name) => ({ name, kind: "text", shared: true, description: "MSU QA 테스트 지갑 — 복구 문구 또는 개인키(QA 체인 전용) · 팀 공용 값에 넣는다" })),
   settings: { browser: "wallet", wallet: { mode: "metamask", secret: "{{ $params.wallet }}", announceAs: "MetaMask", defaultChainId: QA_CHAIN.chainId, chains: [QA_CHAIN] } },
 };
 const detailUrl = `${MARKET}/{{ $params.kind }}/{{ $params.tokenId }}`;
@@ -82,7 +83,7 @@ svc.flows.push(
       web("open", "마켓 열기", [pause(3000), cookie()], openAt(MARKET)),
       long(custom("roles", "인벤토리 읽기", [
         ...inventoryIds,
-        "const wallets = [{ wallet: ctx.params.walletA, address: ctx.params.addressA }, { wallet: ctx.params.walletB, address: ctx.params.addressB }];",
+        `const wallets = [{ wallet: '${WALLETS[0]}', address: ctx.params.addressA }, { wallet: '${WALLETS[1]}', address: ctx.params.addressB }];`,
         "for (const w of wallets) {",
         "  const owned = await ids(w.address);",
         "  if (owned.length === 0) continue;",
@@ -97,8 +98,7 @@ svc.flows.push(
       ], ["seller", "sellerAddress", "buyer", "buyerAddress", "tokenId", "alreadyListed"]), 120000),
     ],
     [
-      { name: "addressA", label: "지갑 A 주소" }, { name: "addressB", label: "지갑 B 주소" },
-      { name: "walletA", label: "지갑 A 시크릿", default: WALLETS[0] }, { name: "walletB", label: "지갑 B 시크릿", default: WALLETS[1] },
+      { name: "addressA", label: `지갑 A 주소(${WALLETS[0]}의 주소)` }, { name: "addressB", label: `지갑 B 주소(${WALLETS[1]}의 주소)` },
       tokenTypeParam, { name: "pinnedTokenId", label: "고정할 토큰 id", required: false, help: "비우면 보유한 첫 토큰" },
     ]),
 
@@ -114,7 +114,7 @@ svc.flows.push(
         click(T("List for sale", "css", 'button:has-text("List for sale")')),
         fill(T("가격 칸", "css", 'input[name="price"]'), "{{ $params.price }}"),
         click(T("Confirm", "css", 'button:has-text("Confirm"):visible')),
-        walletApprove(visible(cancelListing), 180000),
+        walletApprove(visible(cancelListing), 180000, 1),
       ], openAt(detailUrl)),
       custom("at", "등록 시각", "return { listedAt: String(Date.now()), created: 'true' };", ["listedAt", "created"], false),
     ],
@@ -125,24 +125,27 @@ svc.flows.push(
   flow("trade-p2p-buy", "거래 · 구매 — 구매자 지갑",
     "03-p2p-trade-flow 2/3: Buy Now가 보일 때까지 새로고침 → 등록 뒤 정책 대기(non-KYC 60~120초) → Buy Now → Buy → MetaMask 승인. 끝 표시는 확인 창이 닫히는 것",
     [
+      endIf("done", "앞 시도에서 샀나", [{ left: "{{ $params.skip }}", op: "eq", right: "true" }], "success", "앞 시도에서 이미 샀습니다"),
       endIf("go", "판매 등록이 됐나", [{ left: "{{ $params.listed }}", op: "ne", right: "true" }], "failure", "판매 등록이 되지 않아 사지 않습니다"),
       login(),
       web("watch", "판매 중이 될 때까지", [pause(4000), cookie(), waitVisibleReloading(buyNow, 20000, 300000)], openAt(detailUrl)),
-      custom("floor", "등록 뒤 구매 차단 대기", [
+      long(custom("floor", "등록 뒤 구매 차단 대기", [
         "const at = Number(ctx.params.listedAt) || 0;",
         "const rest = at ? at + Number(ctx.params.floorMs) - Date.now() : 0;",
         "if (rest > 0) await page.waitForTimeout(rest);",
         "return { waitedSec: String(Math.max(0, Math.round(rest / 1000))) };",
-      ], ["waitedSec"]),
+      ], ["waitedSec"]), 180000),   // 최대 120초를 기다린다 — 커스텀 노드 기본 60초로는 모자란다
       web("buy", "구매", [
         click(buyNow),
         waitVisible(confirmBuy, 15000),
         click(confirmBuy),
-        walletApprove(hidden(confirmBuy), 180000),
+        // ★«Buy»는 누르면 처리 중 모양이 돼 곧바로 «사라짐»이 맞는다 — 승인 화면 하나는 꼭 받는다(원본도 지갑이 떴나를 본다)
+        walletApprove(hidden(confirmBuy), 180000, 1),
       ]),
     ],
     [walletParam, ...assetParams, { name: "listed", label: "판매 등록 됨", default: "true" }, { name: "listedAt", label: "등록 시각(ms)", default: "0", required: false },
-      { name: "floorMs", label: "등록 뒤 구매 차단(ms)", default: "120000", help: "non-KYC 지갑 60~120초 무작위 — 최악에 맞춘다(원본 MSU_BUY_FLOOR_MS)" }],
+      { name: "floorMs", label: "등록 뒤 구매 차단(ms)", default: "120000", help: "non-KYC 지갑 60~120초 무작위 — 최악에 맞춘다(원본 MSU_BUY_FLOOR_MS)" },
+      { name: "skip", label: "이미 삼(다시 시도할 때)", default: "false", required: false }],
     walletFlow),
 
   // ── 소유권 확인 — 지갑 없음. 화면이 저절로 바뀌지 않아 다시 연다 ──
@@ -172,7 +175,7 @@ svc.flows.push(
 
   // ── 정리 — 팔리지 않은 채 우리가 올린 매물만 내린다(원본 finally) ──
   flow("trade-p2p-cancel", "거래 · 정리 — 팔리지 않은 매물 내리기",
-    "03-p2p-trade-flow finally: 우리가 올렸고 팔리지 않았으면 Cancel Listing → Yes → MetaMask 승인. 팔렸으면 그대로(다음 실행이 반대로 돈다)",
+    "03-p2p-trade-flow finally: 우리가 올렸고 팔리지 않았으면 Cancel Listing → Yes(지갑 없이 서버에서) → 사라질 때까지 다시 열기. 팔렸으면 그대로(다음 실행이 반대로 돈다)",
     [
       endIf("need", "내릴 것이 있나", [{ left: "{{ $params.created }}", op: "ne", right: "true" }, { left: "{{ $params.sold }}", op: "eq", right: "true" }], "success", "내릴 매물이 없습니다(팔렸거나 우리가 올리지 않음)"),
       login(),
@@ -180,7 +183,8 @@ svc.flows.push(
         pause(5000), cookie(),
         click(cancelListing, true),
         click(T("Yes", "role", "button", "Yes"), true),
-        walletApprove(hidden(cancelListing), 120000),
+        // QA(2026-10-27): Yes는 지갑을 부르지 않고 서버에서 내린다 · 화면은 저절로 바뀌지 않는다 — 다시 열며 사라지길 본다
+        waitHiddenReloading(cancelListing, 5000, 90000),
       ], openAt(detailUrl)),
     ],
     [walletParam, ...assetParams, { name: "created", label: "우리가 올림", default: "false" }, { name: "sold", label: "팔림", default: "false" }],
@@ -200,7 +204,7 @@ svc.flows.push(
     "03-p2p-trade-flow: 역할 → 판매 등록(판매자) → 구매(구매자) → 소유권 확인 → 정리 → 판정. 부품은 trade-p2p-*. 지갑 주소 둘은 실행 입력",
     [
       call("roles", "역할 정하기", "trade-p2p-roles", {
-        addressA: "{{ $params.addressA }}", addressB: "{{ $params.addressB }}", walletA: WALLETS[0], walletB: WALLETS[1], tokenType: "{{ $params.tokenType }}",
+        addressA: "{{ $params.addressA }}", addressB: "{{ $params.addressB }}", tokenType: "{{ $params.tokenType }}",
       }, "stop"),
       call("list", "판매 등록(판매자)", "trade-p2p-list", {
         wallet: roleOut("seller"), kind: "{{ $params.kind }}", tokenId: roleOut("tokenId"), price: "{{ $params.price }}", alreadyListed: roleOut("alreadyListed"),
@@ -208,6 +212,11 @@ svc.flows.push(
       custom("listed", "등록 결과", first(["listedAt", "created"]), ["ok", "message", "listedAt", "created"], false),
       call("buy", "구매(구매자)", "trade-p2p-buy", {
         wallet: roleOut("buyer"), kind: "{{ $params.kind }}", tokenId: roleOut("tokenId"), listed: r("listed", "ok"), listedAt: r("listed", "listedAt"),
+      }),
+      custom("tried", "첫 구매 결과", first([]), ["ok", "message"], false),
+      // 거절되면 한 번 더(원본: 20초 간격 재시도) — 다시 로그인 · 판매 중 확인을 거치니 정책의 «10초에 한 번»은 저절로 지켜진다
+      call("buyAgain", "구매 다시(구매자)", "trade-p2p-buy", {
+        wallet: roleOut("buyer"), kind: "{{ $params.kind }}", tokenId: roleOut("tokenId"), listed: r("listed", "ok"), listedAt: r("listed", "listedAt"), skip: r("tried", "ok"),
       }),
       custom("bought", "구매 결과", first([]), ["ok", "message"], false),
       call("owned", "소유권 확인", "trade-p2p-owned", {
@@ -240,9 +249,9 @@ svc.items.push(
   item("t2", "trade-p2p", "[03-p2p-trade-flow] 캐릭터를 등록하고 상대 지갑이 사면 소유권이 넘어간다", { ...addresses, kind: "character", tokenType: "characters", price: "1" }),
 );
 svc.notes.push(
-  "03-p2p-trade-flow: ★아직 QA에서 돌려 보지 않았다 — QA 지갑 키 둘(시크릿 msu_qa_wallet_a · _b) · 지갑 주소 둘(Suite 입력)을 넣고 화면 있는 워커에서 돌린다",
-  "03-p2p-trade-flow: 지갑 설정의 QA 체인(807424)은 RPC 없이 «거래 허용» 끔 — 서명만 누른다. MetaMask에 거래 화면이 뜨면 멈추니 그때 RPC(원본 .env의 RPC_URL)를 넣고 켠다",
-  "03-p2p-trade-flow: 구매 재시도(거절되면 20초 뒤 다시 · 5분까지)는 빠짐 — 한 번 산다. 대신 Buy Now가 보인 뒤 등록 시각 + 120초를 채우고 누른다(원본도 이 바닥값이면 거의 한 번에 된다)",
+  "03-p2p-trade-flow: QA 지갑 키 둘은 팀 공용 값(시크릿 msu_qa_wallet_a · _b)에 한 번 넣는다 — 워크플로우 입력에 키를 넣지 않는다 · 지갑 주소 둘은 Suite 입력 · 화면 있는 워커에서 돌린다",
+  "03-p2p-trade-flow: 지갑 설정의 QA 체인 MSUQA(807424 · qa-testnet-rpc.msu.io)를 MetaMask에 먼저 더하고 그 체인의 거래만 누른다(원본 지갑 준비와 같게)",
+  "03-p2p-trade-flow: 구매 재시도는 한 번(원본: 20초 간격 · 5분까지) — 지휘가 구매 부품을 다시 부른다(앞에서 샀으면 건너뜀). 구매 승인은 «지갑 승인 화면 하나 이상»을 받아야 끝으로 친다",
   "03-p2p-trade-flow: 구매 승인의 끝 표시는 «구매 확인 창이 닫힘» — 원본은 판매자 화면으로 소유권을 보며 승인했다. 소유권은 다음 부품(trade-p2p-owned)이 따로 본다",
   "03-p2p-trade-flow: 인벤토리의 토큰 id 읽기 · 다시 읽기 · 등록 뒤 대기는 커스텀 노드로 — 위치에 표현식을 쓸 수 없어 «이 토큰 id가 목록에 있나»를 동작으로 못 적는다",
 );

@@ -61,12 +61,14 @@
     {
       "name": "msu_qa_wallet_a",
       "kind": "text",
-      "description": "MSU QA 테스트 지갑 — 복구 문구 또는 개인키(QA 체인 전용)"
+      "shared": true,
+      "description": "MSU QA 테스트 지갑 — 복구 문구 또는 개인키(QA 체인 전용) · 팀 공용 값에 넣는다"
     },
     {
       "name": "msu_qa_wallet_b",
       "kind": "text",
-      "description": "MSU QA 테스트 지갑 — 복구 문구 또는 개인키(QA 체인 전용)"
+      "shared": true,
+      "description": "MSU QA 테스트 지갑 — 복구 문구 또는 개인키(QA 체인 전용) · 팀 공용 값에 넣는다"
     }
   ],
   "settings": {
@@ -81,9 +83,10 @@
       "chains": [
         {
           "chainId": 807424,
-          "name": "MSU QA",
-          "rpcUrl": "",
-          "allowTx": false
+          "name": "MSUQA",
+          "rpcUrl": "https://qa-testnet-rpc.msu.io",
+          "allowTx": true,
+          "symbol": "NXPC"
         }
       ]
     }
@@ -392,7 +395,8 @@
                 "frames": [],
                 "verifiedAt": null
               }
-            }
+            },
+            "atLeast": 1
           }
         ]
       }

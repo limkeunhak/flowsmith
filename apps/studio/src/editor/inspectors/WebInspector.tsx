@@ -383,6 +383,15 @@ function WalletApproveForm({ flow, action: a, onChange }: { flow: Flow; action: 
         모르는 화면은 누르지 않고 멈춥니다. 이미 끝났다는 표시가 보이면(연결돼 있으면) 아무것도 누르지 않고 지나갑니다.
       </div>
       <DoneEditor done={a.done} labels={WALLET_DONE_LABEL} onChange={(done) => onChange({ ...a, done })} />
+      <label className="check">
+        <input type="checkbox" checked={a.atLeast !== undefined} onChange={(e) => { const { atLeast: _old, ...rest } = a; onChange(e.target.checked ? { ...rest, atLeast: 1 } : rest); }} />
+        지갑이 꼭 불려야 끝으로 칩니다 — 구매 · 등록처럼. 누른 단추가 처리 중으로 바뀌어 끝 표시가 먼저 맞아도, 승인 화면이 오기 전에는 끝내지 않습니다
+      </label>
+      {a.atLeast !== undefined && (
+        <Field label="적어도 승인할 화면 수" hint="1~10 · 끝 표시가 와도 이만큼 승인하기 전에는 기다리고, 시간이 다 되면 «사이트가 지갑을 부르지 않았다»로 멈춥니다">
+          <input type="number" min={1} max={10} style={{ width: 70 }} value={a.atLeast} onChange={(e) => onChange({ ...a, atLeast: Math.min(10, Math.max(1, Math.round(Number(e.target.value)) || 1)) })} />
+        </Field>
+      )}
       <Field label="기다리는 시간(분)" hint={`${WALLET_APPROVE_TIMEOUT.minMs / 1000}초~${WALLET_APPROVE_TIMEOUT.maxMs / 60_000}분 · 넘으면 실행이 실패합니다`}>
         <input type="number" min={0.5} max={10} step={0.5} style={{ width: 90 }} value={minutes}
           onChange={(e) => { const m = Number(e.target.value); onChange({ ...a, timeoutMs: Number.isFinite(m) && m > 0 ? Math.round(Math.min(WALLET_APPROVE_TIMEOUT.maxMs, Math.max(WALLET_APPROVE_TIMEOUT.minMs, m * 60_000))) : null }); }} />
