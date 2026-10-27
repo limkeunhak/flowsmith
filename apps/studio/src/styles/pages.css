@@ -1,6 +1,6 @@
 /* 관리 화면 — 워커 · 문제 목록 · 글자 위계(빈 화면 · 덧말) */
 /* ─── 워커(젠킨스의 노드 관리) ─────────────────────────────────── */
-.worker-list { display: flex; flex-direction: column; gap: 10px; max-width: 980px; }
+.worker-list { display: flex; flex-direction: column; gap: 10px; }
 .worker-card { padding: 14px; display: flex; flex-direction: column; gap: 8px; }
 .worker-card.offline { background: var(--sunken); }
 .worker-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--muted); }
@@ -23,10 +23,12 @@
 .problem-where { font-size: 12px; color: var(--muted); }
 
 /* ─── 글자 위계(2026-10-17) — 빈 화면 · 보조 글 · 라벨의 덧말 ─────────── */
-.empty-state { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 44px 20px; text-align: center; }
+/* 빈 화면 — EmptyState.tsx. 아이콘 타일 · 제목 · 설명 · 행동 하나 */
+.empty-state { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 40px 20px 44px; text-align: center; }
+.empty-icon { width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; margin-bottom: 8px; background: var(--sunken); color: var(--muted); border: 1px solid var(--border); }
 .empty-state b { font-size: var(--fs-15); font-weight: 600; color: var(--text); }
-.empty-state span { font-size: var(--fs-13); color: var(--muted); }
-.empty-state button { margin-top: 10px; }
+.empty-state > span:not(.empty-icon) { font-size: var(--fs-13); color: var(--muted); max-width: 520px; line-height: 1.6; }
+.empty-state button, .empty-state a.button { margin-top: 10px; }
 .field > span em.hint, em.hint { font-style: normal; font-weight: 400; color: var(--faint); margin-left: 4px; }
 .worker-name { display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-15); font-weight: 600; }
 .worker-meta { font-size: var(--fs-13); color: var(--muted); }
@@ -38,7 +40,6 @@
 .run-form-card { padding: 18px 20px; gap: 12px; margin-bottom: 16px; }
 a.menu-item { display: block; color: var(--text); text-decoration: none; }
 /* 테스트 — Suite 목록 · Suite 하나 */
-.page.tests, .page.suite-page { max-width: 1280px; }
 .suite-list { display: flex; flex-direction: column; gap: 8px; }
 .suite-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; color: inherit; text-decoration: none; }
 .suite-row:hover { border-color: var(--accent); }

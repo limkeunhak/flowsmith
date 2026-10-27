@@ -1,7 +1,9 @@
 /* 목록 · 편집 화면 — 틀 · 캔버스 · 서랍 · 로그 · 실행 기록 · 녹화 · 감시 · 트리거 · 노드 설정 · 값 칸 · 다음 할 일 · 템플릿 · 실패 카드 */
 /* ── 목록 화면 ─────────────────────────────────────────── */
 .page { max-width: 1080px; margin: 0 auto; padding: 32px 24px; }
-.page-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+/* 제목 줄 — 제목은 한 줄로 두고(좁으면 단추가 다음 줄로 내려간다 · 「워크/플로/우」처럼 꺾이지 않게) */
+.page-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 6px; }
+.page-head h1 { white-space: nowrap; }
 .page-sub { color: var(--muted); font-size: var(--fs-14); line-height: 1.6; max-width: 680px; margin-bottom: 28px; }
 .brand { display: inline-flex; align-items: center; gap: 10px; }
 .brand-mark { width: 28px; height: 28px; border-radius: 8px; background: var(--char-800); color: var(--on-solid); display: grid; place-items: center; }
@@ -210,8 +212,9 @@ pre.json { background: var(--sunken); border: 1px solid var(--border); border-ra
 .recorder .rec-dot { animation: blink 1.4s ease-in-out infinite; }
 @keyframes blink { 50% { opacity: .35; } }
 .chips button.on { background: var(--warn); color: var(--on-solid); }
-.record-btn { position: relative; width: 100%; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 12px 10px 30px; margin-bottom: 14px; border: 1px dashed var(--bad); background: var(--bad-soft); color: var(--text); white-space: normal; text-align: left; }
-.record-btn:hover:not(:disabled) { background: var(--bad-soft) !important; border-style: solid; }
+/* 녹화로 동작 더하기 — 처음 할 일이라 강조색 카드로(빨간 점선은 오류 상자로 읽혔다). 빨간 점은 «녹화»의 관례라 남긴다 */
+.record-btn { position: relative; width: 100%; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 12px 10px 30px; margin-bottom: 14px; border: 1px solid var(--accent-line); background: var(--accent-soft); color: var(--text); white-space: normal; text-align: left; }
+.record-btn:hover:not(:disabled) { background: var(--accent-soft) !important; border-color: var(--accent); }
 .record-btn > .rec-dot { position: absolute; left: 12px; top: 15px; }
 
 .rec-live { min-width: 0; min-height: 0; display: flex; }
@@ -338,7 +341,7 @@ code.token { background: var(--sunken); border: 1px solid var(--border); border-
 .tpl-card:hover { border-color: var(--accent); }
 .tpl-card .tpl-title { font-weight: 700; font-size: 14px; display: inline-flex; gap: 6px; align-items: center; }
 .tpl-card .tpl-desc { font-size: 13px; color: var(--muted); line-height: 1.5; }
-.tpl-card .tpl-flow { font-size: 12px; color: var(--accent); margin-top: auto; }
+.tpl-card .tpl-flow { font-size: 12px; color: var(--faint); margin-top: auto; padding-top: 8px; border-top: 1px dashed var(--border); width: 100%; }
 .tpl-card.blank { border-style: dashed; box-shadow: none; }
 .tpl-form { padding: 18px; max-width: 640px; }
 .tpl-steps { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
@@ -438,13 +441,28 @@ code.token { background: var(--sunken); border: 1px solid var(--border); border-
 .drawer-head .node-del { flex: none; }
 
 /* AI 어시스턴트 — ai/AiDock.tsx · ai/AiChat.tsx (Studio 토큰으로) */
-.ai-btn { border: 1px solid var(--accent-line); color: var(--accent); background: var(--accent-soft); font-weight: 600; }
-.ai-btn:hover { border-color: var(--accent); }
+/* 「AI로 만들기」 — 중립 테두리 단추에 별만 주황(주 단추 「빈 워크플로우」와 다투지 않게) */
+.ai-btn { font-weight: 600; }
+.ai-btn .ai-spark { color: var(--accent); }
 .ai-fab { position: fixed; right: 24px; bottom: 24px; z-index: 45; width: 56px; height: 56px; padding: 0; border: 0; border-radius: 50%;
   background: var(--accent); color: var(--on-accent); box-shadow: var(--shadow-lg); display: flex; flex-direction: column; align-items: center; justify-content: center;
   cursor: pointer; transition: transform .15s ease, background .15s ease; }
 .ai-fab:hover { background: var(--accent-hover); transform: translateY(-2px); }
 .ai-fab.on { background: var(--char-800); }
+/* 다른 것을 가리지 않게 — 오른쪽 서랍이 열리면 서랍 왼쪽으로 비키고, 노드 창 위에서는 작게.
+   좁은 화면의 편집 화면에서는 아래 가운데 실행 단추 위로 올리고, 화면을 덮는 서랍이 열리면 숨긴다 */
+body:has(.work.with-drawer) .ai-fab { right: 484px; }
+body:has(.work.with-drawer) .ai-dock { right: 484px; }
+body:has(.ndv-backdrop) .ai-fab { width: 44px; height: 44px; right: 30px; bottom: 30px; }
+body:has(.ndv-backdrop) .ai-fab-label { display: none; }
+@media (max-width: 960px) {
+  body:has(.work.with-drawer) .ai-fab { display: none; }
+  body:has(.work.with-drawer) .ai-dock { right: 24px; }
+}
+@media (max-width: 760px) {
+  body:has(.launcher) .ai-fab { bottom: 88px; }
+  body:has(.launcher) .ai-dock { bottom: 156px; }
+}
 .ai-fab-spark { font-size: 17px; line-height: 1; }
 .ai-fab-label { font-size: var(--fs-11); font-weight: 700; letter-spacing: .02em; }
 .ai-dock { position: fixed; right: 24px; bottom: 92px; z-index: 45; width: 384px; height: min(620px, calc(100vh - 120px)); display: flex; flex-direction: column;

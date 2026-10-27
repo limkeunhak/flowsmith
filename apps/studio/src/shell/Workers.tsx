@@ -9,6 +9,7 @@
 import { useEffect, useState } from "react";
 import { api, ApiError, type WorkerRow } from "../api.ts";
 import { IconCopy, IconKey, IconMonitor, IconPlus, IconTrash, IconX } from "../icons.tsx";
+import { EmptyState } from "../EmptyState.tsx";
 import { useMe } from "./me.ts";
 import { useWorkers } from "./workers.ts";
 import { ago } from "../format.ts";
@@ -45,11 +46,10 @@ export function Workers() {
             </div>
           </div>
           {v.workers.length === 0 && (
-            <div className="card empty-state">
-              <b>연결된 워커가 없습니다</b>
-              <span>공용 워커(도커 · 서버실 PC)는 누구의 실행이든 받고, 개인 워커는 그 사람이 «내 PC에서 실행하기»로 돌린 실행만 받습니다(데스크톱 앱).</span>
-              {admin && <button className="primary" onClick={() => { setAdding(true); setIssued(null); }}><IconPlus size={15} /> 워커 더하기</button>}
-            </div>
+            // 「워커 더하기」는 제목 줄에 있다 — 여기에 또 두지 않는다
+            <EmptyState icon={<IconMonitor size={22} />} title="연결된 워커가 없습니다">
+              공용 워커(도커 · 서버실 PC)는 누구의 실행이든 받고, 개인 워커는 그 사람이 «내 PC에서 실행하기»로 돌린 실행만 받습니다(데스크톱 앱).
+            </EmptyState>
           )}
           {v.workers.map((w) => <WorkerCard key={w.id} w={w} admin={admin} act={act} onToken={(token) => setIssued({ name: w.name, token, personal: w.kind === "personal" })} />)}
         </div>

@@ -11,7 +11,8 @@ import { aiBridge } from "./ai/bridge.ts";
 import { useMe } from "./shell/me.ts";
 import { api, ApiError, type FlowSummary } from "./api.ts";
 import { blankFlow, newFlowId, SCHEDULE_CHOICES, TEMPLATES, type FlowChoice, type Template } from "./model/index.ts";
-import { IconAlert, IconCheck, IconPlay, IconPlus, IconSearch, IconTrash, IconX } from "./icons.tsx";
+import { IconAlert, IconBranch, IconCheck, IconPlay, IconPlus, IconSearch, IconTrash, IconX } from "./icons.tsx";
+import { EmptyState } from "./EmptyState.tsx";
 import { ago } from "./format.ts";
 
 
@@ -139,12 +140,36 @@ export function FlowList({ only = null }: { only?: "templates" | null }) {
       : f.lastRun?.status === "failure" || (f.monitor !== null && (f.monitor.status === "broken" || f.monitor.status === "changed"))));
   const open = (m: typeof mode) => { setPicked(null); setMode(mode === m ? "none" : m); };
 
+  const hasFlows = flows !== null && flows.length > 0;
+  const templates = (
+    <>
+      <h2 className="section-title">{hasFlows && only !== "templates" ? "템플릿으로 시작하기" : "무엇을 자동화할까요?"}</h2>
+      {picked ? (
+        <TemplateForm t={picked} flows={flows ?? []} onCancel={() => setPicked(null)} onCreate={(d) => create(d)} />
+      ) : (
+        <div className="tpl-grid">
+          {TEMPLATES.map((t) => (
+            <button key={t.id} className="tpl-card" onClick={() => { setMode("none"); setPicked(t); }}>
+              <span className="tpl-title">{t.title}</span>
+              <span className="tpl-desc">{t.desc}</span>
+              <span className="tpl-flow">{t.steps.join(" → ")}</span>
+            </button>
+          ))}
+          <button className="tpl-card blank" disabled={starting} onClick={startBlank}>
+            <span className="tpl-title"><IconPlus size={15} /> 빈 워크플로우에서</span>
+            <span className="tpl-desc">처음부터 직접 단계를 이어 붙입니다</span>
+          </button>
+        </div>
+      )}
+    </>
+  );
+
   return (
     <div className="page">
       <div className="page-head">
         <h1 className="grow">{only === "templates" ? "템플릿" : "워크플로우"}</h1>
-        <button className="ghost" onClick={() => open("import")}>JSON 가져오기</button>
-        {me.can("editor") && <button className="ai-btn" onClick={() => aiBridge.open()}>✦ AI로 만들기</button>}
+        <button onClick={() => open("import")}>JSON 가져오기</button>
+        {me.can("editor") && <button className="ai-btn" onClick={() => aiBridge.open()}><span className="ai-spark" aria-hidden="true">✦</span> AI로 만들기</button>}
         <button className="primary" disabled={starting} onClick={startBlank}><IconPlus size={15} /> 빈 워크플로우</button>
       </div>
       {me.auth && (me.teams.length > 0) && (
@@ -172,25 +197,8 @@ export function FlowList({ only = null }: { only?: "templates" | null }) {
         </div>
       )}
 
-      <h2 className="section-title">무엇을 자동화할까요?</h2>
-      {picked ? (
-        <TemplateForm t={picked} flows={flows ?? []} onCancel={() => setPicked(null)} onCreate={(d) => create(d)} />
-      ) : (
-        <div className="tpl-grid">
-          {TEMPLATES.map((t) => (
-            <button key={t.id} className="tpl-card" onClick={() => { setMode("none"); setPicked(t); }}>
-              <span className="tpl-title">{t.title}</span>
-              <span className="tpl-desc">{t.desc}</span>
-              <span className="tpl-flow">{t.steps.join(" → ")}</span>
-            </button>
-          ))}
-          <button className="tpl-card blank" disabled={starting} onClick={startBlank}>
-            <span className="tpl-title"><IconPlus size={15} /> 빈 워크플로우에서</span>
-            <span className="tpl-desc">처음부터 직접 단계를 이어 붙입니다</span>
-          </button>
-        </div>
-      )}
-
+      {/* 템플릿 — 처음 온 사람에게는 위에, 워크플로우가 있는 사람에게는 「내 워크플로우」 아래에(불러오는 동안은 두지 않는다 · 자리가 튀지 않게) */}
+      {(only === "templates" || (flows !== null && !hasFlows)) && templates}
       {only !== "templates" && <>
       <h2 className="section-title">내 워크플로우</h2>
       {flows !== null && flows.length > 0 && (
@@ -206,7 +214,7 @@ export function FlowList({ only = null }: { only?: "templates" | null }) {
 
       <div className="card">
         {flows === null ? <div className="empty">불러오는 중…</div>
-          : flows.length === 0 ? <div className="empty">아직 워크플로우가 없습니다. 위에서 하고 싶은 일을 고르세요.</div>
+          : flows.length === 0 ? <EmptyState bare icon={<IconBranch size={22} />} title="아직 워크플로우가 없습니다">위에서 하고 싶은 일을 고르거나 빈 워크플로우로 시작하세요.</EmptyState>
           : shown.length === 0 ? <div className="empty">맞는 워크플로우가 없습니다</div>
           : (
             <div className="flow-rows">
@@ -243,6 +251,7 @@ export function FlowList({ only = null }: { only?: "templates" | null }) {
           )}
       </div>
       </>}
+      {only !== "templates" && hasFlows && templates}
     </div>
   );
 }
