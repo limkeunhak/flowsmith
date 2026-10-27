@@ -116,9 +116,41 @@ describe("1순위 화면", () => {
     const before = (await api("GET", "/api/flows/calc/runs")).length;
     await page.goto(`${app.url}/#/flows/calc`);
     await page.getByRole("button", { name: "실행 기록" }).click();
-    await page.getByRole("button", { name: /같은 입력으로 다시 실행/ }).click();
+    // 다시 실행은 실행 머리에 — 어느 단계를 골라 두었든
+    await page.locator(".exec-actions").getByRole("button", { name: "↻ 다시 실행", exact: true }).click();
     await expect.poll(async () => (await api("GET", "/api/flows/calc/runs")).length, { timeout: 15_000 }).toBe(before + 1);
     const runs = await api("GET", "/api/flows/calc/runs");
     expect(runs[0].params).toEqual(runs[1].params);
+    // 새 실행이 바로 열린다
+    await expect.poll(() => page.url()).toContain(`/runs/${runs[0].id}`);
+  }, 60_000);
+
+  it("★여기서부터 다시 — 실패한 단계를 고치고 그 단계부터 · 앞 단계는 그 실행의 출력(무엇을 그대로 쓰는지 먼저 보인다) · 위의 «실행»은 실행 기록에서도", async () => {
+    const node = (id: string, name: string, code: string) => ({ id, type: "custom", name, position: pos(0), config: { code, outputs: ["n"] } });
+    const pipe = (last: string) => ({ schemaVersion: 1, id: "pipe", name: "줄", nodes: [node("a", "앞", "return { n: Math.random() };"), node("b", "가운데", "return { n: input.n };"), node("c", "끝", last)],
+      edges: [{ id: "e1", from: { node: "a", port: "out" }, to: { node: "b" } }, { id: "e2", from: { node: "b", port: "out" }, to: { node: "c" } }] });
+    await api("POST", "/api/flows", { draft: pipe("throw new Error('아직');") });
+    const first = (await api("POST", "/api/flows/pipe/runs", { version: "draft" })).runId as string;
+    await expect.poll(async () => (await api("GET", `/api/runs/${first}`)).status, { timeout: 15_000 }).toBe("failure");
+    await api("PUT", "/api/flows/pipe/draft", { draft: pipe("return { n: input.n };") });
+
+    await page.goto(`${app.url}/#/flows/pipe/runs/${first}`);
+    await page.locator(".exec-actions").getByRole("button", { name: "↻ «끝»부터 다시" }).click();
+    const confirm = page.getByRole("dialog", { name: "여기서부터 다시" });
+    await expect.poll(() => confirm.innerText()).toContain("이 실행의 출력을 그대로 씀 — 앞 · 가운데");
+    await confirm.getByRole("button", { name: "다시 실행" }).click();
+    await expect.poll(async () => (await api("GET", "/api/flows/pipe/runs"))[0].status, { timeout: 15_000 }).toBe("success");
+    const [again] = await api("GET", "/api/flows/pipe/runs");
+    expect(again.resumedFrom).toMatchObject({ runId: first, nodeId: "c" });
+    const was = (await api("GET", `/api/runs/${first}`)).result.nodes.find((n: { id: string }) => n.id === "a").output;
+    expect((await api("GET", `/api/runs/${again.id}`)).result.output).toEqual(was);
+    await expect.poll(() => page.locator(".exec-item.on").innerText()).toContain("«끝»부터");
+
+    // 위 막대의 «실행» — 실행 기록 탭에서도. 새 실행을 바로 연다
+    const before = (await api("GET", "/api/flows/pipe/runs")).length;
+    await page.locator(".topbar").getByRole("button", { name: "실행", exact: true }).click();
+    await expect.poll(async () => (await api("GET", "/api/flows/pipe/runs")).length, { timeout: 15_000 }).toBe(before + 1);
+    const latest = (await api("GET", "/api/flows/pipe/runs"))[0].id as string;
+    await expect.poll(() => page.url()).toContain(`/runs/${latest}`);
   }, 60_000);
 });

@@ -27,7 +27,7 @@ export interface TrackStep { id: string; no: number; name: string; status: NodeS
 
 const RUN_LABEL: Record<RunRow["status"], string> = { running: "도는 중", success: "성공", failure: "실패", cancelled: "멈춤", blocked: "막힘" };
 
-export function RunLauncher({ flow, detail, running, error, onRun, onlyPublished = false, steps, last, onHistory }: {
+export function RunLauncher({ flow, detail, running, error, onRun, onlyPublished = false, steps, last, onHistory, openKey = 0 }: {
   flow: Flow; detail: FlowDetail; running: boolean; error: string[] | null;
   /** 단계 트랙 — 번호 순서 · 지금(또는 막 끝난) 실행의 상태 */
   steps: TrackStep[];
@@ -37,6 +37,8 @@ export function RunLauncher({ flow, detail, running, error, onRun, onlyPublished
   /** on — 이번만 어디서(없으면 플로우 설정대로) · resetWallet — 지갑을 다시 준비하고 돈다(지갑 브라우저) */
   onRun: (target: RunTarget, params: Record<string, string>, opts?: { on?: string; resetWallet?: boolean }) => Promise<boolean>;
   onlyPublished?: boolean;
+  /** 바뀌면 입력 창을 연다 — 위의 «실행»이 입력이 모자랄 때 */
+  openKey?: number;
 }) {
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState<RunTarget>(onlyPublished ? "active" : "draft");
@@ -57,6 +59,7 @@ export function RunLauncher({ flow, detail, running, error, onRun, onlyPublished
   const cannot = pc && mine ? pcCannot(pc, flow.settings.browser) : null;
 
   useEffect(() => { if (error) setOpen(true); }, [error]);
+  useEffect(() => { if (openKey > 0) setOpen(true); }, [openKey]);
   useEffect(() => {
     if (!open) return;
     const on = (e: MouseEvent) => { if (box.current && !box.current.contains(e.target as Node)) setOpen(false); };

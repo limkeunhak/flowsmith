@@ -10,3 +10,4 @@ export { parseCron, cronMatches, nextFires, describeCron, minuteKey, CronError, 
 export { NODE_TYPE_LABEL, ACTION_LABEL, TRIGGER_LABEL, ROLE_LABEL, RUN_STATUS_LABEL, PROBE_STATUS_LABEL, durationText } from "./labels.ts";
 export { explainProblem, explainProblems, problemLine, type ProblemView } from "./problems.ts";
 export { toXlsx, tablesOf, columnsOf, XLSX_TYPE, type Sheet } from "./xlsx.ts";
+export { planResume, ResumeError, type ResumePlan, type ResumeSource } from "./resume.ts";

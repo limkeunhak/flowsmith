@@ -10,10 +10,10 @@
  * core의 `checkFlow`가 순수 함수라 서버와 같은 판정이 고치는 즉시 나온다.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { checkFlow, type Flow, type FlowNode, type Target, type WebAction, explainProblems, problemLine, type ProblemView, PROBE_STATUS_LABEL } from "@flowsmith/core";
+import { checkFlow, paramProblem, type Flow, type FlowNode, type Target, type WebAction, explainProblems, problemLine, type ProblemView, PROBE_STATUS_LABEL } from "@flowsmith/core";
 import { api, ApiError, listExtensions, type ExtensionMeta } from "../api.ts";
 import { addRecorded, applyTarget, hasAction, insertNode, promoteCandidate, splitStages, splitWebNode, targetLabel, type AddRequest, type Fix, type NodeChoice, stepNumbers } from "../model/index.ts";
-import { IconAlert, IconArrowLeft, IconCheck, IconClock, IconChevronDown, IconChevronUp, IconGear, IconBell, IconRocket, IconX } from "../icons.tsx";
+import { IconAlert, IconArrowLeft, IconCheck, IconClock, IconChevronDown, IconChevronUp, IconGear, IconBell, IconPlay, IconRocket, IconX } from "../icons.tsx";
 import { Canvas } from "./canvas/Canvas.tsx";
 import { Executions } from "./run/Executions.tsx";
 import { NodeView, type RunPart } from "./inspectors/NodeView.tsx";
@@ -187,13 +187,28 @@ export function FlowEditor({ id, tab, nodeId, runId, panel }: { id: string; tab:
     return () => removeEventListener("keydown", on);
   }, [dirty, save, say, view]);
 
+  /** 시작한 실행 id(못 하면 null) */
   const startRun = useCallback(async (target: Parameters<typeof run.start>[0], params: Record<string, string>, opts: { on?: string; resetWallet?: boolean } = {}) => {
-    if (target === "draft" && !(await ensureSaved())) return false;
+    if (target === "draft" && !(await ensureSaved())) return null;
     const part = { ...(opts.on ? { on: opts.on } : {}), ...(opts.resetWallet ? { resetWallet: true } : {}) };
-    const ok = await run.start(target, params, Object.keys(part).length ? part : undefined);
-    if (ok) setLogOpen(true);
-    return ok;
+    const runId = await run.start(target, params, Object.keys(part).length ? part : undefined);
+    if (runId) setLogOpen(true);
+    return runId;
   }, [ensureSaved, run]);
+  /**
+   * 위 막대의 «실행» — 어느 탭에서든. 지난번 입력으로 바로 돌린다(편집자는 초안 · 실행자는 게시된 버전).
+   * 입력이 모자라면 편집기의 실행 창을 연다 · 실행 기록에서 눌렀으면 새 실행을 바로 연다
+   */
+  const [launcherKey, setLauncherKey] = useState(0);
+  const runNow = async () => {
+    if (!draft || !detail) return;
+    const params = { ...recallParams(draft.id) };
+    const lacking = draft.params.some((p) => (p.required && (params[p.name] ?? "").trim() === "" && p.default === "") || ((params[p.name] ?? "").trim() !== "" && paramProblem(p, params[p.name]!)));
+    if (lacking) { setViewTab("editor"); setLauncherKey((k) => k + 1); return; }
+    const rid = await startRun(canEdit ? "draft" : "active", params);
+    if (!rid) { if (view === "executions") setViewTab("editor"); return; }
+    if (view === "executions") { run.reloadHistory(); navigate(`${base}/runs/${encodeURIComponent(rid)}`, { replace: true }); }
+  };
 
   /** 단계 실행 — 초안을 이 노드 앞까지(입력 보기) · 이 노드까지(출력 보기). 실행 입력은 마지막에 넣은 값 */
   const runPart = async (nodeId: string, part: RunPart) => {
@@ -372,6 +387,12 @@ export function FlowEditor({ id, tab, nodeId, runId, panel }: { id: string; tab:
           </button>
           <button className="icon-btn" title="워크플로우 설정 — 실행 입력 · 변수 · 시크릿 · 금지 버튼" onClick={() => setDrawer(drawer?.kind === "settings" ? null : { kind: "settings" })}><IconGear /></button>
           {canEdit && <button disabled={!dirty || busy} onClick={() => void save().then((ok) => ok && say("저장했습니다"))}>저장</button>}
+          {/* 실행 — 탭과 상관없이 늘 같은 자리. 입력 · 버전 · 어디서는 편집기 아래 실행 막대의 ▴에서 */}
+          {(canEdit || (me.can("runner") && detail.activeVersion !== null)) && (
+            <button className="top-run" disabled={run.view?.status === "running"} title={`${canEdit ? "초안을 저장하고" : `게시된 v${detail.activeVersion}을`} 돌립니다 — 입력은 지난번 값. 입력 · 버전 · 실행 위치를 고르려면 편집기 아래 실행 막대의 ▴`} onClick={() => void runNow()}>
+              {run.view?.status === "running" ? <span className="spinner" /> : <IconPlay size={14} />} {run.view?.status === "running" ? "도는 중…" : "실행"}
+            </button>
+          )}
           <div className="menu-anchor">
             <button className="primary" disabled={!canEdit} title={canEdit ? "" : "게시는 편집자 이상이 합니다"} onClick={() => setMenu(menu === "publish" ? null : "publish")}>
               <IconRocket size={15} /> {detail.activeVersion === null ? "게시" : `게시됨 v${detail.activeVersion}`} <IconChevronDown size={14} />
@@ -415,6 +436,7 @@ export function FlowEditor({ id, tab, nodeId, runId, panel }: { id: string; tab:
         <main className="rec-main"><Recorder flow={draft} start={recording} onCommit={commitRecording} onRepick={applyRepick} onCancel={() => setRecording(null)} /></main>
       ) : view === "executions" ? (
         <main className="exec-main"><Executions history={run.history} onReload={run.reloadHistory} onFix={onFix} draft={draft} picked={runId ?? null}
+          activeVersion={detail.activeVersion} canDraft={canEdit} onEditor={() => setViewTab("editor")}
           onPick={(rid) => navigate(`${base}/runs/${encodeURIComponent(rid)}`, { replace: true })} /></main>
       ) : (
         <main className={`work${drawer && drawer.kind !== "node" ? " with-drawer" : ""}`}>
@@ -429,7 +451,7 @@ export function FlowEditor({ id, tab, nodeId, runId, panel }: { id: string; tab:
                 <button className="small primary" onClick={() => applyAi(aiPreview)}>적용</button>
               </div>
             )}
-            <RunLauncher flow={draft} detail={detail} running={run.view?.status === "running"} error={run.error} onRun={startRun} {...(canEdit ? {} : { onlyPublished: true })}
+            <RunLauncher flow={draft} detail={detail} running={run.view?.status === "running"} error={run.error} onRun={(t, p, o) => startRun(t, p, o).then(Boolean)} openKey={launcherKey} {...(canEdit ? {} : { onlyPublished: true })}
               steps={[...stepNumbers(draft)].sort((a, b) => a[1] - b[1]).map(([nid, no]) => ({ id: nid, no, name: draft.nodes.find((x) => x.id === nid)?.name ?? nid, status: run.statuses[nid] ?? null }))}
               last={run.history[0] ?? null} onHistory={() => setViewTab("executions")} />
             {!canEdit && <div className="readonly-banner">보기 전용 — {me.user ? `${me.user.name}님은 «${({ runner: "실행자", viewer: "보는 사람" } as Record<string, string>)[me.user.role] ?? me.user.role}»입니다. ` : ""}{me.can("runner") ? "게시된 버전을 돌리고 기록을 볼 수 있습니다." : "고치거나 돌리려면 관리자에게 역할을 부탁하세요."}</div>}

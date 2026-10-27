@@ -127,6 +127,8 @@ export interface RunRow {
   startedBy: string | null;
   /** 어디서 돌았나 — 워커 이름(그때의). null이면 서버 */
   ranOn: string | null;
+  /** 여기서부터 다시 — 이 실행의 이 단계부터 돌렸다(앞 단계는 그 실행의 출력을 썼다). 처음부터면 null */
+  resumedFrom: { runId: string; nodeId: string; nodeName: string } | null;
 }
 
 /** 대시보드가 쓰는 실행 · 노드 요약(run/stats.ts) */
