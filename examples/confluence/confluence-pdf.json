@@ -1,0 +1,278 @@
+{
+  "schemaVersion": 1,
+  "id": "confluence-pdf",
+  "name": "Confluence · 페이지 트리를 PDF로",
+  "description": "로그인(사람) → REST로 시작 페이지 아래 모든 페이지 목록 → 페이지마다 Confluence PDF 내보내기를 받아 트리 경로대로 저장 → 목록 · 결과 CSV. 다시 돌리면 받은 PDF는 건너뛴다",
+  "params": [
+    {
+      "name": "base",
+      "label": "Confluence 주소",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "https://confluence.nexon.com",
+      "help": ""
+    },
+    {
+      "name": "rootPath",
+      "label": "시작 페이지(트리 경로)",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "05. 팀 별 공간 > 08. 플랫폼개발 > [서비스파트]",
+      "help": "좌측 트리의 경로를 «>»로 — 끝 페이지와 그 아래 모두를 받는다"
+    },
+    {
+      "name": "spaceKey",
+      "label": "스페이스 키(같은 제목이 여럿이면)",
+      "required": false,
+      "type": "text",
+      "options": [],
+      "default": "",
+      "help": ""
+    }
+  ],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "browser": "launch",
+    "defaultTimeoutMs": 30000,
+    "runTimeoutMin": 600,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "login",
+      "type": "web",
+      "name": "로그인(사람)",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "{{ $params.base }}/login.action?os_destination=%2Findex.action"
+        },
+        "actions": [
+          {
+            "id": "h",
+            "kind": "human",
+            "risk": "safe",
+            "timeoutMs": 600000,
+            "optional": false,
+            "prompt": "Confluence에 로그인해 주세요 — 첫 화면(대시보드)이 보이면 이어 갑니다",
+            "appears": null,
+            "done": {
+              "kind": "url",
+              "pattern": "^https://confluence\\.nexon\\.com/(?!login\\.action)(?!.*os_destination)"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "tree",
+      "type": "custom",
+      "name": "페이지 목록(REST)",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "// 로그인한 브라우저의 쿠키로 Confluence REST를 부른다 — 트리를 화면에서 펼치지 않는다(접힌 가지 · 늦게 그려지는 트리를 놓치지 않게)\nconst base = String(ctx.params.base).replace(/\\/$/, '');\nconst get = async (path) => {\n  const r = await page.context().request.get(base + path, { timeout: 60000 });\n  if (!r.ok()) throw new Error(`${path} → HTTP ${r.status()}${r.status() === 401 ? ' — 로그인이 안 됐습니다' : ''}`);\n  return r.json();\n};\nconst norm = (s) => String(s).replace(/\\s+/g, ' ').trim();\n// «05. 팀 별 공간 > 08. 플랫폼개발 > [서비스파트]» — 끝 제목으로 찾고, 앞 제목들이 조상에 있는 것 하나\nconst names = String(ctx.params.rootPath).split('>').map(norm).filter(Boolean);\nconst leaf = names[names.length - 1];\nconst cql = encodeURIComponent(`type=page and title=\"${leaf.replace(/\"/g, '\\\\\"')}\"` + (ctx.params.spaceKey ? ` and space=\"${ctx.params.spaceKey}\"` : ''));\nconst found = await get(`/rest/api/content/search?cql=${cql}&expand=ancestors,space&limit=50`);\nconst trail = (p) => [...p.ancestors.map((a) => a.title), p.title].join(' > ');\nconst match = found.results.filter((p) => { const anc = p.ancestors.map((a) => norm(a.title)); return names.slice(0, -1).every((n) => anc.includes(n)); });\nif (match.length !== 1) throw new Error(`«${ctx.params.rootPath}»에 맞는 페이지가 ${match.length}개입니다 — 찾은 것: ${found.results.map(trail).join(' | ') || '없음'}`);\nconst root = match[0];\n// 제목의 «/»는 폴더가 되지 않게 바꾼다\nconst seg = (t) => norm(t).replace(/\\//g, '_');\nconst pages = [];\nconst walk = async (id, title, path, depth) => {\n  pages.push({ id: String(id), title, path, depth });\n  for (let start = 0; ; start += 200) {\n    const res = await get(`/rest/api/content/${id}/child/page?limit=200&start=${start}`);\n    for (const c of res.results) await walk(c.id, c.title, `${path}/${seg(c.title)}`, depth + 1);\n    if (res.results.length < 200) break;\n  }\n};\nawait walk(root.id, root.title, seg(root.title), 0);\nctx.log(`${trail(root)} 아래 ${pages.length}쪽`);\nreturn { pages, count: pages.length, rootId: String(root.id), space: root.space ? root.space.key : '' };",
+        "outputs": [
+          "pages",
+          "count",
+          "rootId",
+          "space"
+        ],
+        "usesPage": true,
+        "timeoutMs": 900000
+      }
+    },
+    {
+      "id": "list",
+      "type": "fileWrite",
+      "name": "목록 CSV",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "data": "{{ $node.tree.pages }}",
+        "target": {
+          "kind": "file",
+          "dir": "",
+          "name": "pages",
+          "format": "csv",
+          "mode": "overwrite",
+          "csv": {
+            "header": true,
+            "bom": true,
+            "columns": [
+              "id",
+              "depth",
+              "title",
+              "path"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "pdf",
+      "type": "web",
+      "name": "페이지마다 PDF",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "each": {
+          "items": "{{ $node.tree.pages }}",
+          "onError": "continue"
+        },
+        "actions": [
+          {
+            "id": "s",
+            "kind": "save",
+            "risk": "safe",
+            "timeoutMs": 300000,
+            "optional": false,
+            "retries": 1,
+            "source": "url",
+            "url": "{{ $params.base }}/spaces/flyingpdf/pdfpageexport.action?pageId={{ $item.id }}",
+            "path": "pdf/{{ $item.path }}.pdf",
+            "output": "file",
+            "skipExisting": true
+          },
+          {
+            "id": "p",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 500
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "result",
+      "type": "fileWrite",
+      "name": "결과 CSV",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "data": "{{ $node.pdf.rows }}",
+        "target": {
+          "kind": "file",
+          "dir": "",
+          "name": "result",
+          "format": "csv",
+          "mode": "overwrite",
+          "csv": {
+            "header": true,
+            "bom": true,
+            "columns": [
+              "id",
+              "title",
+              "path",
+              "ok",
+              "file",
+              "error"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 1500,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k1",
+            "label": "페이지를 찾았다",
+            "actual": "{{ $node.tree.count }}",
+            "op": "gt",
+            "expected": "0"
+          },
+          {
+            "id": "k2",
+            "label": "모든 페이지를 PDF로 받았다",
+            "actual": "{{ $node.pdf.failed }}",
+            "op": "eq",
+            "expected": "0"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "login",
+        "port": "out"
+      },
+      "to": {
+        "node": "tree"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "tree",
+        "port": "out"
+      },
+      "to": {
+        "node": "list"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "list",
+        "port": "out"
+      },
+      "to": {
+        "node": "pdf"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "pdf",
+        "port": "out"
+      },
+      "to": {
+        "node": "result"
+      }
+    },
+    {
+      "id": "e5",
+      "from": {
+        "node": "result",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

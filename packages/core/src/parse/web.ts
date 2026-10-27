@@ -1,6 +1,6 @@
 /** 검문소 — 웹페이지 노드(위치 · 지문 · 기다리기 · 표 · 행 고르기 · 동작) */
 import {
-  ACTION_KINDS, HUMAN_DONE_KINDS, HUMAN_TIMEOUT, type HumanDone, LOCATOR_KINDS, READ_STRATEGIES, READ_TRANSFORMS, RISKS, ROW_PICK_BY, RELOAD_WAIT, STABLE_WAIT, WAIT_KINDS, WALLET_APPROVE_TIMEOUT, type Fingerprint, type Locator, type RowPick, type TableColumn, type TableTarget, type Target, type Wait, type WebAction, type WebConfig,
+  ACTION_KINDS, HUMAN_DONE_KINDS, HUMAN_TIMEOUT, type HumanDone, LOCATOR_KINDS, READ_STRATEGIES, READ_TRANSFORMS, RISKS, ROW_PICK_BY, RELOAD_WAIT, SAVE_SOURCES, STABLE_WAIT, WAIT_KINDS, WALLET_APPROVE_TIMEOUT, type Fingerprint, type Locator, type RowPick, type TableColumn, type TableTarget, type Target, type Wait, type WebAction, type WebConfig,
 } from "../model.ts";
 import { Checker, type Obj } from "./checker.ts";
 import { rule } from "./condition.ts";
@@ -174,6 +174,13 @@ function action(c: Checker, v: unknown, where: string): WebAction {
       if (base.optional) c.fail(where, "사람 기다리기는 «있을 때만» 대신 «이 화면일 때만»(appears)을 씁니다");
       return { ...base, kind, prompt: c.text(o, "prompt", where), appears: o["appears"] == null ? null : target(c, o["appears"], `${where}.appears`), done };
     }
+    case "save": {
+      const source = c.oneOf(SAVE_SOURCES, o, "source", where, "url");
+      const url = source === "url" ? c.text(o, "url", where) : c.str(o, "url", where, "");
+      const path = c.text(o, "path", where);
+      const output = o["output"] == null || o["output"] === "" ? null : c.name(o, "output", where);
+      return { ...base, kind, source, url, path, output, skipExisting: c.bool(o, "skipExisting", where, false) };
+    }
     case "walletApprove": {
       const t = base.timeoutMs;
       if (t !== null && (t < WALLET_APPROVE_TIMEOUT.minMs || t > WALLET_APPROVE_TIMEOUT.maxMs)) c.fail(where, `MetaMask 승인을 기다리는 시간(timeoutMs)은 ${WALLET_APPROVE_TIMEOUT.minMs / 1000}초~${WALLET_APPROVE_TIMEOUT.maxMs / 60_000}분입니다`);
@@ -200,9 +207,12 @@ export function webConfig(c: Checker, o: Obj, where: string): WebConfig {
   actions.forEach((a, i) => {
     if (i === 0 && a.kind === "wait" && a.wait.kind === "changed") c.fail(`${where}.actions[0]`, "«값이 바뀔 때까지»는 바로 앞 동작(조회 단추 누르기 같은 것) 뒤에 둡니다 — 첫 동작일 수 없습니다");
   });
-  c.noDup(actions.flatMap((a) => (a.kind === "read" || a.kind === "readTable" ? [a.output] : [])), "출력 이름", where);
+  c.noDup(actions.flatMap((a) => (a.kind === "read" || a.kind === "readTable" ? [a.output] : a.kind === "save" && a.output ? [a.output] : [])), "출력 이름", where);
   // ★주소로 · 사람이 연 탭에서 시작하면 동작이 없어도 된다 — «페이지 접속»만 하는 노드(사용자 요청 2026-10-22 · 노드 나누기).
   //   앞 페이지에서 이어서 아무것도 안 하는 노드는 뜻이 없다
   if (Array.isArray(o["actions"]) && actions.length === 0 && kind === "continue") c.fail(where, "동작이 하나도 없습니다 — 앞 페이지에서 이어서 할 일을 더하세요");
-  return { start, actions };
+  if (o["each"] == null) return { start, actions };
+  const e = c.obj(o["each"], `${where}.each`);
+  const each = { items: c.text(e, "items", `${where}.each`), onError: c.oneOf(["stop", "continue"] as const, e, "onError", `${where}.each`, "stop") };
+  return { start, actions, each };
 }

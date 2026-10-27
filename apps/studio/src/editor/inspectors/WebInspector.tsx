@@ -46,6 +46,8 @@ export function WebInspector({ flow, node, update, findings, onRepick, onSplitAt
           onChange={(url) => update((n) => ({ ...n, config: { ...n.config, start: { kind: "url", url } } }))} />
       )}
 
+      {start.kind !== "tab" && <EachEditor flow={flow} node={node} update={update} />}
+
       <h3>하는 일 ({node.config.actions.length})</h3>
       <div className="stack" style={{ gap: 6 }}>
         {node.config.actions.map((a, i) => (
@@ -91,7 +93,7 @@ export function WebInspector({ flow, node, update, findings, onRepick, onSplitAt
 }
 
 function ActionForm({ flow, nodeId, action: a, onChange }: { flow: Flow; nodeId: string; action: WebAction; onChange: (a: WebAction) => void }) {
-  const canBeOptional = a.kind !== "goto" && a.kind !== "wait" && a.kind !== "closeWindow" && a.kind !== "switchWindow" && a.kind !== "recheck" && a.kind !== "readTable" && a.kind !== "pickRow" && a.kind !== "human" && a.kind !== "walletApprove";
+  const canBeOptional = a.kind !== "goto" && a.kind !== "wait" && a.kind !== "closeWindow" && a.kind !== "switchWindow" && a.kind !== "recheck" && a.kind !== "readTable" && a.kind !== "pickRow" && a.kind !== "human" && a.kind !== "walletApprove" && a.kind !== "save";
   const setWhen = (when: Rule | null) => { const { when: _drop, ...rest } = a; onChange((when ? { ...rest, when } : rest) as WebAction); };
   const common = (
     <>
@@ -291,6 +293,9 @@ function ActionForm({ flow, nodeId, action: a, onChange }: { flow: Flow; nodeId:
     case "walletApprove":
       body = <WalletApproveForm flow={flow} action={a} onChange={onChange} />;
       break;
+    case "save":
+      body = <SaveForm flow={flow} nodeId={nodeId} action={a} onChange={onChange} />;
+      break;
     case "readTable":
       body = (
         <>
@@ -443,3 +448,59 @@ function WaitForm({ wait, onChange }: { wait: Wait; onChange: (w: Wait) => void 
   );
 }
 
+
+/** 행마다 반복(PLAN §49) — 목록의 행마다 시작 주소 · 동작을 한 번씩, 한 브라우저 · 한 로그인으로 */
+function EachEditor({ flow, node, update }: { flow: Flow; node: WebNode; update: Update<WebNode> }) {
+  const each = node.config.each;
+  const set = (next: WebNode["config"]["each"] | undefined) => update((n) => {
+    const { each: _old, ...config } = n.config;
+    return { ...n, config: next ? { ...config, each: next } : config };
+  });
+  return (
+    <>
+      <label className="check">
+        <input type="checkbox" checked={each !== undefined} onChange={(e) => set(e.target.checked ? { items: "{{ $input.rows }}", onError: "continue" } : undefined)} />
+        행마다 반복 — 목록의 행마다 아래 일을 합니다(한 브라우저 · 한 로그인 · 주소로 시작하면 행마다 그 주소로). 행 안에서는 {"{{ $item.이름 }}"}이 그 행입니다
+      </label>
+      {each && (
+        <div className="subcard stack" style={{ gap: 8 }}>
+          <Field label="반복할 행들" hint="앞 노드가 낸 목록 — 예: {{ $input.pages }}. 출력은 rows(행마다 읽은 것 + ok · error) · succeeded · failed">
+            <TemplateInput flow={flow} nodeId={node.id} value={each.items} placeholder="{{ $input.pages }}" onChange={(items) => set({ ...each, items })} />
+          </Field>
+          <Field label="한 행이 실패하면">
+            <select value={each.onError} onChange={(e) => set({ ...each, onError: e.target.value as "stop" | "continue" })}>
+              <option value="continue">그 행을 실패로 적고 다음 행으로</option>
+              <option value="stop">노드를 멈춘다</option>
+            </select>
+          </Field>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** 파일로 저장(PLAN §49) — 이 브라우저의 로그인으로 받아 이 워크플로우의 폴더에 */
+function SaveForm({ flow, nodeId, action: a, onChange }: { flow: Flow; nodeId: string; action: Extract<WebAction, { kind: "save" }>; onChange: (a: WebAction) => void }) {
+  return (
+    <>
+      <Field label="무엇을">
+        <select value={a.source} onChange={(e) => onChange({ ...a, source: e.target.value as typeof a.source })}>
+          <option value="url">주소에서 받기 — 이 브라우저의 로그인으로(PDF 내보내기 · 첨부)</option>
+          <option value="page">지금 페이지를 PDF로 — 창 없는 브라우저에서만</option>
+        </select>
+      </Field>
+      {a.source === "url" && (
+        <Field label="받을 주소" hint="이 페이지 기준 상대 주소도 됩니다 — 화면은 옮기지 않습니다">
+          <TemplateInput flow={flow} nodeId={nodeId} value={a.url} placeholder="/spaces/flyingpdf/pdfpageexport.action?pageId={{ $item.id }}" onChange={(url) => onChange({ ...a, url })} />
+        </Field>
+      )}
+      <Field label="저장할 경로" hint="이 워크플로우의 폴더 아래 · 폴더는 만든다 · 파일 이름에 못 쓰는 글자는 바꾼다. .pdf면 받은 것이 정말 PDF인지 봅니다(로그인 화면이면 멈춤)">
+        <TemplateInput flow={flow} nodeId={nodeId} value={a.path} placeholder="{{ $item.path }}.pdf" onChange={(path) => onChange({ ...a, path })} />
+      </Field>
+      <div className="row">
+        <Field label="경로를 내보낼 이름(비워도 됨)"><input value={a.output ?? ""} onChange={(e) => onChange({ ...a, output: e.target.value.trim() === "" ? null : e.target.value })} /></Field>
+        <label className="check"><input type="checkbox" checked={a.skipExisting} onChange={(e) => onChange({ ...a, skipExisting: e.target.checked })} />이미 있으면 건너뛰기(끊긴 수집 이어 하기)</label>
+      </div>
+    </>
+  );
+}

@@ -83,6 +83,7 @@ function describeBare(a: WebAction, h: H): string {
       const minutes = Math.round((a.timeoutMs ?? HUMAN_TIMEOUT.defaultMs) / 60_000 * 10) / 10;
       return `${a.appears ? `${josa(q(a.appears.label), "이가")} 보일 때만 ` : ""}사람을 기다립니다 — «${a.prompt}» · ${until} 이어 갑니다(${minutes}분까지)`;
     }
+    case "save": return `${a.source === "url" ? `${josa(q(h(a.url)), "을를")} 이 브라우저의 로그인으로 받아` : "지금 페이지를 PDF로 찍어"} ${q(h(a.path))}에 저장합니다${a.skipExisting ? "(이미 있으면 건너뜀)" : ""}`;
     case "walletApprove": {
       const d = a.done;
       const until = d.kind === "hidden" ? `${josa(q(d.target.label), "이가")} 사라질` : d.kind === "visible" ? `${josa(q(d.target.label), "이가")} 보일` : `주소가 /${d.pattern}/ 에 맞을`;
