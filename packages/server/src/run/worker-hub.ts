@@ -253,7 +253,7 @@ export class WorkerHub implements WorkerClient {
     const top = rel?.split("/")[0];
     const writable = new Set(["shared", ...(job.flowUid ? [job.flowUid] : [])]);
     const readable = new Set([...writable, ...Object.values(job.flowUids ?? {})]);
-    const write = fn === "write" || fn === "append" || fn === "remove";
+    const write = fn === "write" || fn === "writeBytes" || fn === "append" || fn === "remove";
     if (!rel || !top || !(write ? writable : readable).has(top)) throw new Error(`「${path}」는 이 실행이 닿을 수 없는 폴더입니다`);
     const f = this.#files;
     switch (fn) {
@@ -262,6 +262,7 @@ export class WorkerHub implements WorkerClient {
       case "stat": return f.stat(rel);
       case "write": if (typeof text !== "string") throw new Error("쓸 글이 없습니다"); return f.write(rel, text);
       case "append": if (typeof text !== "string") throw new Error("쓸 글이 없습니다"); return f.append(rel, text);
+      case "writeBytes": if (typeof text !== "string") throw new Error("쓸 바이트가 없습니다"); return f.writeBytes(rel, Buffer.from(text, "base64"));
       case "remove": return f.remove(rel);
       default: throw new Error(`모르는 파일 일입니다 — ${fn}`);
     }

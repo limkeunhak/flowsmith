@@ -30,6 +30,8 @@ export interface FileOps {
   read(path: string): Promise<string | null>;
   /** 폴더가 없으면 만든다 */
   write(path: string, text: string): Promise<void>;
+  /** 바이트 그대로 — «파일로 저장»(PDF 같은 것). 폴더가 없으면 만든다 */
+  writeBytes(path: string, data: Uint8Array): Promise<void>;
   append(path: string, text: string): Promise<void>;
   stat(path: string): Promise<FileStat | null>;
   remove(path: string): Promise<void>;
@@ -57,6 +59,7 @@ export function localFileOps(root: string): FileOps {
     list: (dir) => readdir(abs(dir)).catch((e) => { if (missing(e)) return []; throw e; }),
     read: (path) => readFile(abs(path), "utf8").catch((e) => { if (missing(e)) return null; throw e; }),
     write: async (path, text) => { const p = abs(path); await mkdir(dirname(p), { recursive: true }); await writeFile(p, text, "utf8"); },
+    writeBytes: async (path, data) => { const p = abs(path); await mkdir(dirname(p), { recursive: true }); await writeFile(p, data); },
     append: async (path, text) => { const p = abs(path); await mkdir(dirname(p), { recursive: true }); await appendFile(p, text, "utf8"); },
     stat: (path) => stat(abs(path)).then((s) => ({ size: s.size, mtimeMs: s.mtimeMs, isFile: s.isFile() }), (e) => { if (missing(e)) return null; throw e; }),
     remove: (path) => rm(abs(path)),

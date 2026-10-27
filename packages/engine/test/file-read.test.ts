@@ -142,7 +142,7 @@ describe("다른 워크플로우 실행", () => {
       edges: [{ id: "e", from: { node: "r", port: "out" }, to: { node: "c" } }],
     });
     expect(checkFlow(flow({}))).toEqual([]);
-    expect(checkFlow(flow({ items: "" })).join()).toMatch(/\$item은 «다른 워크플로우 실행»이 행마다 돌 때/);
+    expect(checkFlow(flow({ items: "" })).join()).toMatch(/\$item은 행마다 돌 때만 씁니다\(«다른 워크플로우 실행»의 실행 입력/);
     expect(checkFlow(flow({ flowId: "me" })).join()).toMatch(/자기 자신을 부를 수 없습니다/);
     expect(checkFlow(flow({ items: "{{ $input.nope }}" })).join()).toMatch(/"nope"를 내놓지 않습니다 \(들어오는 것: rows · file · count\)/);
     const old = parseFlow(flow({}, [{ id: "w", type: "store", name: "저장", position: { x: 0, y: 0 }, config: { data: "x", target: { kind: "file", name: "out" } } }]) as any);

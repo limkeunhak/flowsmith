@@ -11,7 +11,28 @@ export interface WebConfig {
    */
   start: { kind: "url"; url: string } | { kind: "continue" } | { kind: "tab"; match: string };
   actions: WebAction[];
+  /**
+   * **행마다 반복**(PLAN §49) — 행들(`{{ $input.pages }}` 같은 목록)마다 시작 · 동작을 한 번씩. 한 브라우저 · 한 로그인으로.
+   * 주소로 시작하면 행마다 그 주소로 간다 · 앞 페이지에서 이어서면 머문 곳에서(주소에서 받기만 하는 수집 — 화면을 옮길 까닭이 없다).
+   * 행 안에서는 `{{ $item.… }}`이 그 행. 출력은 rows(그 행의 값 + 행마다 읽은 것 + ok · error) · succeeded · failed.
+   * onError: stop이면 한 행이 실패하면 노드가 실패 · continue면 그 행을 실패로 적고 다음 행으로
+   */
+  each?: WebEach;
 }
+
+export interface WebEach {
+  items: string;
+  onError: "stop" | "continue";
+}
+export const WEB_EACH_OUTPUTS = ["rows", "succeeded", "failed"] as const;
+
+/**
+ * «파일로 저장»의 받아 올 곳 —
+ *   url   그 주소를 **이 브라우저의 로그인으로** 받아 그대로 쓴다(위키의 PDF 내보내기 · 첨부). 화면은 옮기지 않는다
+ *   page  지금 페이지를 PDF로 찍는다 — ★창 없는 브라우저(띄우기 · 창 없음)에서만. 사람의 크롬 · 창 있는 브라우저는 못 찍는다
+ */
+export const SAVE_SOURCES = ["url", "page"] as const;
+export type SaveSource = (typeof SAVE_SOURCES)[number];
 
 export const LOCATOR_KINDS = ["testid", "role", "label", "placeholder", "text", "css", "xpath"] as const;
 export type LocatorKind = (typeof LOCATOR_KINDS)[number];
@@ -168,9 +189,17 @@ export type WebAction =
    *   atLeast  적어도 몇 개를 승인해야 끝으로 치나(1~10) — 구매 · 등록처럼 **지갑이 꼭 불려야 하는** 자리.
    *            누른 단추가 처리 중 모양으로 바뀌면 «사라짐» 끝 표시가 지갑 요청 전에 맞아 버린다(그대로 끝내면 요청이 버려진다)
    */
-  | (ActionBase & { kind: "walletApprove"; done: HumanDone; atLeast?: number });
+  | (ActionBase & { kind: "walletApprove"; done: HumanDone; atLeast?: number })
+  /**
+   * **파일로 저장**(PLAN §49) — 받은 바이트를 이 워크플로우의 폴더(files/<uuid>/) 아래 path에 쓴다.
+   *   path   상대 경로 · 표현식(`{{ $item.path }}.pdf`). 마디마다 파일 이름에 못 쓰는 글자는 바꾼다 · 폴더는 만든다
+   *   output 쓴 경로를 담을 출력 이름(없으면 안 남긴다)
+   *   skipExisting 이미 있으면 받지 않고 건너뛴다 — 끊긴 수집을 이어 할 때
+   * ★`.pdf`로 끝나면 받은 것이 정말 PDF인지(«%PDF») 본다 — 로그인이 풀려 로그인 화면(HTML)이 오면 그것을 PDF로 저장하지 않고 멈춘다
+   */
+  | (ActionBase & { kind: "save"; source: SaveSource; url: string; path: string; output: string | null; skipExisting: boolean });
 
-export const ACTION_KINDS = ["goto", "click", "fill", "select", "check", "press", "wait", "read", "readTable", "closeWindow", "switchWindow", "recheck", "pickRow", "assert", "human", "walletApprove"] as const;
+export const ACTION_KINDS = ["goto", "click", "fill", "select", "check", "press", "wait", "read", "readTable", "closeWindow", "switchWindow", "recheck", "pickRow", "assert", "human", "walletApprove", "save"] as const;
 /** MetaMask 승인을 기다리는 시간 — 기본 2분 · 10초~10분 */
 export const WALLET_APPROVE_TIMEOUT = { defaultMs: 2 * 60_000, minMs: 10_000, maxMs: 10 * 60_000 } as const;
 export type ActionKind = WebAction["kind"];

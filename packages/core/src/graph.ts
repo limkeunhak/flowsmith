@@ -4,7 +4,7 @@
  * 순수하다. 브라우저 없이 시험한다.
  * `parseFlow`가 모양 검사를 마친 뒤 부른다. 여기서 내는 문제도 모아서 한꺼번에 돌려준다.
  */
-import { APPROVAL_OUTPUTS, CHECK_OUTPUTS, BLOCKED_OUTPUTS, BLOCKED_PORT, ELSE_PORT, FLOW_CALL_OUTPUTS, HTTP_OUTPUTS, OUT_PORT, TRANSFORM_OUTPUTS, SECRET_PARTS, type Edge, type Flow, type FlowNode, type Target } from "./model.ts";
+import { APPROVAL_OUTPUTS, CHECK_OUTPUTS, BLOCKED_OUTPUTS, BLOCKED_PORT, ELSE_PORT, FLOW_CALL_OUTPUTS, HTTP_OUTPUTS, WEB_EACH_OUTPUTS, OUT_PORT, TRANSFORM_OUTPUTS, SECRET_PARTS, type Edge, type Flow, type FlowNode, type Target } from "./model.ts";
 import { FILE_READ_OUTPUTS, STORE_OUTPUTS } from "./nodes/file.ts";
 import { ExprError, refsOf, type Ref } from "./expr.ts";
 import { walletSecretParam } from "./wallet.ts";
@@ -40,8 +40,11 @@ export const nodeLabel = (n: FlowNode): string => `노드 '${n.name}'(${n.id})`;
 function templatesOf(n: FlowNode): { where: string; template: string; secrets: boolean; item?: boolean }[] {
   const out: { where: string; template: string; secrets: boolean; item?: boolean }[] = [];
   switch (n.type) {
-    case "web":
-      if (n.config.start.kind === "url") out.push({ where: "시작 주소", template: n.config.start.url, secrets: false });
+    case "web": {
+      // 행마다 반복하면 노드 안 어디서나 $item(그 행)
+      const item = n.config.each !== undefined;
+      if (n.config.each) out.push({ where: "반복할 행들", template: n.config.each.items, secrets: false });
+      if (n.config.start.kind === "url") out.push({ where: "시작 주소", template: n.config.start.url, secrets: false, item });
       n.config.actions.forEach((a, i) => {
         const w = `동작 ${i + 1}(${a.id})`;
         if (a.when) {
@@ -52,8 +55,14 @@ function templatesOf(n: FlowNode): { where: string; template: string; secrets: b
         if (a.kind === "fill" || a.kind === "select") out.push({ where: `${w} 값`, template: a.value, secrets: true });
         if (a.kind === "pickRow") out.push({ where: `${w} 찾을 값`, template: a.pick.value, secrets: false });
         if (a.kind === "assert") out.push({ where: `${w} 기대값`, template: a.equals, secrets: false });
+        if (a.kind === "save") {
+          if (a.source === "url") out.push({ where: `${w} 받을 주소`, template: a.url, secrets: false });
+          out.push({ where: `${w} 저장할 경로`, template: a.path, secrets: false });
+        }
       });
+      if (item) for (const t of out) if (t.where !== "반복할 행들") t.item = true;
       break;
+    }
     case "condition":
       n.config.cases.forEach((c) => c.rules.forEach((r, j) => {
         const w = `갈래 '${c.label}' 규칙 ${j + 1}`;
@@ -125,7 +134,7 @@ function targetsOf(n: FlowNode): { where: string; target: Target; click: boolean
       case "walletApprove":
         if (a.done.kind !== "url") out.push({ where: `${w} 끝났다는 표시`, target: a.done.target, click: false });
         break;
-      case "goto": case "closeWindow": case "switchWindow": case "recheck": break;
+      case "goto": case "closeWindow": case "switchWindow": case "recheck": case "save": break;
     }
   });
   return out;
@@ -213,7 +222,8 @@ export function compile(flow: Flow): CompiledFlow {
     inputs.set(id, inp);
     switch (n.type) {
       // ★앞 페이지에서 이어서 — 앞 노드가 넘긴 것도 함께 넘긴다(노드를 나눠도 읽은 값이 뒤로 이어지게 · 사용자 요청 2026-10-22)
-      case "web": outputs.set(id, new Set([...(n.config.start.kind === "continue" ? inp : []), ...n.config.actions.flatMap((a) => (a.kind === "read" || a.kind === "readTable" ? [a.output] : []))])); break;
+      case "web": outputs.set(id, n.config.each ? new Set(WEB_EACH_OUTPUTS)   // 행마다 읽은 것은 rows 안에
+        : new Set([...(n.config.start.kind === "continue" ? inp : []), ...n.config.actions.flatMap((a) => (a.kind === "read" || a.kind === "readTable" ? [a.output] : a.kind === "save" && a.output ? [a.output] : []))])); break;
       case "condition": outputs.set(id, new Set(inp)); break;
       case "custom": outputs.set(id, new Set(n.config.outputs)); break;
       case "extension": outputs.set(id, new Set(n.config.outputs)); break;
@@ -359,7 +369,7 @@ export function compile(flow: Flow): CompiledFlow {
             if (!flow.params.some((p) => p.name === r.path[0])) problems.push(`${w}: "${r.raw}" — 실행 입력 "${r.path[0]}"가 정의되지 않았습니다`);
             break;
           case "$item":
-            if (!item) problems.push(`${w}: "${r.raw}" — $item은 «다른 워크플로우 실행»이 행마다 돌 때 실행 입력 값에서만 씁니다`);
+            if (!item) problems.push(`${w}: "${r.raw}" — $item은 행마다 돌 때만 씁니다(«다른 워크플로우 실행»의 실행 입력 · «행마다 반복»하는 웹페이지 노드 안)`);
             break;
           case "$vars":
             if (!hasVar(r.path[0]!)) problems.push(`${w}: "${r.raw}" — 변수 "${r.path[0]}"가 없습니다(이 워크플로우의 변수 · 쓰겠다고 한 공용 변수)`);
