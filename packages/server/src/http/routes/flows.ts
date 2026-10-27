@@ -8,7 +8,9 @@
  *   PUT    /api/flows/:id/draft                    { draft } 초안 저장 (틀려 있어도 저장된다)
  *   DELETE /api/flows/:id
  *   PUT    /api/flows/:id/team                     { team: id | null } 팀 옮기기(공용은 null) — 옮길 팀에 내가 속해 있어야(관리자는 어디든)
- *   PUT    /api/flow-group                         { ids: [...], group: 이름 | null } 여럿을 한 묶음으로(묶음 없음은 null) — 내게 보이는 것만
+ *   PUT    /api/flow-group                         { ids: [...], group: 이름 | null } 여럿의 화면을 직접 지정(자동으로 되돌리기는 null) — 내게 보이는 것만
+ *   GET    /api/areas                              화면 규칙 [{ prefix, name }] — 주소 앞부분 → 화면 이름(storage/areas.ts)
+ *   PUT    /api/areas                              { areas: [...] } 통째로 바꾸기
  *   POST   /api/flows/:id/versions                 { note } 초안을 버전으로 굳힌다 (검문소 통과 필수)
  *   GET    /api/flows/:id/versions/:v              그 버전의 매니페스트
  *   GET    /api/flows/:id/published                게시된 버전 한 번에 { version · 누가 · 언제 · manifest } — ETag/304 · 없으면 404 reason: not-deployed
@@ -46,7 +48,9 @@ export function flowRoutes({ store, secrets, extensions, auth, plugins }: ApiDep
       res.statusCode = 201;
       return store.createFlow(b["draft"], team, typeof b["group"] === "string" ? b["group"] : null);
     }),
-    // 묶음 옮기기 — 여럿을 한 번에. ★내게 안 보이는 것(남의 팀)은 없는 것과 같다(있는지도 알리지 않는다)
+    route("GET", "/api/areas", () => store.listAreas()),
+    route("PUT", "/api/areas", async (_q, _r, _p, body) => store.setAreas((await body())["areas"])),
+    // 화면 직접 지정 — 여럿을 한 번에(자동이 틀린 것만). ★내게 안 보이는 것(남의 팀)은 없는 것과 같다(있는지도 알리지 않는다)
     route("PUT", "/api/flow-group", async (req, _r, _p, body) => {
       const b = await body();
       const ids = b["ids"];
@@ -78,7 +82,7 @@ export function flowRoutes({ store, secrets, extensions, auth, plugins }: ApiDep
       for (let n = 2; taken.has(id); n++) id = `${base}${n}`;
       const draft = { ...(src.draft as Record<string, unknown>), id, name };
       res.statusCode = 201;
-      // 묶음은 원래 것 — 사본은 원래 것 옆에
+      // 직접 지정한 화면은 원래 것 — 사본은 원래 것 옆에
       return store.createFlow(draft, team, src.group);
     }),
     route("GET", "/api/flows/:id",(_q, _r, p) => store.getFlow(p["id"]!)),

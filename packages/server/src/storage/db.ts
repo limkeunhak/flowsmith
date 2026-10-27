@@ -204,6 +204,10 @@ CREATE TABLE IF NOT EXISTS file_seen (          -- 이미 본 파일 — 같은 
   at              TEXT NOT NULL,
   PRIMARY KEY (flow_id, trigger_id, name)
 );
+CREATE TABLE IF NOT EXISTS area (               -- 화면 규칙(storage/areas.ts) — 주소 앞부분 → 화면 이름. 목록이 워크플로우를 이 이름으로 묶는다
+  prefix          TEXT PRIMARY KEY,               -- «qa.msu.io/navigator» — 스킴 없이 · 호스트는 작은 글자
+  name            TEXT NOT NULL
+);
 `;
 
 /** `:memory:`도 된다(시험) */
