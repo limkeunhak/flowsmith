@@ -385,6 +385,7 @@ function Inner({ flow, selected, statuses, issues, drift, pinned, aiMarks, readO
           minZoom={0.25} maxZoom={2}
           defaultEdgeOptions={{ type: "relay" }}
           connectionLineType={ConnectionLineType.SmoothStep}
+          connectionRadius={36}
         >
           {/* 모눈 — 작은 칸 24 · 큰 칸 120(점 무늬 대신) */}
           <Background id="minor" variant={BackgroundVariant.Lines} gap={24} lineWidth={1} color="var(--grid-minor)" />
