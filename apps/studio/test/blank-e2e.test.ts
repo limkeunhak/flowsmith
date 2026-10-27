@@ -170,6 +170,22 @@ describe("뒤로 · 앞으로 — 주소가 화면을 따른다", () => {
     page.off("dialog", go);
   });
 
+  it("탭 제목은 화면마다 · 모르는 주소는 «없는 화면»(어느 길도 켜지 않는다) · 목록은 돌아오면 찾던 말 그대로", async () => {
+    await page.goto(`${app.url}/#/flows/nav-a`);
+    await expect.poll(() => page.title()).toBe("길 찾기 · Flowsmith");
+    await page.goto(`${app.url}/#/oops`);
+    await page.getByText("없는 화면입니다").waitFor();
+    expect(await page.title()).toBe("없는 화면 · Flowsmith");
+    expect(await page.locator(".appbar a.on").count()).toBe(0);
+    await page.goto(`${app.url}/#/`);
+    await page.getByPlaceholder("이름 · 설명으로 찾기").fill("길 찾기");
+    await page.locator(".flow-row", { hasText: "길 찾기" }).first().click();
+    await expect.poll(hash).toBe("#/flows/nav-a");
+    await page.goBack();
+    await expect.poll(() => page.getByPlaceholder("이름 · 설명으로 찾기").inputValue()).toBe("길 찾기");
+    await page.getByPlaceholder("이름 · 설명으로 찾기").fill("");
+  });
+
   it("빈 워크플로우의 이름을 묻는 중에 뒤로 가면 — 지운다(빈 것이 쌓이지 않게)", async () => {
     await page.goto(`${app.url}/#/templates`);
     const before = (await flows()).length;

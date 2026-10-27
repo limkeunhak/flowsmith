@@ -33,6 +33,7 @@ import { NotifyPanel } from "./settings/NotifyPanel.tsx";
 import { Guide, guideItems } from "./Guide.tsx";
 import { useMe } from "../shell/me.ts";
 import { navigate, useLeaveGuard } from "../shell/nav.ts";
+import { useTitle } from "../shell/title.ts";
 import { useRun } from "./run/useRun.ts";
 import { Toast } from "./widgets.tsx";
 import { recallParams } from "../shell/remember.ts";
@@ -117,6 +118,7 @@ export function FlowEditor({ id, tab, nodeId, runId, panel }: { id: string; tab:
   }, []);
   // 초안 — 읽기 · 고치기 · 저장 · 닫을 때 묻기(useFlowDraft)
   const { detail, setDetail, draft, update, dirty, save, ensureSaved, accept, busy, loadError } = useFlowDraft(id, say);
+  useTitle(draft ? `${draft.name}${tab === "runs" ? " — 실행 기록" : ""}` : "워크플로우");
   // 떠날 때 — 이 워크플로우 안(시트 · 탭)은 상관없다. 이름을 묻는 중(방금 만든 빈 것)이면 지우고 · 고침이 남았으면 묻는다
   useLeaveGuard((_from, to) => {
     const t = /^#\/flows\/([^/]+)/.exec(to);

@@ -4,6 +4,7 @@
  *
  * ★늘 **게시된 버전**을 돌린다(초안은 편집 화면의 일). 입력은 이 브라우저에 기억하지 않는다 — 전화번호 같은 개인정보일 수 있다.
  */
+import { useTitle } from "../shell/title.ts";
 import { useEffect, useRef, useState } from "react";
 import { normalize } from "../model/index.ts";
 import { api, ApiError } from "../api.ts";
@@ -41,6 +42,7 @@ export function RunForm({ flowId }: { flowId: string }) {
   const waiting = view?.status === "running" && view.human ? view.runId : null;
   useEffect(() => { if (waiting && loaded && "flow" in loaded && loaded.flow.settings.browser !== "attach" && loaded.flow.settings.browser !== "app") setWatching(true); }, [waiting]);   // eslint-disable-line react-hooks/exhaustive-deps
 
+  useTitle(loaded && "flow" in loaded ? `${loaded.flow.name} — 실행` : "실행");
   if (!loaded) return <div className="page"><div className="empty">불러오는 중…</div></div>;
   if ("error" in loaded) return <div className="page run-form"><div className="banner bad">{loaded.error}</div></div>;
   const { flow, version } = loaded;

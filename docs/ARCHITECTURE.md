@@ -215,7 +215,7 @@ flowsmith/
 | 모듈 | 역할 |
 |---|---|
 | `App.tsx` · `FlowList.tsx` | 주소(해시) 나누기 · 첫 화면(템플릿 · 플로우 목록) |
-| `shell/` | 앱 틀 — 위 앱 막대(`AppBar.tsx` — 길 · API · 가이드 · 화면 색 · 내 설정 · 나) · 밝게/어둡게(`theme.ts`) |
+| `shell/` | 앱 틀 — 위 앱 막대(`AppBar.tsx` — 길 · API · 가이드 · 화면 색 · 내 설정 · 나) · 밝게/어둡게(`theme.ts`) · 주소 이동과 떠나기 전 확인(`nav.ts` — 링크 · 뒤로/앞으로 · `navigate` 모두 `useLeaveGuard`를 거친다) · 탭 제목(`title.ts`) |
 | `styles/tokens.css` · `styles/*.css` | 모양은 구역마다 — base · editor · layout · pages · dashboard · docs · api · **workbench(작업대 — 맨 끝에서 앞의 것을 덮는다)**, **이 차례로** 불러온다(main.tsx). **색은 tokens.css에서만** — 주황(ember) · 숯빛(char) 눈금 · 의미 토큰(바탕 · 글자 · 강조 · 상태 · 주 단추 --primary · 실행 --run · 모눈) · 노드 종류 색 · 앱 막대(--side-*). 밝게/어둡게(시스템 · `html[data-theme]`). 컴포넌트 CSS는 이름만 쓴다 |
 | `api.ts` | 서버 API 클라이언트(응답 타입 포함) |
 | `model/` | 초안을 고치는 순수 함수 — `nodes`(새 노드 · 새 동작 · normalize) · `describe`(사람 말로) · `graph`(입출력 · 포트 · 값 칩 이름) · `templates`(첫 화면 템플릿) · `guide`(다음 할 일) · `fix`(깨졌을 때 고치기) |

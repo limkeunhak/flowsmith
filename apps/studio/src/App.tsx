@@ -6,6 +6,9 @@
  * 틀은 작업대 — 위 앱 막대 + 본문(shell/AppBar.tsx). 로그인을 켠 서버면 먼저 들어가는 문(shell/AuthGate.tsx).
  */
 import { useHash } from "./shell/nav.ts";
+import { useTitle } from "./shell/title.ts";
+import { EmptyState } from "./EmptyState.tsx";
+import { IconSearch } from "./icons.tsx";
 import { FlowList } from "./FlowList.tsx";
 import { FlowEditor } from "./editor/FlowEditor.tsx";
 import { AppBar } from "./shell/AppBar.tsx";
@@ -34,12 +37,17 @@ export function App() {
   const runForm = /^#\/run\/([^/]+)$/.exec(hash);
   // 테스트 — Suite 목록 · Suite 하나(실행 하나)
   const suite = /^#\/tests\/([^/]+)(?:\/runs\/([^/]+))?$/.exec(hash);
+  // 아는 주소인가 — 모르면(오타 · 옛 링크) 첫 화면인 척하지 않고 «없는 화면»을 보인다
+  const known = !!(m || suite || doc || apiTab || runForm) || ["", "#", "#/", "#/tests", "#/templates", "#/users", "#/teams", "#/workers", "#/plugins", "#/me", "#/dashboard"].includes(hash);
   const page = m ? "flow" : suite || hash === "#/tests" ? "tests" : doc ? "docs" : apiTab ? "api" : runForm ? "home" : hash === "#/templates" ? "templates" : hash === "#/users" ? "users" : hash === "#/teams" ? "teams" : hash === "#/workers" ? "workers" : hash === "#/plugins" ? "plugins" : hash === "#/me" ? "me" : hash === "#/dashboard" ? "dashboard" : "home";
+  // 탭 제목 — 이름을 아는 화면(편집 · Suite · 가이드 · 실행 폼)은 제 것을 정한다
+  const TITLE: Record<string, string> = { home: "워크플로우", templates: "템플릿", users: "사람", teams: "팀", workers: "워커", plugins: "확장", me: "내 설정", dashboard: "대시보드", tests: "테스트", api: "API" };
+  useTitle(m || suite || doc || runForm ? null : known ? TITLE[page] ?? "" : "없는 화면");
   return (
     <AuthGate>
       {(me, logout) => (
         <div className="app">
-          <AppBar page={page} me={me} onLogout={logout} />
+          <AppBar page={known ? page : "none"} me={me} onLogout={logout} />
           <div className="app-main">
             {/* key는 워크플로우만 — 시트 · 탭 · 실행을 바꿔도 편집 화면(초안)은 그대로 */}
             {m ? <FlowEditor key={m[1]} id={decodeURIComponent(m[1]!)} tab={m[3] ? "runs" : "editor"}
@@ -55,11 +63,22 @@ export function App() {
               : page === "docs" ? <Docs slug={doc?.[1] ? decodeURIComponent(doc[1]) : null} />
               : apiTab ? <ApiPage tab={apiTab} />
               : runForm ? <RunForm key={runForm[1]} flowId={decodeURIComponent(runForm[1]!)} />
+              : !known ? <NotFound />
               : <FlowList key={page} only={page === "templates" ? "templates" : null} />}
           </div>
           <AiDock />
         </div>
       )}
     </AuthGate>
+  );
+}
+
+function NotFound() {
+  return (
+    <div className="page">
+      <EmptyState icon={<IconSearch size={22} />} title="없는 화면입니다" action={<a className="button" href="#/">워크플로우로 가기</a>}>
+        주소가 바뀌었거나 잘못 적혔습니다 — 위 메뉴에서 찾아가세요.
+      </EmptyState>
+    </div>
   );
 }
