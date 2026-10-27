@@ -39,6 +39,11 @@ beforeAll(async () => {
       // Confluence처럼 임시 파일로 넘긴다
       res.writeHead(302, { location: `/download/temp/${id}.pdf` }); res.end(); return;
     }
+    // 요청 보호 — 머리가 없으면 거부하고 까닭을 말한다(Confluence의 XSRF처럼)
+    if (u.pathname === "/guarded") {
+      if (q.headers["x-atlassian-token"] !== "no-check") { res.writeHead(403, { "content-type": "text/html" }); res.end("<html><body><h1>XSRF Security Token Missing</h1></body></html>"); return; }
+      res.writeHead(200, { "content-type": "application/pdf" }); res.end("%PDF-1.4\nguarded\n%%EOF"); return;
+    }
     if (u.pathname.startsWith("/download/temp/")) { res.writeHead(200, { "content-type": "application/pdf" }); res.end(`%PDF-1.4\n% page ${u.pathname}\n%%EOF`); return; }
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" }); res.end(`<h1 id=title>${u.searchParams.get("pageId") ?? "home"}</h1>`);
   });
@@ -102,6 +107,23 @@ describe("행마다 반복 · 파일로 저장", () => {
     const r = await runFlow(noLogin, { browser, params: { pages: JSON.stringify(PAGES.slice(0, 1)) }, files: { root, flowUid: "uid2" } });
     expect(r.status).toBe("failure");
     expect(r.nodes[0]!.failure!.message).toMatch(/로그인 화면.*으로 넘어갔습니다/);
+  }, 60_000);
+
+  it("★거부(4xx)는 다시 해 보지 않고 서버가 말한 까닭을 남긴다 · 요청 머리를 실으면 통과한다", async () => {
+    const one = (headers?: Record<string, string>) => parseFlow({
+      schemaVersion: 1, id: "g", name: "g", settings: { defaultTimeoutMs: 5000 },
+      nodes: [{ id: "w", type: "web", name: "받기", position: { x: 0, y: 0 }, config: { start: { kind: "url", url: `${url}/login` }, actions: [
+        { id: "s", kind: "save", source: "url", url: "/guarded", path: "g.pdf", retries: 2, ...(headers ? { headers } : {}) },
+      ] } }], edges: [],
+    });
+    const no = await runFlow(one(), { browser, files: { root, flowUid: "uid3" } });
+    expect(no.status).toBe("failure");
+    expect(no.nodes[0]!.failure!.message).toMatch(/HTTP 403 «XSRF Security Token Missing»/);
+    expect(no.nodes[0]!.steps.map((x) => x.note).join("\n")).not.toMatch(/다시 해 봅니다/);
+    const yes = await runFlow(one({ "X-Atlassian-Token": "no-check" }), { browser, files: { root, flowUid: "uid3" } });
+    expect(yes.status, JSON.stringify(yes.nodes[0]!.failure)).toBe("success");
+    expect(readFileSync(join(root, "uid3", "g.pdf"), "latin1")).toMatch(/^%PDF/);
+    expect(() => one({ Cookie: "x" })).toThrow(/브라우저의 로그인을 그대로/);
   }, 60_000);
 
   it("검문소 — $item은 반복하는 노드 안에서만 · 반복은 주소로 시작 · 출력은 rows", () => {

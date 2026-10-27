@@ -195,9 +195,10 @@ export type WebAction =
    *   path   상대 경로 · 표현식(`{{ $item.path }}.pdf`). 마디마다 파일 이름에 못 쓰는 글자는 바꾼다 · 폴더는 만든다
    *   output 쓴 경로를 담을 출력 이름(없으면 안 남긴다)
    *   skipExisting 이미 있으면 받지 않고 건너뛴다 — 끊긴 수집을 이어 할 때
+   *   headers 받을 때 더 실을 요청 머리(url만) — 사이트의 요청 보호를 넘기는 것(Confluence `X-Atlassian-Token: no-check`) 같은 것. 쿠키 · 인증은 넣지 않는다(브라우저의 로그인을 쓴다)
    * ★`.pdf`로 끝나면 받은 것이 정말 PDF인지(«%PDF») 본다 — 로그인이 풀려 로그인 화면(HTML)이 오면 그것을 PDF로 저장하지 않고 멈춘다
    */
-  | (ActionBase & { kind: "save"; source: SaveSource; url: string; path: string; output: string | null; skipExisting: boolean });
+  | (ActionBase & { kind: "save"; source: SaveSource; url: string; path: string; output: string | null; skipExisting: boolean; headers?: Record<string, string> });
 
 export const ACTION_KINDS = ["goto", "click", "fill", "select", "check", "press", "wait", "read", "readTable", "closeWindow", "switchWindow", "recheck", "pickRow", "assert", "human", "walletApprove", "save"] as const;
 /** MetaMask 승인을 기다리는 시간 — 기본 2분 · 10초~10분 */

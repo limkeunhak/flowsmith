@@ -30,6 +30,18 @@
       "options": [],
       "default": "",
       "help": ""
+    },
+    {
+      "name": "how",
+      "label": "받는 방법",
+      "required": true,
+      "type": "select",
+      "options": [
+        "export",
+        "page"
+      ],
+      "default": "export",
+      "help": "export: Confluence의 PDF 내보내기(빠르다 · 내보내기가 막혀 있으면 403) · page: 페이지를 열어 화면 그대로 PDF로 찍는다(느리지만 볼 수 있으면 된다)"
     }
   ],
   "vars": {},
@@ -138,24 +150,89 @@
         },
         "actions": [
           {
+            "risk": "safe",
+            "optional": false,
             "id": "s",
             "kind": "save",
-            "risk": "safe",
             "timeoutMs": 300000,
-            "optional": false,
             "retries": 1,
+            "when": {
+              "left": "{{ $params.how }}",
+              "op": "eq",
+              "right": "export"
+            },
             "source": "url",
             "url": "{{ $params.base }}/spaces/flyingpdf/pdfpageexport.action?pageId={{ $item.id }}",
+            "headers": {
+              "X-Atlassian-Token": "no-check"
+            },
             "path": "pdf/{{ $item.path }}.pdf",
             "output": "file",
             "skipExisting": true
           },
           {
+            "risk": "safe",
+            "optional": false,
+            "id": "g",
+            "kind": "goto",
+            "timeoutMs": 60000,
+            "when": {
+              "left": "{{ $params.how }}",
+              "op": "eq",
+              "right": "page"
+            },
+            "url": "{{ $params.base }}/pages/viewpage.action?pageId={{ $item.id }}"
+          },
+          {
+            "risk": "safe",
+            "optional": false,
+            "id": "v",
+            "kind": "wait",
+            "timeoutMs": 30000,
+            "when": {
+              "left": "{{ $params.how }}",
+              "op": "eq",
+              "right": "page"
+            },
+            "wait": {
+              "kind": "visible",
+              "target": {
+                "label": "페이지 본문",
+                "locators": [
+                  {
+                    "kind": "css",
+                    "value": "#main-content"
+                  }
+                ],
+                "fingerprint": null,
+                "frames": [],
+                "verifiedAt": null
+              }
+            }
+          },
+          {
+            "risk": "safe",
+            "optional": false,
+            "id": "sp",
+            "kind": "save",
+            "timeoutMs": 300000,
+            "when": {
+              "left": "{{ $params.how }}",
+              "op": "eq",
+              "right": "page"
+            },
+            "source": "page",
+            "url": "",
+            "path": "pdf/{{ $item.path }}.pdf",
+            "output": null,
+            "skipExisting": true
+          },
+          {
+            "risk": "safe",
+            "optional": false,
             "id": "p",
             "kind": "wait",
-            "risk": "safe",
             "timeoutMs": null,
-            "optional": false,
             "wait": {
               "kind": "fixed",
               "ms": 500
