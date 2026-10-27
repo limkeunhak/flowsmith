@@ -1,5 +1,5 @@
 /**
- * 빈 워크플로우 e2e(2026-10-20) — «빈 워크플로우»를 누르면 바로 만들어 캔버스로 가고 이름을 묻는다.
+ * 빈 워크플로우 e2e(2026-10-20) — «새 워크플로우 › 처음부터 만들기»를 누르면 바로 만들어 캔버스로 가고 이름을 묻는다.
  * 만들기 → 그 이름으로 저장 · 그만두기 → 방금 만든 빈 워크플로우를 지우고 목록으로. 다시 열면 묻지 않는다.
  */
 import { mkdtempSync, rmSync } from "node:fs";
@@ -16,6 +16,8 @@ let app: App;
 let browser: Browser;
 let page: Page;
 let dir: string;
+/** 새 워크플로우 › 처음부터 만들기 */
+const startBlank = async () => { await page.getByRole("button", { name: /새 워크플로우/ }).click(); await page.getByRole("menuitem", { name: /처음부터 만들기/ }).click(); };
 const flows = () => fetch(`${app.url}/api/flows`).then((r) => r.json() as Promise<{ id: string; name: string; group: string | null }[]>);
 
 beforeAll(async () => {
@@ -34,7 +36,7 @@ afterAll(async () => {
 describe("빈 워크플로우 — 바로 캔버스로 · 이름은 창에서", () => {
   it("만들기 — 적은 이름으로 저장되고, 다시 열면 묻지 않는다", async () => {
     await page.goto(`${app.url}/#/`);
-    await page.getByRole("button", { name: "빈 워크플로우", exact: true }).click();
+    await startBlank();
     const dialog = page.getByRole("dialog", { name: "새 워크플로우 이름" });
     await dialog.waitFor();
     expect(page.url()).toMatch(/#\/flows\/flow/);
@@ -63,11 +65,29 @@ describe("빈 워크플로우 — 바로 캔버스로 · 이름은 창에서", (
     await page.waitForURL(/#\/$/);
     expect((await flows()).map((f) => f.name)).toEqual(["주문 상태 확인"]);
 
-    await page.getByRole("button", { name: "빈 워크플로우", exact: true }).click();
+    await startBlank();
     await dialog.waitFor();
     await page.keyboard.press("Escape");
     await page.waitForURL(/#\/$/);
     expect(await flows()).toHaveLength(1);
+  });
+});
+
+describe("새 워크플로우 메뉴", () => {
+  it("처음부터 · 템플릿 · JSON 세 길 — JSON은 붙여 넣으면 그 워크플로우로 · 바깥을 누르면 닫힌다", async () => {
+    await page.goto(`${app.url}/#/`);
+    await page.getByRole("button", { name: /새 워크플로우/ }).click();
+    expect(await page.getByRole("menuitem").allInnerTexts()).toEqual([expect.stringMatching(/^처음부터 만들기/), expect.stringMatching(/^템플릿에서 고르기/), expect.stringMatching(/^JSON 가져오기/)]);
+    await page.locator("h1").click();
+    expect(await page.getByRole("menu").count()).toBe(0);
+    expect(await page.getByRole("button", { name: "JSON 가져오기" }).count()).toBe(0);
+
+    await page.getByRole("button", { name: /새 워크플로우/ }).click();
+    await page.getByRole("menuitem", { name: /JSON 가져오기/ }).click();
+    await page.getByLabel("워크플로우 JSON").fill(JSON.stringify({ schemaVersion: 1, id: "from-json", name: "JSON에서", nodes: [], edges: [] }));
+    await page.getByRole("button", { name: "가져오기", exact: true }).click();
+    await expect.poll(() => page.url()).toMatch(/#\/flows\/from-json$/);
+    await page.goto(`${app.url}/#/`);
   });
 });
 

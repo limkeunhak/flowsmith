@@ -13,7 +13,7 @@ import { aiBridge } from "./ai/bridge.ts";
 import { useMe } from "./shell/me.ts";
 import { api, ApiError, type FlowSummary } from "./api.ts";
 import { areaNames, blankFlow, GROUP_BY_LABEL, groupFlows, matchesQuery, needsAttention, newFlowId, normPrefix, previewAreaCounts, redundantOverrides, SCHEDULE_CHOICES, sortFlows, SORT_LABEL, suggestAreas, suiteKeys, TEMPLATES, type FlowChoice, type FlowSort, type GroupBy, type Template } from "./model/index.ts";
-import { IconAlert, IconBranch, IconCheck, IconChevronDown, IconCopy, IconFolder, IconPlay, IconPlus, IconSearch, IconTrash, IconX } from "./icons.tsx";
+import { IconAlert, IconBranch, IconCheck, IconChevronDown, IconCopy, IconFolder, IconPlay, IconPlus, IconSearch, IconSliders, IconTrash, IconX } from "./icons.tsx";
 import type { AreaRule } from "@flowsmith/server/api-types";
 import { EmptyState } from "./EmptyState.tsx";
 import { ago } from "./format.ts";
@@ -270,6 +270,16 @@ export function FlowList({ only = null }: { only?: "templates" | null }) {
   const shutOf = (g: string | null) => folded[foldKey(g)] ?? all.length > FOLD_OVER;
   const toggleFold = (g: string | null) => setFolded((v) => { const k = foldKey(g); const next = { ...v, [k]: !(v[k] ?? all.length > FOLD_OVER) }; writePref(FOLD_KEY, next); return next; });
   const open = (m: typeof mode) => { setPicked(null); setMode(mode === m ? "none" : m); };
+  // «새 워크플로우» 메뉴 — 바깥을 누르거나 Esc면 닫는다
+  const [newOpen, setNewOpen] = useState(false);
+  const newRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!newOpen) return;
+    const click = (e: MouseEvent) => { if (!newRef.current?.contains(e.target as Node)) setNewOpen(false); };
+    const key = (e: KeyboardEvent) => { if (e.key === "Escape") setNewOpen(false); };
+    addEventListener("mousedown", click); addEventListener("keydown", key);
+    return () => { removeEventListener("mousedown", click); removeEventListener("keydown", key); };
+  }, [newOpen]);
 
   // ── 여럿 고르기 · 화면 직접 지정 ──
   const canEdit = me.can("editor");
@@ -380,10 +390,18 @@ export function FlowList({ only = null }: { only?: "templates" | null }) {
     <div className="page">
       <div className="page-head">
         <h1 className="grow">{only === "templates" ? "템플릿" : "워크플로우"}</h1>
-        {only !== "templates" && canEdit && <button onClick={() => open("areas")}>화면 규칙</button>}
-        <button onClick={() => open("import")}>JSON 가져오기</button>
         {me.can("editor") && <button className="ai-btn" onClick={() => aiBridge.open()}><span className="ai-spark" aria-hidden="true">✦</span> AI로 만들기</button>}
-        <button className="primary" disabled={starting} onClick={startBlank}><IconPlus size={15} /> 빈 워크플로우</button>
+        {/* 새로 만드는 길은 한 단추에 — 처음부터 · 템플릿 · JSON */}
+        <div className="menu-anchor" ref={newRef}>
+          <button className="primary" disabled={starting} aria-expanded={newOpen} aria-haspopup="menu" onClick={() => setNewOpen(!newOpen)}><IconPlus size={15} /> 새 워크플로우 <IconChevronDown size={14} /></button>
+          {newOpen && (
+            <div className="menu new-flow-menu" role="menu">
+              <button role="menuitem" className="menu-item" onClick={() => { setNewOpen(false); startBlank(); }}><span className="menu-item-title">처음부터 만들기</span><span className="menu-hint">빈 캔버스에서 단계를 이어 붙입니다</span></button>
+              {only !== "templates" && <a role="menuitem" className="menu-item" href="#/templates" onClick={() => setNewOpen(false)}><span className="menu-item-title">템플릿에서 고르기</span><span className="menu-hint">하고 싶은 일을 고르면 뼈대를 짜 드립니다</span></a>}
+              <button role="menuitem" className="menu-item" onClick={() => { setNewOpen(false); setPicked(null); setMode("import"); }}><span className="menu-item-title">JSON 가져오기</span><span className="menu-hint">내보내 둔 워크플로우 JSON을 붙여 넣습니다</span></button>
+            </div>
+          )}
+        </div>
       </div>
       {me.auth && (me.teams.length > 0) && (
         <label className="team-pick small">새 워크플로우를 둘 곳
@@ -400,7 +418,7 @@ export function FlowList({ only = null }: { only?: "templates" | null }) {
       {mode === "import" && (
         <div className="card stack" style={{ padding: 16, marginBottom: 16 }}>
           <span className="small muted">워크플로우 JSON을 붙여 넣으세요 (예: examples/login-and-read.json)</span>
-          <textarea className="code" style={{ minHeight: 160 }} value={json} onChange={(e) => setJson(e.target.value)} />
+          <textarea className="code" style={{ minHeight: 160 }} autoFocus aria-label="워크플로우 JSON" value={json} onChange={(e) => setJson(e.target.value)} />
           <div className="row"><span className="grow" />
             <button onClick={() => setMode("none")}>그만두기</button>
             <button className="primary" disabled={json.trim() === ""} onClick={() => {
@@ -409,8 +427,6 @@ export function FlowList({ only = null }: { only?: "templates" | null }) {
           </div>
         </div>
       )}
-
-      {mode === "areas" && flows !== null && <AreaRules flows={all} rules={rules} onClose={() => setMode("none")} onSaved={rulesSaved} onClearRedundant={clearRedundant} />}
 
       {/* 템플릿 — 워크플로우가 없을 때만 이 화면에(불러오는 동안은 두지 않는다 · 자리가 튀지 않게). 있으면 «템플릿» 화면으로 */}
       {(only === "templates" || (flows !== null && !hasFlows)) && templates}
@@ -430,6 +446,8 @@ export function FlowList({ only = null }: { only?: "templates" | null }) {
             <select value={groupBy} onChange={(e) => { const v = e.target.value as GroupBy; setGroupBy(v); writePref(GROUP_BY_KEY, v); setSel(new Set()); }}>
               {(Object.keys(GROUP_BY_LABEL) as GroupBy[]).map((k) => <option key={k} value={k}>{GROUP_BY_LABEL[k]}</option>)}
             </select>
+            {/* 화면으로 묶을 때만 — 그 묶음을 정하는 규칙이 바로 옆에 */}
+            {groupBy === "area" && canEdit && <button type="button" className={`icon-btn${mode === "areas" ? " on" : ""}`} title="화면 규칙 — 주소 앞부분으로 화면을 나누는 규칙" aria-label="화면 규칙" aria-expanded={mode === "areas"} onClick={() => open("areas")}><IconSliders size={16} /></button>}
           </label>
           <label className="flow-sort small muted">정렬
             <select value={sort} onChange={(e) => { const v = e.target.value as FlowSort; setSort(v); writePref(SORT_KEY, v); }}>
@@ -439,8 +457,10 @@ export function FlowList({ only = null }: { only?: "templates" | null }) {
         </div>
       )}
 
+      {mode === "areas" && flows !== null && <AreaRules flows={all} rules={rules} onClose={() => setMode("none")} onSaved={rulesSaved} onClearRedundant={clearRedundant} />}
+
       {flows === null ? <div className="card"><div className="empty">불러오는 중…</div></div>
-        : !hasFlows ? <div className="card"><EmptyState bare icon={<IconBranch size={22} />} title="아직 워크플로우가 없습니다">위에서 하고 싶은 일을 고르거나 빈 워크플로우로 시작하세요.</EmptyState></div>
+        : !hasFlows ? <div className="card"><EmptyState bare icon={<IconBranch size={22} />} title="아직 워크플로우가 없습니다">위에서 하고 싶은 일을 고르거나 «새 워크플로우»로 시작하세요.</EmptyState></div>
         : shown.length === 0 ? <div className="card"><div className="empty">맞는 워크플로우가 없습니다</div></div>
         : (
           <div className={`flow-list${sel.size ? " picking" : ""}`}>
@@ -479,7 +499,9 @@ export function FlowList({ only = null }: { only?: "templates" | null }) {
                       {label} <span className="flow-group-count">{g.flows.length}</span>
                       {g.attention > 0 && <span className="pill bad"><IconAlert size={12} /> {g.attention}</span>}
                     </button>
-                    {sites.length > 0 && <span className="flow-group-site small faint" title="이 화면의 주소 앞부분 — 화면 규칙">{sites.join(" · ")}</span>}
+                    {sites.length > 0 && (canEdit
+                      ? <button type="button" className="flow-group-site small" title="이 화면의 주소 앞부분 — 눌러 화면 규칙 고치기" onClick={() => { setPicked(null); setMode("areas"); }}>{sites.join(" · ")}</button>
+                      : <span className="flow-group-site small" title="이 화면의 주소 앞부분">{sites.join(" · ")}</span>)}
                   </div>
                   {!shut && <div className="card flow-rows">{g.flows.map((x) => row(x.flow, x.label))}</div>}
                 </section>
