@@ -435,7 +435,10 @@ function relayRecorder(opts) {
     if (isForbidden(el)) { emit({ kind: "blocked", label: humanLabel(el) }); return; }
     const type = (el.type || "").toLowerCase();
     if (el.tagName === "INPUT" && (type === "checkbox" || type === "radio")) {
-      emit({ kind: "check", ...describe(el), checked: type === "radio" ? true : !el.checked });
+      // ★체크 칸을 직접 누르면 브라우저가 click 이벤트 **전에** 값을 먼저 바꾼다(막으면 되돌린다) — 지금 값이 곧 사람이 바란 값이다.
+      //  라벨을 눌렀으면 아직 안 바뀌었다(라벨이 뒤에 칸을 누른다) — 반대 값. 예전에는 늘 반대 값을 남겨 «켜기»가 «끄기»로 녹화됐다(NexusStudio 2026-10-26)
+      const wanted = type === "radio" ? true : e.target === el ? el.checked : !el.checked;
+      emit({ kind: "check", ...describe(el), checked: wanted });
       return;
     }
     // ☆POST 제출이라고 다 위험하지 않다 — 로그인도 POST다. 낱말로만 미리 켠다(사람이 바꿀 수 있다)
