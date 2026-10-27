@@ -77,9 +77,9 @@ export function useRun(flow: Flow | null, activeVersion: number | null) {
   }, [flowId]);
   useEffect(() => { reloadHistory(); return () => stop.current?.(); }, [reloadHistory]);
 
-  /** part — 일부만 · on — 이번만 어디서(워커) */
-  const start = useCallback(async (target: RunTarget, params: Record<string, string>, part?: { stopBefore?: string; stopAfter?: string; on?: string; resetWallet?: boolean }): Promise<boolean> => {
-    if (!flowId) return false;
+  /** part — 일부만 · on — 이번만 어디서(워커). 시작한 실행 id(못 하면 null) */
+  const start = useCallback(async (target: RunTarget, params: Record<string, string>, part?: { stopBefore?: string; stopAfter?: string; on?: string; resetWallet?: boolean }): Promise<string | null> => {
+    if (!flowId) return null;
     setError(null);
     const version = target === "draft" ? "draft" as const : target === "active" ? undefined : target;
     let runId: string;
@@ -87,7 +87,7 @@ export function useRun(flow: Flow | null, activeVersion: number | null) {
       runId = (await api.startRun(flowId, version, params, part)).runId;
     } catch (e) {
       setError(e instanceof ApiError ? [e.message, ...explainProblems(e.problems, flowRef.current).map(problemLine)] : [String(e)]);
-      return false;
+      return null;
     }
     const label = (target === "draft" ? "초안" : target === "active" ? `v${activeVersion}` : `v${target}`) + (part?.stopBefore || part?.stopAfter ? " · 일부" : "");
     const startedAt = new Date().toISOString();
@@ -99,7 +99,7 @@ export function useRun(flow: Flow | null, activeVersion: number | null) {
       if (e.kind === "run:end") { void api.getRun(runId).then((r) => { setView(viewOf(r)); reloadHistory(); }); return; }
       setView((v) => (v && v.runId === runId ? applyWatch(v, e, nameOf) : v));
     });
-    return true;
+    return runId;
   }, [flowId, activeVersion, reloadHistory]);
 
   const open = useCallback(async (runId: string) => {

@@ -118,6 +118,9 @@
 .launcher-bar { display: flex; box-shadow: var(--shadow); border-radius: 8px; }
 .run-btn { background: var(--accent); border: none; color: var(--on-accent); font-weight: 600; padding: 10px 18px; border-radius: 8px 0 0 8px; font-size: 14px; }
 .run-btn:hover:not(:disabled) { background: var(--accent-hover) !important; }
+/* 위 막대의 «실행» — 불씨(실행)는 주황 · 게시(숯)와 나란히 */
+.top-run { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+.top-run:hover:not(:disabled) { background: var(--accent-hover) !important; border-color: var(--accent-hover); }
 .run-more { background: var(--accent); border: none; border-left: 1px solid rgb(255 255 255 / .25); color: var(--on-accent); padding: 0 10px; border-radius: 0 8px 8px 0; }
 .run-more:hover { background: var(--accent-hover) !important; }
 .run-mine { display: flex; align-items: center; gap: 6px; padding: 0 12px; margin-right: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; white-space: nowrap; cursor: pointer; }
