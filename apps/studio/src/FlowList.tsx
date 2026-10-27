@@ -6,7 +6,7 @@
  * ★비개발자가 빈 캔버스에서 막히지 않게 — 템플릿을 고르고 몇 가지만 답하면 뼈대가 짜인다(model/templates.ts).
  *  id는 사람이 짓지 않는다(자동). 빈 플로우는 누르면 바로 만들어 캔버스로 가고 거기서 이름을 묻는다(editor/NameModal.tsx).
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { describeCron, EMAIL_RE, recipientsOf, type Flow, explainProblems, problemLine } from "@flowsmith/core";
 import { NEW_FLOW_KEY } from "./editor/NameModal.tsx";
 import { aiBridge } from "./ai/bridge.ts";
@@ -87,6 +87,17 @@ function TemplateForm({ t, flows, onCancel, onCreate }: { t: Template; flows: Fl
   );
 }
 
+type ListFilter = "all" | "draft" | "todo" | "failed";
+const VIEW_KEY = "flowsmith.flowList.view";
+/** 목록을 떠날 때의 모습 — 이 탭에서만(sessionStorage · 새 탭은 처음부터) */
+function readView(): { q: string; only: ListFilter; scroll: number } {
+  try { const v = JSON.parse(sessionStorage.getItem(VIEW_KEY) ?? "null") as { q?: unknown; only?: unknown; scroll?: unknown } | null;
+    return { q: typeof v?.q === "string" ? v.q : "", only: (["all", "draft", "todo", "failed"] as const).find((x) => x === v?.only) ?? "all", scroll: typeof v?.scroll === "number" ? v.scroll : 0 };
+  } catch { return { q: "", only: "all", scroll: 0 }; }
+}
+function writeView(v: { q: string; only: ListFilter; scroll: number }): void {
+  try { sessionStorage.setItem(VIEW_KEY, JSON.stringify(v)); } catch { /* 기억 못 해도 된다 */ }
+}
 const SORT_KEY = "flowsmith.flowList.sort";
 const FOLD_KEY = "flowsmith.flowList.folded";
 const FOLD_OVER = 20;
@@ -110,7 +121,9 @@ export function FlowList({ only = null }: { only?: "templates" | null }) {
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"none" | "import">("none");
   const [picked, setPicked] = useState<Template | null>(null);
-  const [q, setQ] = useState("");
+  // 이 탭에서 목록을 떠날 때의 모습(찾기 · 거르기 · 스크롤) — 워크플로우를 열었다 돌아오면 그 자리로
+  const back = useRef(readView());
+  const [q, setQ] = useState(only === "templates" ? "" : back.current.q);
   const [json, setJson] = useState("");
 
   const load = () => api.listFlows().then(setFlows, (e: Error) => setError(e.message));
@@ -154,7 +167,25 @@ export function FlowList({ only = null }: { only?: "templates" | null }) {
     }
   }
 
-  const [only2, setOnly2] = useState<"all" | "draft" | "todo" | "failed">("all");
+  const [only2, setOnly2] = useState<ListFilter>(only === "templates" ? "all" : back.current.only);
+  const list = useRef({ q, only: only2, scroll: 0 });
+  list.current.q = q;
+  list.current.only = only2;
+  useEffect(() => {
+    if (only === "templates") return;
+    const main = document.querySelector(".app-main");
+    const on = () => { list.current.scroll = main?.scrollTop ?? 0; };
+    main?.addEventListener("scroll", on, { passive: true });
+    return () => { main?.removeEventListener("scroll", on); writeView(list.current); };
+  }, [only]);
+  // 돌아왔으면 — 목록이 그려진 뒤 한 번 그 자리로(그리기 전에 옮기면 짧은 화면에 막혀 0이 된다)
+  const restored = useRef(false);
+  useLayoutEffect(() => {
+    if (restored.current || flows === null || only === "templates") return;
+    restored.current = true;
+    const main = document.querySelector(".app-main");
+    if (main && back.current.scroll > 0) { main.scrollTop = back.current.scroll; list.current.scroll = main.scrollTop; }
+  });
   const [sort, setSort] = useState<FlowSort>(() => readPref<FlowSort>(SORT_KEY, "updated"));
   // 묶음마다 접었나 — 사람이 고른 것만 기억한다. 고른 적 없으면 많을 때(20개 넘게) 접어 묶음 머리만 보인다
   const [folded, setFolded] = useState<Record<string, boolean>>(() => readPref<Record<string, boolean>>(FOLD_KEY, {}));

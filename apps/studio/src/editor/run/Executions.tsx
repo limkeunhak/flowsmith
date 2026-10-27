@@ -26,9 +26,12 @@ function dayOf(iso: string): string {
   return diff === 0 ? "오늘" : diff === 1 ? "어제" : d.toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" });
 }
 
-/** initial — 처음 고를 실행(알림의 링크 · #/flows/:id/runs/:runId) · draft — 초안 실행을 그릴 때 */
-export function Executions({ history, onReload, initial, onFix, draft }: { history: RunRow[]; onReload: () => void; initial?: string; onFix?: (fix: Fix) => void; draft?: Flow }) {
-  const [picked, setPicked] = useState<string | null>(initial ?? history[0]?.id ?? null);
+/**
+ * picked — 고른 실행(주소 #/flows/:id/runs/:runId · 없으면 가장 최근) · onPick — 고르면 주소를 바꾼다(FlowEditor) · draft — 초안 실행을 그릴 때
+ */
+export function Executions({ history, onReload, picked: chosen, onPick, onFix, draft }: { history: RunRow[]; onReload: () => void; picked: string | null; onPick: (runId: string) => void; onFix?: (fix: Fix) => void; draft?: Flow }) {
+  const picked = chosen ?? history[0]?.id ?? null;
+  const setPicked = onPick;
   const [view, setView] = useState<RunView | null>(null);
   const [row, setRow] = useState<RunRow | null>(null);
   const [flow, setFlow] = useState<Flow | null>(null);
@@ -37,7 +40,6 @@ export function Executions({ history, onReload, initial, onFix, draft }: { histo
   const [status, setStatus] = useState<StatusFilter>("all");
   const [trigger, setTrigger] = useState<string>("all");
   useEffect(() => { onReload(); }, [onReload]);
-  useEffect(() => { if (picked === null && history[0]) setPicked(history[0].id); }, [history, picked]);
   useEffect(() => {
     if (!picked) return;
     setFocus(null);
