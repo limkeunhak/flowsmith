@@ -97,6 +97,8 @@
 .port-add { position: absolute; left: 6px; top: -10px; display: flex; align-items: center; pointer-events: none; }
 .port-add button { pointer-events: auto; }
 .relay-node .react-flow__handle { z-index: 2; }
+/* 점은 10px — 잡는 자리는 사방 8px 더(보이는 모양은 그대로). «+» 단추까지는 닿지 않는다 */
+.relay-node .react-flow__handle::before { content: ""; position: absolute; inset: -8px; }
 .port-add.with-label { top: -10px; }
 .port-add .stub { width: 26px; height: 2px; background: var(--edge); }
 .port-add button { width: 20px; height: 20px; padding: 0; justify-content: center; border-radius: 5px; border: 1.5px solid var(--edge); background: var(--panel); color: var(--muted); }
