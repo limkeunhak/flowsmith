@@ -7,6 +7,7 @@
 import { APPROVAL_OUTPUTS, CHECK_OUTPUTS, BLOCKED_OUTPUTS, BLOCKED_PORT, ELSE_PORT, FLOW_CALL_OUTPUTS, HTTP_OUTPUTS, OUT_PORT, TRANSFORM_OUTPUTS, SECRET_PARTS, type Edge, type Flow, type FlowNode, type Target } from "./model.ts";
 import { FILE_READ_OUTPUTS, STORE_OUTPUTS } from "./nodes/file.ts";
 import { ExprError, refsOf, type Ref } from "./expr.ts";
+import { walletSecretParam } from "./wallet.ts";
 
 export interface CompiledFlow {
   flow: Flow;
@@ -245,9 +246,16 @@ export function compile(flow: Flow): CompiledFlow {
   if (wallet) {
     const what = wallet.mode === "metamask" ? "MetaMask 지갑" : "테스트 지갑";
     const keyWord = wallet.mode === "metamask" ? "개인키 또는 복구 문구" : "개인키";
-    const sec = flow.secrets.find((s) => s.name === wallet.secret);
-    if (!sec) problems.push(`${what}: 시크릿 "${wallet.secret}"이(가) 정의되지 않았습니다 — ${keyWord}를 담을 글자 시크릿을 만드세요`);
-    else if (sec.kind !== "text") problems.push(`${what}: 시크릿 "${wallet.secret}"은(는) 글자 하나(${keyWord})여야 합니다`);
+    const byParam = walletSecretParam(wallet.secret);
+    const param = byParam === null ? null : flow.params.find((p) => p.name === byParam);
+    if (byParam !== null && !param) problems.push(`${what}: 지갑을 고르는 실행 입력 "${byParam}"이(가) 정의되지 않았습니다`);
+    else if (param && param.type !== "select") problems.push(`${what}: 지갑을 고르는 실행 입력 '${param.label}'(${param.name})은 «고르기» 종류여야 합니다 — 보기가 시크릿 이름들`);
+    // 고를 수 있는 시크릿 모두 — 실행 입력이면 그 보기마다
+    for (const name of param ? param.options : byParam === null ? [wallet.secret] : []) {
+      const sec = flow.secrets.find((s) => s.name === name);
+      if (!sec) problems.push(`${what}: 시크릿 "${name}"이(가) 정의되지 않았습니다 — ${keyWord}를 담을 글자 시크릿을 만드세요`);
+      else if (sec.kind !== "text") problems.push(`${what}: 시크릿 "${name}"은(는) 글자 하나(${keyWord})여야 합니다`);
+    }
     if (wallet.mode === "inject" && browser === "attach") problems.push("테스트 지갑: 사람의 크롬에 붙는 워크플로우에는 넣지 않습니다 — 그 크롬의 메타마스크를 쓰고 «사람 기다리기»로 승인하세요");
     if (wallet.mode === "inject" && browser === "app") problems.push("테스트 지갑: 앱 안 브라우저에는 넣지 않습니다 — 블록체인 사이트는 «띄우기»(테스트 지갑)나 «지갑 브라우저(MetaMask)»로 돌리세요");
     if (wallet.mode === "inject" && browser === "wallet") problems.push("테스트 지갑: 지갑 브라우저(MetaMask)에는 페이지에 넣는 테스트 지갑을 쓰지 않습니다 — 지갑 방식을 «MetaMask 확장»으로 바꾸세요");

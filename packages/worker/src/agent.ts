@@ -265,7 +265,7 @@ export class WorkerAgent {
       // 아니면 이 PC에서 브라우저를 띄운다(데스크톱 앱이면 앱 안 브라우저로 — 사람이 바로 만진다)
       const browser = req.draft?.settings?.browser;
       const src = browser === "attach" ? { cdpUrl: this.#o.worker.cdpUrl ?? DEFAULT_CDP_URL }
-        : browser === "wallet" ? await this.#o.worker.walletSource(req.draft, secrets, (text) => io.send({ t: "progress", text }))
+        : browser === "wallet" ? await this.#o.worker.walletSource(req.draft, secrets, (text) => io.send({ t: "progress", text }), req.params ?? {})
         : browser === "app" || ((browser ?? "launch") === "launch" && !req.draft?.settings?.wallet && this.#o.worker.launchInApp) ? this.#o.worker.appSource(req.draft)
         : await this.#browser();
       // 재생 전에 세션을 받아 둔다 — 재생 중 사람 기다리기(로그인)의 입력이 닿게
