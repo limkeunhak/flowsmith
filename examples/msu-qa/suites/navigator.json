@@ -1,0 +1,47 @@
+{
+  "name": "MSU QA · Navigator (msu-e2e-test)",
+  "description": "msu-e2e-test tests/navigator/의 visitor 시나리오 — 대상 qa.msu.io/navigator",
+  "items": [
+    {
+      "id": "n1",
+      "flowId": "navigator-landing-visitor",
+      "label": "[01-explorer-landing] 비회원 탐색 화면 — 지표 · 검색",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "n2",
+      "flowId": "navigator-ranking-period",
+      "label": "[01-explorer-landing] 랭킹 기간 필터",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "n3",
+      "flowId": "navigator-search-name",
+      "label": "[03-search] 이름 검색 → 상세",
+      "params": {
+        "name": "blahh"
+      },
+      "enabled": true
+    },
+    {
+      "id": "n4",
+      "flowId": "navigator-search-case",
+      "label": "[03-search] 대소문자 무관 검색",
+      "params": {
+        "name": "Blahh"
+      },
+      "enabled": true
+    },
+    {
+      "id": "n5",
+      "flowId": "navigator-search-address",
+      "label": "[03-search] 지갑 주소 검색 → 소유자 상세",
+      "params": {
+        "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+      },
+      "enabled": true
+    }
+  ]
+}

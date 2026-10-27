@@ -1,0 +1,54 @@
+{
+  "name": "MSU QA · MSU 웹 (msu-e2e-test)",
+  "description": "msu-e2e-test tests/msuweb/의 visitor 시나리오 — 대상 qa.msu.io",
+  "items": [
+    {
+      "id": "w1",
+      "flowId": "msuweb-main-visitor",
+      "label": "[01-landing] 비회원 메인 — 헤더 · 푸터 · 로그인 진입점",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "w2",
+      "flowId": "msuweb-direct-route",
+      "label": "[01-landing] /about 직접 진입",
+      "params": {
+        "path": "/about"
+      },
+      "enabled": true
+    },
+    {
+      "id": "w3",
+      "flowId": "msuweb-direct-route",
+      "label": "[01-landing] /notices 직접 진입",
+      "params": {
+        "path": "/notices"
+      },
+      "enabled": true
+    },
+    {
+      "id": "w4",
+      "flowId": "msuweb-direct-route",
+      "label": "[01-landing] /builder-apps 직접 진입",
+      "params": {
+        "path": "/builder-apps"
+      },
+      "enabled": true
+    },
+    {
+      "id": "w5",
+      "flowId": "msuweb-not-found",
+      "label": "[01-landing] 없는 경로는 Not Found",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "w6",
+      "flowId": "msuweb-reload-back",
+      "label": "[01-landing] 새로고침 · 뒤로가기",
+      "params": {},
+      "enabled": true
+    }
+  ]
+}

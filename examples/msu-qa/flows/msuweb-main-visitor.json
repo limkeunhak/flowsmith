@@ -190,7 +190,7 @@
           "title"
         ],
         "usesPage": true,
-        "timeoutMs": 30000
+        "timeoutMs": 60000
       }
     },
     {

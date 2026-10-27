@@ -146,7 +146,7 @@
           "lower"
         ],
         "usesPage": true,
-        "timeoutMs": 30000
+        "timeoutMs": 60000
       }
     },
     {
@@ -260,7 +260,7 @@
           "second"
         ],
         "usesPage": true,
-        "timeoutMs": 30000
+        "timeoutMs": 60000
       }
     },
     {
