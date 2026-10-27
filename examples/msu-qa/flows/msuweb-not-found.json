@@ -26,7 +26,7 @@
         },
         "actions": [
           {
-            "id": "a38",
+            "id": "a368",
             "kind": "wait",
             "risk": "safe",
             "timeoutMs": null,
@@ -37,7 +37,7 @@
             }
           },
           {
-            "id": "a39",
+            "id": "a369",
             "kind": "click",
             "risk": "safe",
             "timeoutMs": null,
@@ -57,7 +57,7 @@
             "popup": false
           },
           {
-            "id": "a40",
+            "id": "a370",
             "kind": "read",
             "risk": "safe",
             "timeoutMs": null,
@@ -80,7 +80,7 @@
             "transform": null
           },
           {
-            "id": "a41",
+            "id": "a371",
             "kind": "read",
             "risk": "safe",
             "timeoutMs": null,
@@ -103,7 +103,7 @@
             "transform": null
           },
           {
-            "id": "a42",
+            "id": "a372",
             "kind": "read",
             "risk": "safe",
             "timeoutMs": null,
@@ -139,70 +139,70 @@
       "config": {
         "items": [
           {
-            "id": "k43",
+            "id": "k373",
             "label": "Not Found로 안내한다",
             "actual": "{{ $node.open.body }}",
             "op": "matches",
             "expected": "[Pp]age [Nn]ot [Ff]ound|[Nn]ot [Ff]ound|404"
           },
           {
-            "id": "k44",
+            "id": "k374",
             "label": "404에서도 헤더로 빠져나갈 수 있다",
             "actual": "{{ $node.open.header }}",
             "op": "notEmpty",
             "expected": null
           },
           {
-            "id": "k45",
+            "id": "k375",
             "label": "«TypeError»가 노출되지 않는다",
             "actual": "{{ $node.open.body }}",
             "op": "notContains",
             "expected": "TypeError"
           },
           {
-            "id": "k46",
+            "id": "k376",
             "label": "«ReferenceError»가 노출되지 않는다",
             "actual": "{{ $node.open.body }}",
             "op": "notContains",
             "expected": "ReferenceError"
           },
           {
-            "id": "k47",
+            "id": "k377",
             "label": "«at Object.»가 노출되지 않는다",
             "actual": "{{ $node.open.body }}",
             "op": "notContains",
             "expected": "at Object."
           },
           {
-            "id": "k48",
+            "id": "k378",
             "label": "«ECONNREFUSED»가 노출되지 않는다",
             "actual": "{{ $node.open.body }}",
             "op": "notContains",
             "expected": "ECONNREFUSED"
           },
           {
-            "id": "k49",
+            "id": "k379",
             "label": "«ETIMEDOUT»가 노출되지 않는다",
             "actual": "{{ $node.open.body }}",
             "op": "notContains",
             "expected": "ETIMEDOUT"
           },
           {
-            "id": "k50",
+            "id": "k380",
             "label": "«Internal Server»가 노출되지 않는다",
             "actual": "{{ $node.open.body }}",
             "op": "notContains",
             "expected": "Internal Server"
           },
           {
-            "id": "k51",
+            "id": "k381",
             "label": "«stacktrace»가 노출되지 않는다",
             "actual": "{{ $node.open.body }}",
             "op": "notContains",
             "expected": "stacktrace"
           },
           {
-            "id": "k52",
+            "id": "k382",
             "label": "«Traceback»가 노출되지 않는다",
             "actual": "{{ $node.open.body }}",
             "op": "notContains",

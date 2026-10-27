@@ -1,0 +1,164 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-06-owner-roundtrip",
+  "name": "Navigator · 탭 왕복 뒤에도 불러온 목록",
+  "description": "06-owner-listing: More로 다 불러온 뒤 Items에 갔다 Character로 돌아와도 불러온 목록에 다시 닿을 수 있다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "seed",
+      "type": "custom",
+      "name": "2페이지 이상인 지갑 찾기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "code": "const base = \"https://qa.msu.io\"; const open = async (u) => { await page.goto(new URL(u, base).href, { waitUntil: 'domcontentloaded' }); await page.waitForTimeout(4000); };\nconst hrefs = async (k) => [...new Set(await page.locator(`a[href*=\"/navigator/${k}/\"]`).evaluateAll((as) => as.map((a) => a.getAttribute('href'))))];\nawait open(\"https://qa.msu.io/navigator\");\nawait page.locator('a[href*=\"/navigator/nft/\"]').first().waitFor({ state: 'attached', timeout: 30000 });\nconst items = await hrefs('nft'); const seen = [];\nfor (const it of items.slice(0, 5)) {\n  await open(it);\n  const o = await page.locator('a[href*=\"/navigator/owner/\"]').first().getAttribute('href', { timeout: 15000 }).catch(() => null);\n  if (!o || seen.includes(o)) continue; seen.push(o);\n  await open(o);\n  await page.locator('a[href*=\"/navigator/character/\"]').first().waitFor({ state: 'attached', timeout: 15000 }).catch(() => {});\n  const chars = await hrefs('character'); if (!chars.length) continue;\n  if (!(await page.getByRole('button', { name: 'More', exact: true }).first().isVisible().catch(() => false))) continue;\n  return { character: chars[0].split('/navigator/character/')[1], characterUrl: new URL(chars[0], base).href, owner: o.split('/navigator/owner/')[1], ownerUrl: new URL(o, base).href };\n}\nthrow new Error('랭킹 아이템 ' + items.length + '개의 소유자(' + seen.length + '명) 중 캐릭터 목록이 2페이지 이상인 지갑이 없습니다');",
+        "outputs": [
+          "character",
+          "characterUrl",
+          "owner",
+          "ownerUrl"
+        ],
+        "usesPage": true,
+        "timeoutMs": 180000
+      }
+    },
+    {
+      "id": "open",
+      "type": "web",
+      "name": "지갑 상세",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "{{ $node.seed.ownerUrl }}"
+        },
+        "actions": [
+          {
+            "id": "a697",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a698",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "round",
+      "type": "custom",
+      "name": "More 끝까지 → Items 갔다 Character로",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "code": "const links = page.locator('a[href*=\"/navigator/character/\"]'); const more = page.getByRole('button', { name: 'More', exact: true }).first();\nconst tab = (n) => page.getByRole('tab', { name: n, exact: true }).first();\nawait links.first().waitFor({ state: 'attached', timeout: 20000 });\nlet clicks = 0; while (clicks < 10 && (await more.isVisible().catch(() => false))) { await more.click(); await page.waitForTimeout(3000); clicks += 1; }\n// 가상 스크롤 — DOM 링크 수는 스크롤 위치 따라 줄고 는다(실측 26 → 6). 위에서 아래로 훑어 서로 다른 캐릭터 수를 센다\nconst sweep = async () => { const seen = new Set(); await page.evaluate(() => window.scrollTo(0, 0)); for (let i = 0; i < 60; i++) { for (const h of await links.evaluateAll((as) => as.map((a) => a.getAttribute('href')))) seen.add(h); await page.mouse.wheel(0, 300); await page.waitForTimeout(150); } await page.evaluate(() => window.scrollTo(0, 0)); await page.waitForTimeout(500); return seen.size; };\nconst loaded = await sweep();\nawait tab('Items').click(); await page.waitForTimeout(3000); await tab('Character').click(); await page.waitForTimeout(3000);\nconst backDom = await links.count();\nconst moreAgain = await more.isVisible().catch(() => false);\nconst back = await sweep();\nreturn { loaded, clicks, backDom, back, moreAgain, reachable: back >= loaded || moreAgain };",
+        "outputs": [
+          "loaded",
+          "clicks",
+          "backDom",
+          "back",
+          "moreAgain",
+          "reachable"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k699",
+            "label": "복귀한 탭이 비어 있으면 안 된다",
+            "actual": "{{ $input.backDom }}",
+            "op": "gt",
+            "expected": "0"
+          },
+          {
+            "id": "k700",
+            "label": "불러온 만큼 다시 닿을 수 있어야 한다(복귀 후 개수 ≥ 불러온 개수 또는 More)",
+            "actual": "{{ $input.reachable }}",
+            "op": "isTrue",
+            "expected": null
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "seed",
+        "port": "out"
+      },
+      "to": {
+        "node": "open"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "round"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "round",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

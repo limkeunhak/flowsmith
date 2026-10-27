@@ -1,0 +1,252 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-04-nft-history-param",
+  "name": "Navigator · ?tab=history로 History 바로 열기",
+  "description": "04-detail-pages: NFT 상세 주소에 ?tab=history를 붙이면 History 탭으로 열린다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "find",
+      "type": "web",
+      "name": "랜딩에서 랭킹 아이템 고르기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/navigator"
+        },
+        "actions": [
+          {
+            "id": "a592",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a593",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a594",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "첫 nft 링크",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[contains(@href,\"/navigator/nft/\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "nft",
+            "strategy": "link",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "nft",
+      "type": "web",
+      "name": "?tab=history로 열기",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "{{ $node.find.nft }}?tab=history"
+        },
+        "actions": [
+          {
+            "id": "a595",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a596",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a597",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Info»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Info\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "sInfo",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a598",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «History»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"History\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "sHistory",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a599",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Activity»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Activity\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "sActivity",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k600",
+            "label": "History 로 열려야 한다 — History 선택",
+            "actual": "{{ $node.nft.sHistory }}",
+            "op": "eq",
+            "expected": "true"
+          },
+          {
+            "id": "k601",
+            "label": "History 로 열려야 한다 — 앞 탭 Info는 선택 아님",
+            "actual": "{{ $node.nft.sInfo }}",
+            "op": "ne",
+            "expected": "true"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "find",
+        "port": "out"
+      },
+      "to": {
+        "node": "nft"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "nft",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

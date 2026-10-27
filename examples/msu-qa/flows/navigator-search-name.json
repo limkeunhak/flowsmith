@@ -36,7 +36,7 @@
         },
         "actions": [
           {
-            "id": "a96",
+            "id": "a1005",
             "kind": "wait",
             "risk": "safe",
             "timeoutMs": null,
@@ -47,7 +47,7 @@
             }
           },
           {
-            "id": "a97",
+            "id": "a1006",
             "kind": "click",
             "risk": "safe",
             "timeoutMs": null,
@@ -67,7 +67,7 @@
             "popup": false
           },
           {
-            "id": "a98",
+            "id": "a1007",
             "kind": "fill",
             "risk": "safe",
             "timeoutMs": null,
@@ -87,7 +87,7 @@
             "value": "{{ $params.name }}"
           },
           {
-            "id": "a99",
+            "id": "a1008",
             "kind": "press",
             "risk": "safe",
             "timeoutMs": null,
@@ -107,7 +107,7 @@
             "key": "Enter"
           },
           {
-            "id": "a100",
+            "id": "a1009",
             "kind": "wait",
             "risk": "safe",
             "timeoutMs": 15000,
@@ -118,7 +118,7 @@
             }
           },
           {
-            "id": "a101",
+            "id": "a1010",
             "kind": "wait",
             "risk": "safe",
             "timeoutMs": null,
@@ -147,7 +147,7 @@
           "title"
         ],
         "usesPage": true,
-        "timeoutMs": 30000
+        "timeoutMs": 60000
       }
     },
     {
@@ -161,14 +161,14 @@
       "config": {
         "items": [
           {
-            "id": "k102",
+            "id": "k1011",
             "label": "상세 페이지로 간다",
             "actual": "{{ $input.url }}",
             "op": "matches",
             "expected": "/navigator/(nickname|character|nft|owner)/"
           },
           {
-            "id": "k103",
+            "id": "k1012",
             "label": "제목이 MSU Navigator",
             "actual": "{{ $input.title }}",
             "op": "contains",

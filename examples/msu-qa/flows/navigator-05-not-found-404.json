@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-05-not-found-404",
+  "name": "Navigator · 없는 NFT · 지갑 주소는 404",
+  "description": "05-not-found: 존재하지 않는 NFT · 지갑 주소는 Page Not Found로 처리된다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "nft",
+      "type": "web",
+      "name": "없는 NFT",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/navigator/nft/ITEMdoesnotexist000000000"
+        },
+        "actions": [
+          {
+            "id": "a642",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 8000
+            }
+          },
+          {
+            "id": "a643",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "«Page Not Found»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//h2[contains(normalize-space(.),\"Page Not Found\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "notFound",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "owner",
+      "type": "web",
+      "name": "없는 지갑 주소",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a644",
+            "kind": "goto",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "url": "https://qa.msu.io/navigator/owner/0xdeadbeef"
+          },
+          {
+            "id": "a645",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 8000
+            }
+          },
+          {
+            "id": "a646",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "«Page Not Found»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//h2[contains(normalize-space(.),\"Page Not Found\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "notFound",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k647",
+            "label": "NFT: 404 페이지여야 한다",
+            "actual": "{{ $node.nft.notFound }}",
+            "op": "contains",
+            "expected": "Page Not Found"
+          },
+          {
+            "id": "k648",
+            "label": "지갑 주소: 404 페이지여야 한다",
+            "actual": "{{ $node.owner.notFound }}",
+            "op": "contains",
+            "expected": "Page Not Found"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "nft",
+        "port": "out"
+      },
+      "to": {
+        "node": "owner"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "owner",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

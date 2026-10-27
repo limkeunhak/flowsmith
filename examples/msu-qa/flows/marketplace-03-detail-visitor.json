@@ -1,0 +1,227 @@
+{
+  "schemaVersion": 1,
+  "id": "marketplace-03-detail-visitor",
+  "name": "마켓플레이스 · 판매 중 NFT 상세(비회원)",
+  "description": "03-p2p-trade-flow: 목록 맨 위 카드의 상세가 그 아이템으로 열린다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "list",
+      "type": "web",
+      "name": "NFT 목록 · 첫 카드",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/marketplace/nft"
+        },
+        "actions": [
+          {
+            "id": "a399",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a400",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a401",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": 30000,
+            "optional": false,
+            "target": {
+              "label": "첫 카드의 북마크",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button.bookmark >> nth=0"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "tokenId",
+            "strategy": "attribute",
+            "attribute": "data-gtm-token-id",
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "detail",
+      "type": "web",
+      "name": "상세 열기",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a402",
+            "kind": "goto",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "url": "https://qa.msu.io/marketplace/nft/{{ $input.tokenId }}"
+          },
+          {
+            "id": "a403",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a404",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "where",
+      "type": "custom",
+      "name": "로그인 상태 · 지금 주소",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "code": "const raw = await page.evaluate(() => localStorage.getItem('msu_auth_store'));\nlet isLogin = false; try { isLogin = JSON.parse(raw)?.state?.isLogin === true; } catch {}\nreturn { isLogin, path: new URL(page.url()).pathname, url: decodeURIComponent(page.url()), title: await page.title() };",
+        "outputs": [
+          "isLogin",
+          "path",
+          "url",
+          "title"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k405",
+            "label": "상세 경로 /marketplace/nft/<토큰>",
+            "actual": "{{ $input.url }}",
+            "op": "contains",
+            "expected": "/marketplace/nft/{{ $node.list.tokenId }}"
+          },
+          {
+            "id": "k406",
+            "label": "제목이 «| Details | MSU Marketplace»",
+            "actual": "{{ $input.title }}",
+            "op": "matches",
+            "expected": "\\| Details \\| MSU Marketplace"
+          },
+          {
+            "id": "k407",
+            "label": "아이템 이름(제목 앞부분)이 비어 있지 않다",
+            "actual": "{{ $input.title }}",
+            "op": "matches",
+            "expected": "^\\s*[^|\\s][^|]*\\|"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "list",
+        "port": "out"
+      },
+      "to": {
+        "node": "detail"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "detail",
+        "port": "out"
+      },
+      "to": {
+        "node": "where"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "where",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

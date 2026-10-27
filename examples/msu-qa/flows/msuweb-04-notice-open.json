@@ -1,0 +1,494 @@
+{
+  "schemaVersion": 1,
+  "id": "msuweb-04-notice-open",
+  "name": "MSU 웹 · 공지 열기 → 목록으로",
+  "description": "04-notices: 목록에서 첫 공지를 열면 같은 글의 상세가 열리고 Back to List 로 목록에 돌아온다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "/notices 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/notices"
+        },
+        "actions": [
+          {
+            "id": "a120",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a121",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a122",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "첫 공지",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[starts-with(@href,\"/notices/\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "href",
+            "strategy": "attribute",
+            "attribute": "href",
+            "transform": null
+          },
+          {
+            "id": "a123",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "첫 공지 제목",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[starts-with(@href,\"/notices/\")])[1]//h4"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "title",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "detail",
+      "type": "web",
+      "name": "첫 공지 열기",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a124",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a125",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "첫 공지",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[starts-with(@href,\"/notices/\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a126",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": 20000,
+            "optional": false,
+            "wait": {
+              "kind": "url",
+              "pattern": "/notices/[^/?]+"
+            }
+          },
+          {
+            "id": "a127",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 3000
+            }
+          },
+          {
+            "id": "a128",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "본문 전체",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "body"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "body",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "atDetail",
+      "type": "custom",
+      "name": "지금 경로",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "code": "return { path: new URL(page.url()).pathname };",
+        "outputs": [
+          "path"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "back",
+      "type": "web",
+      "name": "Back to List",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a129",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a130",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "Back to List",
+              "locators": [
+                {
+                  "kind": "text",
+                  "value": "Back to List"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a131",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": 20000,
+            "optional": false,
+            "wait": {
+              "kind": "url",
+              "pattern": "/notices([?#]|$)"
+            }
+          },
+          {
+            "id": "a132",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 3000
+            }
+          },
+          {
+            "id": "a133",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "첫 공지",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[starts-with(@href,\"/notices/\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "again",
+            "strategy": "attribute",
+            "attribute": "href",
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "atList",
+      "type": "custom",
+      "name": "지금 경로",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "code": "return { path: new URL(page.url()).pathname };",
+        "outputs": [
+          "path"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 1500,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k134",
+            "label": "고른 공지의 상세로 갔다",
+            "actual": "{{ $node.atDetail.path }}",
+            "op": "eq",
+            "expected": "{{ $node.open.href }}"
+          },
+          {
+            "id": "k135",
+            "label": "목록에서 고른 글이 열려야 한다",
+            "actual": "{{ $node.detail.body }}",
+            "op": "contains",
+            "expected": "{{ $node.open.title }}"
+          },
+          {
+            "id": "k136",
+            "label": "«TypeError»가 노출되지 않는다",
+            "actual": "{{ $node.detail.body }}",
+            "op": "notContains",
+            "expected": "TypeError"
+          },
+          {
+            "id": "k137",
+            "label": "«ReferenceError»가 노출되지 않는다",
+            "actual": "{{ $node.detail.body }}",
+            "op": "notContains",
+            "expected": "ReferenceError"
+          },
+          {
+            "id": "k138",
+            "label": "«at Object.»가 노출되지 않는다",
+            "actual": "{{ $node.detail.body }}",
+            "op": "notContains",
+            "expected": "at Object."
+          },
+          {
+            "id": "k139",
+            "label": "«ECONNREFUSED»가 노출되지 않는다",
+            "actual": "{{ $node.detail.body }}",
+            "op": "notContains",
+            "expected": "ECONNREFUSED"
+          },
+          {
+            "id": "k140",
+            "label": "«ETIMEDOUT»가 노출되지 않는다",
+            "actual": "{{ $node.detail.body }}",
+            "op": "notContains",
+            "expected": "ETIMEDOUT"
+          },
+          {
+            "id": "k141",
+            "label": "«Internal Server»가 노출되지 않는다",
+            "actual": "{{ $node.detail.body }}",
+            "op": "notContains",
+            "expected": "Internal Server"
+          },
+          {
+            "id": "k142",
+            "label": "«stacktrace»가 노출되지 않는다",
+            "actual": "{{ $node.detail.body }}",
+            "op": "notContains",
+            "expected": "stacktrace"
+          },
+          {
+            "id": "k143",
+            "label": "«Traceback»가 노출되지 않는다",
+            "actual": "{{ $node.detail.body }}",
+            "op": "notContains",
+            "expected": "Traceback"
+          },
+          {
+            "id": "k144",
+            "label": "목록 경로로 돌아왔다",
+            "actual": "{{ $node.atList.path }}",
+            "op": "eq",
+            "expected": "/notices"
+          },
+          {
+            "id": "k145",
+            "label": "목록으로 돌아와야 한다",
+            "actual": "{{ $node.back.again }}",
+            "op": "startsWith",
+            "expected": "/notices/"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "detail"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "detail",
+        "port": "out"
+      },
+      "to": {
+        "node": "atDetail"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "atDetail",
+        "port": "out"
+      },
+      "to": {
+        "node": "back"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "back",
+        "port": "out"
+      },
+      "to": {
+        "node": "atList"
+      }
+    },
+    {
+      "id": "e5",
+      "from": {
+        "node": "atList",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

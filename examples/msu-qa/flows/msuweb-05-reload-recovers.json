@@ -1,0 +1,243 @@
+{
+  "schemaVersion": 1,
+  "id": "msuweb-05-reload-recovers",
+  "name": "MSU 웹 · 일시 실패 뒤 새로고침하면 복구",
+  "description": "05-content-failure: 첫 /notices 응답을 503으로 바꿔 열고, 막기를 풀고 새로고침 — 헤더 · 목록이 돌아와야 한다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "fail",
+      "type": "custom",
+      "name": "503으로 열고 새로고침",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "code": "await page.route('**/notices', (route) => route.fulfill({ status: 503, contentType: 'text/html', body: '<html><body>503</body></html>' }));\nawait page.goto('https://qa.msu.io/notices', { waitUntil: 'domcontentloaded' });\nconst failedCount = await page.locator('a[href^=\"/notices/\"]').count();\nawait page.unroute('**/notices');\nawait page.reload({ waitUntil: 'domcontentloaded' });\nreturn { failedCount };",
+        "outputs": [
+          "failedCount"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "open",
+      "type": "web",
+      "name": "복구 후 헤더",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a249",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a250",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a251",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "헤더",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "header"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "header",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "measure",
+      "type": "custom",
+      "name": "공지 수 · 가로 넘침",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "code": "await page.locator('a[href^=\"/notices/\"]').first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});\nconst noticeCount = await page.locator('a[href^=\"/notices/\"]').count();\nconst overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth > 2);\nconst body = await page.locator('body').innerText().catch(() => '');\nreturn { noticeCount, overflow, body };",
+        "outputs": [
+          "noticeCount",
+          "overflow",
+          "body"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k252",
+            "label": "실패한 로드에는 목록이 없다",
+            "actual": "{{ $node.fail.failedCount }}",
+            "op": "eq",
+            "expected": "0"
+          },
+          {
+            "id": "k253",
+            "label": "복구 후 헤더가 있어야 한다",
+            "actual": "{{ $node.open.header }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k254",
+            "label": "복구 후 목록이 나와야 한다",
+            "actual": "{{ $input.noticeCount }}",
+            "op": "gt",
+            "expected": "0"
+          },
+          {
+            "id": "k255",
+            "label": "«TypeError»가 노출되지 않는다",
+            "actual": "{{ $input.body }}",
+            "op": "notContains",
+            "expected": "TypeError"
+          },
+          {
+            "id": "k256",
+            "label": "«ReferenceError»가 노출되지 않는다",
+            "actual": "{{ $input.body }}",
+            "op": "notContains",
+            "expected": "ReferenceError"
+          },
+          {
+            "id": "k257",
+            "label": "«at Object.»가 노출되지 않는다",
+            "actual": "{{ $input.body }}",
+            "op": "notContains",
+            "expected": "at Object."
+          },
+          {
+            "id": "k258",
+            "label": "«ECONNREFUSED»가 노출되지 않는다",
+            "actual": "{{ $input.body }}",
+            "op": "notContains",
+            "expected": "ECONNREFUSED"
+          },
+          {
+            "id": "k259",
+            "label": "«ETIMEDOUT»가 노출되지 않는다",
+            "actual": "{{ $input.body }}",
+            "op": "notContains",
+            "expected": "ETIMEDOUT"
+          },
+          {
+            "id": "k260",
+            "label": "«Internal Server»가 노출되지 않는다",
+            "actual": "{{ $input.body }}",
+            "op": "notContains",
+            "expected": "Internal Server"
+          },
+          {
+            "id": "k261",
+            "label": "«stacktrace»가 노출되지 않는다",
+            "actual": "{{ $input.body }}",
+            "op": "notContains",
+            "expected": "stacktrace"
+          },
+          {
+            "id": "k262",
+            "label": "«Traceback»가 노출되지 않는다",
+            "actual": "{{ $input.body }}",
+            "op": "notContains",
+            "expected": "Traceback"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "fail",
+        "port": "out"
+      },
+      "to": {
+        "node": "open"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "measure"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "measure",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

@@ -1,0 +1,208 @@
+{
+  "schemaVersion": 1,
+  "id": "msuweb-02-gnb-links",
+  "name": "MSU 웹 · GNB 링크 주소",
+  "description": "02-navigation-links: GNB 는 지정된 메뉴를 지정된 경로로 연결한다 — href만 본다(누르지 않는다)",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "메인 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/"
+        },
+        "actions": [
+          {
+            "id": "a1",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a2",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a3",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "GNB «About»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//header//a[@data-link=\"gnb-link\"][contains(normalize-space(.),\"About\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "About",
+            "strategy": "attribute",
+            "attribute": "href",
+            "transform": null
+          },
+          {
+            "id": "a4",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "GNB «Notices»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//header//a[@data-link=\"gnb-link\"][contains(normalize-space(.),\"Notices\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "Notices",
+            "strategy": "attribute",
+            "attribute": "href",
+            "transform": null
+          },
+          {
+            "id": "a5",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "GNB «Builder Apps»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//header//a[@data-link=\"gnb-link\"][contains(normalize-space(.),\"Builder Apps\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "BuilderApps",
+            "strategy": "attribute",
+            "attribute": "href",
+            "transform": null
+          },
+          {
+            "id": "a6",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "GNB «MSU Space»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//header//a[@data-link=\"gnb-link\"][contains(normalize-space(.),\"MSU Space\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "space",
+            "strategy": "attribute",
+            "attribute": "href",
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k7",
+            "label": "GNB About 의 링크",
+            "actual": "{{ $node.open.About }}",
+            "op": "contains",
+            "expected": "/about"
+          },
+          {
+            "id": "k8",
+            "label": "GNB Notices 의 링크",
+            "actual": "{{ $node.open.Notices }}",
+            "op": "contains",
+            "expected": "/notices"
+          },
+          {
+            "id": "k9",
+            "label": "GNB Builder Apps 의 링크",
+            "actual": "{{ $node.open.BuilderApps }}",
+            "op": "contains",
+            "expected": "/builder-apps"
+          },
+          {
+            "id": "k10",
+            "label": "GNB MSU Space 의 링크",
+            "actual": "{{ $node.open.space }}",
+            "op": "contains",
+            "expected": "verse8.io/msu"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

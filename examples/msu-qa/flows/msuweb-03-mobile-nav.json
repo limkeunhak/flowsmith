@@ -1,0 +1,299 @@
+{
+  "schemaVersion": 1,
+  "id": "msuweb-03-mobile-nav",
+  "name": "MSU 웹 · 모바일 GNB 접힘 · 햄버거",
+  "description": "03-responsive: 390×844 에서 GNB 가 접혀 있고 햄버거로 열면 메뉴가 보인다 — 크기 바꾸기 · 보이는 항목 수는 코드로",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "메인 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/"
+        },
+        "actions": [
+          {
+            "id": "a92",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 3000
+            }
+          },
+          {
+            "id": "a93",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "nav",
+      "type": "custom",
+      "name": "390×844 · 보이는 GNB 수",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "await page.setViewportSize({ width: Number(390), height: Number(844) });\nawait page.reload({ waitUntil: 'domcontentloaded' }); await page.waitForTimeout(4000);\nreturn { visible: await page.locator('header a[data-link=\"gnb-link\"]').evaluateAll((els) => els.filter((e) => e.offsetParent).length) };",
+        "outputs": [
+          "visible"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "drawer",
+      "type": "web",
+      "name": "햄버거 열기",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a94",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "햄버거(헤더의 마지막 버튼)",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//header//button)[last()]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a95",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 1500
+            }
+          },
+          {
+            "id": "a96",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "서랍 «About»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "nav:not(footer nav) a:visible:has-text(\"About\") >> nth=0"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "About",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a97",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "서랍 «Notices»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "nav:not(footer nav) a:visible:has-text(\"Notices\") >> nth=0"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "Notices",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a98",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "서랍 «Builder Apps»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "nav:not(footer nav) a:visible:has-text(\"Builder Apps\") >> nth=0"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "BuilderApps",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a99",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "서랍 «MSU Space»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "nav:not(footer nav) a:visible:has-text(\"MSU Space\") >> nth=0"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "MSUSpace",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k100",
+            "label": "모바일에서는 GNB 가 접혀 있어야 한다",
+            "actual": "{{ $node.nav.visible }}",
+            "op": "eq",
+            "expected": "0"
+          },
+          {
+            "id": "k101",
+            "label": "햄버거를 열면 About 가 보여야 한다",
+            "actual": "{{ $node.drawer.About }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k102",
+            "label": "햄버거를 열면 Notices 가 보여야 한다",
+            "actual": "{{ $node.drawer.Notices }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k103",
+            "label": "햄버거를 열면 Builder Apps 가 보여야 한다",
+            "actual": "{{ $node.drawer.BuilderApps }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k104",
+            "label": "햄버거를 열면 MSU Space 가 보여야 한다",
+            "actual": "{{ $node.drawer.MSUSpace }}",
+            "op": "notEmpty",
+            "expected": null
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "nav"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "nav",
+        "port": "out"
+      },
+      "to": {
+        "node": "drawer"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "drawer",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

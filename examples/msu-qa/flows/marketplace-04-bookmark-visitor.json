@@ -1,0 +1,282 @@
+{
+  "schemaVersion": 1,
+  "id": "marketplace-04-bookmark-visitor",
+  "name": "마켓플레이스 · 비회원 북마크 → Sign in",
+  "description": "04-bookmark: 로그인하지 않고 상세의 북마크를 누르면 저장되지 않고 Sign in 모달이 열린다 — 토큰은 실행 입력",
+  "params": [
+    {
+      "name": "tokenId",
+      "label": "NFT 토큰 id",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "8467190164900413392626111038978",
+      "help": "qa.msu.io/marketplace/nft/<토큰>으로 열리는 NFT"
+    }
+  ],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "NFT 상세 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/marketplace/nft/{{ $params.tokenId }}"
+        },
+        "actions": [
+          {
+            "id": "a408",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a409",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a410",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": 20000,
+            "optional": false,
+            "target": {
+              "label": "상세의 북마크",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "[data-gtm-target=\"bookmark_btn\"]:visible >> nth=0"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "before",
+            "strategy": "attribute",
+            "attribute": "aria-label",
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "auth",
+      "type": "custom",
+      "name": "로그인 상태 · 지금 주소",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "const raw = await page.evaluate(() => localStorage.getItem('msu_auth_store'));\nlet isLogin = false; try { isLogin = JSON.parse(raw)?.state?.isLogin === true; } catch {}\nreturn { isLogin, path: new URL(page.url()).pathname, url: decodeURIComponent(page.url()), title: await page.title() };",
+        "outputs": [
+          "isLogin",
+          "path",
+          "url",
+          "title"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "press",
+      "type": "web",
+      "name": "북마크 누르기",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a411",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "상세의 북마크",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "[data-gtm-target=\"bookmark_btn\"]:visible >> nth=0"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a412",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a413",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "Sign in 모달",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "#w3a-modal:visible, .w3a-modal-container:visible"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "modal",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a414",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "상세의 북마크",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "[data-gtm-target=\"bookmark_btn\"]:visible >> nth=0"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "after",
+            "strategy": "attribute",
+            "attribute": "aria-label",
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k415",
+            "label": "전제: 로그인하지 않았다",
+            "actual": "{{ $node.auth.isLogin }}",
+            "op": "isFalse",
+            "expected": null
+          },
+          {
+            "id": "k416",
+            "label": "누르기 전 북마크되어 있지 않다",
+            "actual": "{{ $node.open.before }}",
+            "op": "ne",
+            "expected": "Remove Bookmark"
+          },
+          {
+            "id": "k417",
+            "label": "Sign in 모달이 열린다",
+            "actual": "{{ $input.modal }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k418",
+            "label": "누른 뒤에도 북마크되지 않는다",
+            "actual": "{{ $input.after }}",
+            "op": "ne",
+            "expected": "Remove Bookmark"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "auth"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "auth",
+        "port": "out"
+      },
+      "to": {
+        "node": "press"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "press",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

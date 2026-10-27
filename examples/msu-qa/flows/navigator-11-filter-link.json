@@ -1,0 +1,412 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-11-filter-link",
+  "name": "Navigator · 필터 걸린 주소를 그대로 열기",
+  "description": "11-activity-history: Mint 필터가 걸린 주소를 새로 열어도 Mint 가 선택되고 같은 결과가 나온다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "landing",
+      "type": "web",
+      "name": "랜딩 · 랭킹 첫 아이템",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/navigator"
+        },
+        "actions": [
+          {
+            "id": "a872",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a873",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a874",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "랭킹 첫 아이템 링크",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[contains(@href,\"/navigator/nft/\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "nft",
+            "strategy": "link",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "mint",
+      "type": "web",
+      "name": "Mint 고르기",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "{{ $node.landing.nft }}?tab=activity"
+        },
+        "actions": [
+          {
+            "id": "a877",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a878",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a875",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "거래 종류 «Mint»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "//div[contains(concat(\" \",normalize-space(@class),\" \"),\" chip \") and normalize-space(.)=\"Mint\"]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a876",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 3500
+            }
+          },
+          {
+            "id": "t5",
+            "kind": "readTable",
+            "risk": "safe",
+            "timeoutMs": 20000,
+            "optional": false,
+            "output": "rows",
+            "table": {
+              "label": "거래 표",
+              "rows": {
+                "label": "거래 표 행",
+                "locators": [
+                  {
+                    "kind": "css",
+                    "value": "tbody tr"
+                  }
+                ],
+                "fingerprint": null,
+                "frames": [],
+                "verifiedAt": null
+              },
+              "columns": [
+                {
+                  "name": "type",
+                  "selector": "td:nth-child(1)",
+                  "strategy": "innerText"
+                }
+              ],
+              "maxRows": 200
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "linked",
+      "type": "custom",
+      "name": "걸린 주소",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "code": "return { link: page.url(), expected: input.rows.map((r) => r.type ?? '').join(',') };",
+        "outputs": [
+          "link",
+          "expected"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "reopen",
+      "type": "web",
+      "name": "그 주소 새로 열기",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "{{ $input.link }}"
+        },
+        "actions": [
+          {
+            "id": "a879",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a880",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a881",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "거래 종류 «Mint»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "//div[contains(concat(\" \",normalize-space(@class),\" \"),\" chip \") and normalize-space(.)=\"Mint\"]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "cls",
+            "strategy": "attribute",
+            "attribute": "class",
+            "transform": null
+          },
+          {
+            "id": "t6",
+            "kind": "readTable",
+            "risk": "safe",
+            "timeoutMs": 20000,
+            "optional": false,
+            "output": "rows",
+            "table": {
+              "label": "거래 표",
+              "rows": {
+                "label": "거래 표 행",
+                "locators": [
+                  {
+                    "kind": "css",
+                    "value": "tbody tr"
+                  }
+                ],
+                "fingerprint": null,
+                "frames": [],
+                "verifiedAt": null
+              },
+              "columns": [
+                {
+                  "name": "type",
+                  "selector": "td:nth-child(1)",
+                  "strategy": "innerText"
+                }
+              ],
+              "maxRows": 200
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "again",
+      "type": "custom",
+      "name": "다시 연 결과",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "code": "return { actual: input.rows.map((r) => r.type ?? '').join(',') };",
+        "outputs": [
+          "actual"
+        ],
+        "usesPage": false,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 1500,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k882",
+            "label": "링크로 열어도 Mint 가 선택되어야 한다",
+            "actual": "{{ $node.reopen.cls }}",
+            "op": "matches",
+            "expected": "(^|\\s)selected(\\s|$)"
+          },
+          {
+            "id": "k883",
+            "label": "링크로 열어도 같은 결과여야 한다",
+            "actual": "{{ $node.again.actual }}",
+            "op": "eq",
+            "expected": "{{ $node.linked.expected }}"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "landing",
+        "port": "out"
+      },
+      "to": {
+        "node": "mint"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "mint",
+        "port": "out"
+      },
+      "to": {
+        "node": "linked"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "linked",
+        "port": "out"
+      },
+      "to": {
+        "node": "reopen"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "reopen",
+        "port": "out"
+      },
+      "to": {
+        "node": "again"
+      }
+    },
+    {
+      "id": "e5",
+      "from": {
+        "node": "again",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

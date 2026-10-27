@@ -1,0 +1,358 @@
+{
+  "schemaVersion": 1,
+  "id": "msuweb-02-footer-links",
+  "name": "MSU 웹 · 푸터 링크",
+  "description": "02-navigation-links: 푸터는 정책 · 가이드 · 외부 채널 링크를 모두 제공한다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "메인 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/"
+        },
+        "actions": [
+          {
+            "id": "a46",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a47",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a48",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "푸터 «MSU Space»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//footer//a[contains(normalize-space(.),\"MSU Space\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "MSUSpace",
+            "strategy": "attribute",
+            "attribute": "href",
+            "transform": null
+          },
+          {
+            "id": "a49",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "푸터 «Guide»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//footer//a[contains(normalize-space(.),\"Guide\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "Guide",
+            "strategy": "attribute",
+            "attribute": "href",
+            "transform": null
+          },
+          {
+            "id": "a50",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "푸터 «Support»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//footer//a[contains(normalize-space(.),\"Support\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "Support",
+            "strategy": "attribute",
+            "attribute": "href",
+            "transform": null
+          },
+          {
+            "id": "a51",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "푸터 «WhitePaper»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//footer//a[contains(normalize-space(.),\"WhitePaper\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "WhitePaper",
+            "strategy": "attribute",
+            "attribute": "href",
+            "transform": null
+          },
+          {
+            "id": "a52",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "푸터 «MSU Builder»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//footer//a[contains(normalize-space(.),\"MSU Builder\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "MSUBuilder",
+            "strategy": "attribute",
+            "attribute": "href",
+            "transform": null
+          },
+          {
+            "id": "a53",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "푸터 /policy/terms",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "footer a[href=\"/policy/terms\"]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "terms",
+            "strategy": "attribute",
+            "attribute": "href",
+            "transform": null
+          },
+          {
+            "id": "a54",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "푸터 /policy/privacy",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "footer a[href=\"/policy/privacy\"]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "privacy",
+            "strategy": "attribute",
+            "attribute": "href",
+            "transform": null
+          },
+          {
+            "id": "a55",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "푸터 /policy/cookie",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "footer a[href=\"/policy/cookie\"]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "cookie",
+            "strategy": "attribute",
+            "attribute": "href",
+            "transform": null
+          },
+          {
+            "id": "a56",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "푸터 /policy/risk",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "footer a[href=\"/policy/risk\"]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "risk",
+            "strategy": "attribute",
+            "attribute": "href",
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k57",
+            "label": "푸터 MSU Space 의 링크",
+            "actual": "{{ $node.open.MSUSpace }}",
+            "op": "contains",
+            "expected": "verse8.io/msu"
+          },
+          {
+            "id": "k58",
+            "label": "푸터 Guide 의 링크",
+            "actual": "{{ $node.open.Guide }}",
+            "op": "contains",
+            "expected": "docs.msu.io"
+          },
+          {
+            "id": "k59",
+            "label": "푸터 Support 의 링크",
+            "actual": "{{ $node.open.Support }}",
+            "op": "contains",
+            "expected": "support.msu.io"
+          },
+          {
+            "id": "k60",
+            "label": "푸터 WhitePaper 의 링크",
+            "actual": "{{ $node.open.WhitePaper }}",
+            "op": "contains",
+            "expected": "docs.nexpace.io"
+          },
+          {
+            "id": "k61",
+            "label": "푸터 MSU Builder 의 링크",
+            "actual": "{{ $node.open.MSUBuilder }}",
+            "op": "contains",
+            "expected": "msu.io/builder"
+          },
+          {
+            "id": "k62",
+            "label": "푸터에 terms 정책 링크가 있어야 한다",
+            "actual": "{{ $node.open.terms }}",
+            "op": "eq",
+            "expected": "/policy/terms"
+          },
+          {
+            "id": "k63",
+            "label": "푸터에 privacy 정책 링크가 있어야 한다",
+            "actual": "{{ $node.open.privacy }}",
+            "op": "eq",
+            "expected": "/policy/privacy"
+          },
+          {
+            "id": "k64",
+            "label": "푸터에 cookie 정책 링크가 있어야 한다",
+            "actual": "{{ $node.open.cookie }}",
+            "op": "eq",
+            "expected": "/policy/cookie"
+          },
+          {
+            "id": "k65",
+            "label": "푸터에 risk 정책 링크가 있어야 한다",
+            "actual": "{{ $node.open.risk }}",
+            "op": "eq",
+            "expected": "/policy/risk"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

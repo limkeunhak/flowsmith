@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-13-footer-links",
+  "name": "Navigator · 헤더 · 푸터 외부 링크는 새 창 · noopener",
+  "description": "13-links-and-a11y: 헤더 · 푸터의 외부(http) 링크가 있고, 모두 target=_blank 이며 rel 에 noopener 가 있다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "Navigator 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/navigator"
+        },
+        "actions": [
+          {
+            "id": "a931",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a932",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "links",
+      "type": "custom",
+      "name": "헤더 · 푸터 링크",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "const links = await page.locator('header a, footer a').evaluateAll((els) => els.map((e) => ({ text: (e.innerText || '').trim().replace(/\\s+/g, ' '), href: e.getAttribute('href') || '', target: e.getAttribute('target') || '', rel: e.getAttribute('rel') || '' })));\nconst ext = links.filter((l) => /^https?:\\/\\//.test(l.href)); const show = (l) => (l.text || '(무텍스트)') + ' → ' + l.href;\nreturn { external: ext.length, sameTab: ext.filter((l) => l.target !== '_blank').map(show).join(', '), missingRel: ext.filter((l) => !l.rel.includes('noopener')).map(show).join(', ') };",
+        "outputs": [
+          "external",
+          "sameTab",
+          "missingRel"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k933",
+            "label": "외부 링크가 있어야 한다",
+            "actual": "{{ $input.external }}",
+            "op": "gt",
+            "expected": "0"
+          },
+          {
+            "id": "k934",
+            "label": "외부 링크는 새 창으로 열려야 한다",
+            "actual": "{{ $input.sameTab }}",
+            "op": "empty",
+            "expected": null
+          },
+          {
+            "id": "k935",
+            "label": "target=\"_blank\" 링크에는 rel=\"noopener\" 가 있어야 한다",
+            "actual": "{{ $input.missingRel }}",
+            "op": "empty",
+            "expected": null
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "links"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "links",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

@@ -1,0 +1,395 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-04-nft-tabs",
+  "name": "Navigator · NFT 상세 탭 전환",
+  "description": "04-detail-pages: 랭킹 아이템의 NFT 상세가 열리고 기본 Info에서 History로 전환된다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "find",
+      "type": "web",
+      "name": "랜딩에서 랭킹 아이템 고르기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/navigator"
+        },
+        "actions": [
+          {
+            "id": "a575",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a576",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a577",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "첫 nft 링크",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[contains(@href,\"/navigator/nft/\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "nft",
+            "strategy": "link",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "nft",
+      "type": "web",
+      "name": "NFT 상세 · History 누르기",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "{{ $node.find.nft }}"
+        },
+        "actions": [
+          {
+            "id": "a578",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a579",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a580",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Info»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Info\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "bInfo",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a581",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «History»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"History\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "bHistory",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a582",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Activity»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Activity\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "bActivity",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a583",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "탭 «History»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"History\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a584",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 3000
+            }
+          },
+          {
+            "id": "a585",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Info»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Info\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "aInfo",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a586",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «History»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"History\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "aHistory",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a587",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "탭 «Activity»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//li[@role=\"tab\"][normalize-space(.)=\"Activity\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "aActivity",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "where",
+      "type": "custom",
+      "name": "지금 주소",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "code": "return { path: new URL(page.url()).pathname, url: decodeURIComponent(page.url()), title: await page.title() };",
+        "outputs": [
+          "path",
+          "url",
+          "title"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k588",
+            "label": "제목에 «| MSU Navigator»",
+            "actual": "{{ $input.title }}",
+            "op": "contains",
+            "expected": "| MSU Navigator"
+          },
+          {
+            "id": "k589",
+            "label": "기본 탭은 Info — Info 선택",
+            "actual": "{{ $node.nft.bInfo }}",
+            "op": "eq",
+            "expected": "true"
+          },
+          {
+            "id": "k590",
+            "label": "History 누른 뒤 — History 선택",
+            "actual": "{{ $node.nft.aHistory }}",
+            "op": "eq",
+            "expected": "true"
+          },
+          {
+            "id": "k591",
+            "label": "History 누른 뒤 — 앞 탭 Info는 선택 아님",
+            "actual": "{{ $node.nft.aInfo }}",
+            "op": "ne",
+            "expected": "true"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "find",
+        "port": "out"
+      },
+      "to": {
+        "node": "nft"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "nft",
+        "port": "out"
+      },
+      "to": {
+        "node": "where"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "where",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

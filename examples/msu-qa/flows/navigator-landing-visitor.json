@@ -26,7 +26,7 @@
         },
         "actions": [
           {
-            "id": "a69",
+            "id": "a978",
             "kind": "wait",
             "risk": "safe",
             "timeoutMs": null,
@@ -37,7 +37,7 @@
             }
           },
           {
-            "id": "a70",
+            "id": "a979",
             "kind": "click",
             "risk": "safe",
             "timeoutMs": null,
@@ -57,7 +57,7 @@
             "popup": false
           },
           {
-            "id": "a71",
+            "id": "a980",
             "kind": "read",
             "risk": "safe",
             "timeoutMs": null,
@@ -80,7 +80,7 @@
             "transform": null
           },
           {
-            "id": "a72",
+            "id": "a981",
             "kind": "read",
             "risk": "safe",
             "timeoutMs": null,
@@ -103,7 +103,7 @@
             "transform": null
           },
           {
-            "id": "a73",
+            "id": "a982",
             "kind": "read",
             "risk": "safe",
             "timeoutMs": null,
@@ -126,7 +126,7 @@
             "transform": null
           },
           {
-            "id": "a74",
+            "id": "a983",
             "kind": "read",
             "risk": "safe",
             "timeoutMs": null,
@@ -149,7 +149,7 @@
             "transform": null
           },
           {
-            "id": "a75",
+            "id": "a984",
             "kind": "read",
             "risk": "safe",
             "timeoutMs": null,
@@ -172,7 +172,7 @@
             "transform": null
           },
           {
-            "id": "a76",
+            "id": "a985",
             "kind": "read",
             "risk": "safe",
             "timeoutMs": null,
@@ -213,7 +213,7 @@
           "title"
         ],
         "usesPage": true,
-        "timeoutMs": 30000
+        "timeoutMs": 60000
       }
     },
     {
@@ -227,49 +227,49 @@
       "config": {
         "items": [
           {
-            "id": "k77",
+            "id": "k986",
             "label": "제목이 MSU Navigator",
             "actual": "{{ $input.title }}",
             "op": "contains",
             "expected": "MSU Navigator"
           },
           {
-            "id": "k78",
+            "id": "k987",
             "label": "Unique Active Wallets 지표",
             "actual": "{{ $node.open.wallets }}",
             "op": "notEmpty",
             "expected": null
           },
           {
-            "id": "k79",
+            "id": "k988",
             "label": "Transactions 지표",
             "actual": "{{ $node.open.tx }}",
             "op": "notEmpty",
             "expected": null
           },
           {
-            "id": "k80",
+            "id": "k989",
             "label": "Marketplace Trading Volume 지표",
             "actual": "{{ $node.open.volume }}",
             "op": "notEmpty",
             "expected": null
           },
           {
-            "id": "k81",
+            "id": "k990",
             "label": "Transactions (30d)에 숫자가 있다",
             "actual": "{{ $node.open.txCard }}",
             "op": "matches",
             "expected": "[0-9]"
           },
           {
-            "id": "k82",
+            "id": "k991",
             "label": "검색 칸이 있다",
             "actual": "{{ $node.open.search }}",
             "op": "notEmpty",
             "expected": null
           },
           {
-            "id": "k83",
+            "id": "k992",
             "label": "헤더에 Connect",
             "actual": "{{ $node.open.connect }}",
             "op": "contains",

@@ -1,0 +1,59 @@
+{
+  "name": "MSU QA · 마켓플레이스 (msu-e2e-test)",
+  "description": "msu-e2e-test tests/marketplace/의 visitor 시나리오 — 대상 qa.msu.io/marketplace",
+  "items": [
+    {
+      "id": "m03a",
+      "flowId": "marketplace-03-detail-visitor",
+      "label": "[03-p2p-trade-flow] 판매 중인 NFT의 상세 페이지가 아이템 정보와 거래 이력을 보여준다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "m04a",
+      "flowId": "marketplace-04-bookmark-visitor",
+      "label": "[04-bookmark] 로그인하지 않은 방문자가 북마크를 누르면 저장되지 않고 Sign in 모달이 열린다",
+      "params": {
+        "tokenId": "8467190164900413392626111038978"
+      },
+      "enabled": true
+    },
+    {
+      "id": "m05a",
+      "flowId": "marketplace-05-tabs-visitor",
+      "label": "[05-explore-tabs] NFT · 캐릭터 · 닉네임 · FT · Bid 탭이 각각의 화면으로 열린다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "m05b",
+      "flowId": "marketplace-05-connect-visitor",
+      "label": "[05-explore-tabs] 비로그인 방문자에게는 모든 탭에서 로그인 진입점이 노출된다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "m06a",
+      "flowId": "marketplace-06-keyword-visitor",
+      "label": "[06-search-and-filter] 키워드로 검색하면 결과가 그 키워드로 좁혀진다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "m07a",
+      "flowId": "marketplace-07-watchlist-visitor",
+      "label": "[07-bid-signed-out] Watch List 는 로그인을 요구한다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "m09a",
+      "flowId": "marketplace-09-filters-visitor",
+      "label": "[09-search-filters] 비로그인에서는 키워드 검색만 동작하고 상세 필터는 적용되지 않는다",
+      "params": {
+        "priceMax": "2"
+      },
+      "enabled": true
+    }
+  ]
+}

@@ -1,0 +1,267 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-14-viewport",
+  "name": "Navigator · 화면 폭별 — 가로 스크롤 없이 검색 · 랭킹",
+  "description": "14-responsive: 주어진 화면 크기에서 검색 칸이 보이고 랭킹이 비지 않고 가로 스크롤이 생기지 않는다",
+  "params": [
+    {
+      "name": "width",
+      "label": "가로(px)",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "1440",
+      "help": ""
+    },
+    {
+      "name": "height",
+      "label": "세로(px)",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "900",
+      "help": ""
+    }
+  ],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "Navigator 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/navigator"
+        },
+        "actions": [
+          {
+            "id": "a960",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 1000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "viewport",
+      "type": "custom",
+      "name": "화면 크기",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "await page.setViewportSize({ width: Number(ctx.params.width), height: Number(ctx.params.height) });\nawait page.reload({ waitUntil: 'domcontentloaded' });\nreturn { size: page.viewportSize() };",
+        "outputs": [
+          "size"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "look",
+      "type": "web",
+      "name": "검색 · 랭킹",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a961",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a962",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a963",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "보이는 검색 칸",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": ":nth-match(input[placeholder*=\"Item/Character Name\" i]:visible, 1)"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "search",
+            "strategy": "attribute",
+            "attribute": "placeholder",
+            "transform": null
+          },
+          {
+            "id": "a964",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "랭킹 첫 항목",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[contains(@href,\"/navigator/nft/\") or contains(@href,\"/navigator/character/\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "ranked",
+            "strategy": "link",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "overflow",
+      "type": "custom",
+      "name": "가로 넘침",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "code": "const [scrollWidth, innerWidth] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);\nreturn { scrollWidth, innerWidth, overflow: scrollWidth - innerWidth > 2 };",
+        "outputs": [
+          "scrollWidth",
+          "innerWidth",
+          "overflow"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k965",
+            "label": "검색창이 있어야 한다",
+            "actual": "{{ $node.look.search }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k966",
+            "label": "랭킹이 비면 안 된다",
+            "actual": "{{ $node.look.ranked }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k967",
+            "label": "가로 스크롤이 생기면 안 된다",
+            "actual": "{{ $input.overflow }}",
+            "op": "isFalse",
+            "expected": null
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "viewport"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "viewport",
+        "port": "out"
+      },
+      "to": {
+        "node": "look"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "look",
+        "port": "out"
+      },
+      "to": {
+        "node": "overflow"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "overflow",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

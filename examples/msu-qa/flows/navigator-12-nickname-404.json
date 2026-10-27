@@ -1,0 +1,177 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-12-nickname-404",
+  "name": "Navigator · 없는 닉네임은 404",
+  "description": "12-nickname-detail: 존재하지 않는 닉네임은 Page Not Found 이고 내부 정보를 흘리지 않는다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "없는 닉네임 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/navigator/nickname/zzqq-not-a-nickname-zzqq"
+        },
+        "actions": [
+          {
+            "id": "a919",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 6000
+            }
+          },
+          {
+            "id": "a920",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "«Page Not Found»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//*[normalize-space(text())=\"Page Not Found\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "notFound",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a921",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "본문 전체",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "body"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "body",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k922",
+            "label": "404 여야 한다",
+            "actual": "{{ $input.notFound }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k923",
+            "label": "«TypeError»가 노출되지 않는다",
+            "actual": "{{ $input.body }}",
+            "op": "notContains",
+            "expected": "TypeError"
+          },
+          {
+            "id": "k924",
+            "label": "«ReferenceError»가 노출되지 않는다",
+            "actual": "{{ $input.body }}",
+            "op": "notContains",
+            "expected": "ReferenceError"
+          },
+          {
+            "id": "k925",
+            "label": "«at Object.»가 노출되지 않는다",
+            "actual": "{{ $input.body }}",
+            "op": "notContains",
+            "expected": "at Object."
+          },
+          {
+            "id": "k926",
+            "label": "«ECONNREFUSED»가 노출되지 않는다",
+            "actual": "{{ $input.body }}",
+            "op": "notContains",
+            "expected": "ECONNREFUSED"
+          },
+          {
+            "id": "k927",
+            "label": "«ETIMEDOUT»가 노출되지 않는다",
+            "actual": "{{ $input.body }}",
+            "op": "notContains",
+            "expected": "ETIMEDOUT"
+          },
+          {
+            "id": "k928",
+            "label": "«Internal Server»가 노출되지 않는다",
+            "actual": "{{ $input.body }}",
+            "op": "notContains",
+            "expected": "Internal Server"
+          },
+          {
+            "id": "k929",
+            "label": "«stacktrace»가 노출되지 않는다",
+            "actual": "{{ $input.body }}",
+            "op": "notContains",
+            "expected": "stacktrace"
+          },
+          {
+            "id": "k930",
+            "label": "«Traceback»가 노출되지 않는다",
+            "actual": "{{ $input.body }}",
+            "op": "notContains",
+            "expected": "Traceback"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

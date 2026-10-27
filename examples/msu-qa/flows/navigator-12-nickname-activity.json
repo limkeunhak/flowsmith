@@ -1,0 +1,380 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-12-nickname-activity",
+  "name": "Navigator · 닉네임 상세 발행 · 거래 내역",
+  "description": "12-nickname-detail: 닉네임 상세에 Price · From · To · Date 열의 표가 있고 Mint 기록이 있다",
+  "params": [
+    {
+      "name": "owner",
+      "label": "닉네임을 가진 지갑",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "0x18B8958F05263D89281f1bdd97AFfc5879394292",
+      "help": "QA — 캐릭터 43개 · 닉네임 evaans"
+    }
+  ],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "owner",
+      "type": "web",
+      "name": "지갑 → Nicknames 탭",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/navigator/owner/{{ $params.owner }}"
+        },
+        "actions": [
+          {
+            "id": "a904",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a905",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a906",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "«Nicknames» 탭",
+              "locators": [
+                {
+                  "kind": "role",
+                  "value": "tab",
+                  "name": "Nicknames"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a907",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 3500
+            }
+          },
+          {
+            "id": "a908",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "첫 닉네임 링크",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[contains(@href,\"/navigator/nickname/\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "href",
+            "strategy": "link",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "detail",
+      "type": "web",
+      "name": "닉네임 상세 열기",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "{{ $input.href }}"
+        },
+        "actions": [
+          {
+            "id": "a909",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a910",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a911",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "«Page Not Found»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//*[normalize-space(text())=\"Page Not Found\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "notFound",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "t7",
+            "kind": "readTable",
+            "risk": "safe",
+            "timeoutMs": 20000,
+            "optional": false,
+            "output": "heads",
+            "table": {
+              "label": "표 머리",
+              "rows": {
+                "label": "표 머리 행",
+                "locators": [
+                  {
+                    "kind": "css",
+                    "value": "thead tr"
+                  }
+                ],
+                "fingerprint": null,
+                "frames": [],
+                "verifiedAt": null
+              },
+              "columns": [
+                {
+                  "name": "c1",
+                  "selector": "th:nth-child(1)",
+                  "strategy": "innerText"
+                },
+                {
+                  "name": "c2",
+                  "selector": "th:nth-child(2)",
+                  "strategy": "innerText"
+                },
+                {
+                  "name": "c3",
+                  "selector": "th:nth-child(3)",
+                  "strategy": "innerText"
+                },
+                {
+                  "name": "c4",
+                  "selector": "th:nth-child(4)",
+                  "strategy": "innerText"
+                },
+                {
+                  "name": "c5",
+                  "selector": "th:nth-child(5)",
+                  "strategy": "innerText"
+                },
+                {
+                  "name": "c6",
+                  "selector": "th:nth-child(6)",
+                  "strategy": "innerText"
+                },
+                {
+                  "name": "c7",
+                  "selector": "th:nth-child(7)",
+                  "strategy": "innerText"
+                },
+                {
+                  "name": "c8",
+                  "selector": "th:nth-child(8)",
+                  "strategy": "innerText"
+                }
+              ],
+              "maxRows": 200
+            }
+          },
+          {
+            "id": "t8",
+            "kind": "readTable",
+            "risk": "safe",
+            "timeoutMs": 20000,
+            "optional": false,
+            "output": "rows",
+            "table": {
+              "label": "거래 표",
+              "rows": {
+                "label": "거래 표 행",
+                "locators": [
+                  {
+                    "kind": "css",
+                    "value": "tbody tr"
+                  }
+                ],
+                "fingerprint": null,
+                "frames": [],
+                "verifiedAt": null
+              },
+              "columns": [
+                {
+                  "name": "type",
+                  "selector": "td:nth-child(1)",
+                  "strategy": "innerText"
+                }
+              ],
+              "maxRows": 200
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k912",
+            "label": "닉네임 상세가 열려야 한다",
+            "actual": "{{ $input.notFound }}",
+            "op": "empty",
+            "expected": null
+          },
+          {
+            "id": "k913",
+            "label": "Price 열이 있어야 한다",
+            "actual": "{{ $input.heads }}",
+            "op": "anyEq",
+            "expected": "Price"
+          },
+          {
+            "id": "k914",
+            "label": "From 열이 있어야 한다",
+            "actual": "{{ $input.heads }}",
+            "op": "anyEq",
+            "expected": "From"
+          },
+          {
+            "id": "k915",
+            "label": "To 열이 있어야 한다",
+            "actual": "{{ $input.heads }}",
+            "op": "anyEq",
+            "expected": "To"
+          },
+          {
+            "id": "k916",
+            "label": "Date 열이 있어야 한다",
+            "actual": "{{ $input.heads }}",
+            "op": "anyEq",
+            "expected": "Date"
+          },
+          {
+            "id": "k917",
+            "label": "발행 내역이라도 있어야 한다",
+            "actual": "{{ $input.rows }}",
+            "op": "countGte",
+            "expected": "1"
+          },
+          {
+            "id": "k918",
+            "label": "Mint 기록이 있어야 한다",
+            "actual": "{{ $input.rows }}",
+            "op": "anyEq",
+            "expected": "Mint"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "owner",
+        "port": "out"
+      },
+      "to": {
+        "node": "detail"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "detail",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

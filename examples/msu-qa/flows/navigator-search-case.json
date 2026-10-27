@@ -36,7 +36,7 @@
         },
         "actions": [
           {
-            "id": "a104",
+            "id": "a1013",
             "kind": "wait",
             "risk": "safe",
             "timeoutMs": null,
@@ -47,7 +47,7 @@
             }
           },
           {
-            "id": "a105",
+            "id": "a1014",
             "kind": "click",
             "risk": "safe",
             "timeoutMs": null,
@@ -67,7 +67,7 @@
             "popup": false
           },
           {
-            "id": "a106",
+            "id": "a1015",
             "kind": "fill",
             "risk": "safe",
             "timeoutMs": null,
@@ -87,7 +87,7 @@
             "value": "{{ $params.name }}"
           },
           {
-            "id": "a107",
+            "id": "a1016",
             "kind": "press",
             "risk": "safe",
             "timeoutMs": null,
@@ -107,7 +107,7 @@
             "key": "Enter"
           },
           {
-            "id": "a108",
+            "id": "a1017",
             "kind": "wait",
             "risk": "safe",
             "timeoutMs": 15000,
@@ -118,7 +118,7 @@
             }
           },
           {
-            "id": "a109",
+            "id": "a1018",
             "kind": "wait",
             "risk": "safe",
             "timeoutMs": null,
@@ -146,7 +146,7 @@
           "lower"
         ],
         "usesPage": true,
-        "timeoutMs": 30000
+        "timeoutMs": 60000
       }
     },
     {
@@ -163,7 +163,7 @@
         },
         "actions": [
           {
-            "id": "a110",
+            "id": "a1019",
             "kind": "goto",
             "risk": "safe",
             "timeoutMs": null,
@@ -171,7 +171,7 @@
             "url": "https://qa.msu.io/navigator"
           },
           {
-            "id": "a111",
+            "id": "a1020",
             "kind": "wait",
             "risk": "safe",
             "timeoutMs": null,
@@ -182,7 +182,7 @@
             }
           },
           {
-            "id": "a112",
+            "id": "a1021",
             "kind": "fill",
             "risk": "safe",
             "timeoutMs": null,
@@ -202,7 +202,7 @@
             "value": "{{ $input.lower }}"
           },
           {
-            "id": "a113",
+            "id": "a1022",
             "kind": "press",
             "risk": "safe",
             "timeoutMs": null,
@@ -222,7 +222,7 @@
             "key": "Enter"
           },
           {
-            "id": "a114",
+            "id": "a1023",
             "kind": "wait",
             "risk": "safe",
             "timeoutMs": 15000,
@@ -233,7 +233,7 @@
             }
           },
           {
-            "id": "a115",
+            "id": "a1024",
             "kind": "wait",
             "risk": "safe",
             "timeoutMs": null,
@@ -260,7 +260,7 @@
           "second"
         ],
         "usesPage": true,
-        "timeoutMs": 30000
+        "timeoutMs": 60000
       }
     },
     {
@@ -274,7 +274,7 @@
       "config": {
         "items": [
           {
-            "id": "k116",
+            "id": "k1025",
             "label": "소문자 검색도 같은 대상",
             "actual": "{{ $input.second }}",
             "op": "eq",

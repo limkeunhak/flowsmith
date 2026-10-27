@@ -1,0 +1,265 @@
+{
+  "schemaVersion": 1,
+  "id": "marketplace-06-keyword-visitor",
+  "name": "마켓플레이스 · 키워드 검색(비회원)",
+  "description": "06-search-and-filter: 첫 카드의 이름으로 검색하면 URL에 검색어가 실리고 결과가 모두 그 이름을 담는다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "list",
+      "type": "web",
+      "name": "NFT 목록 · 첫 카드 이름",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/marketplace/nft"
+        },
+        "actions": [
+          {
+            "id": "a472",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a473",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a474",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": 30000,
+            "optional": false,
+            "target": {
+              "label": "첫 카드의 북마크",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button.bookmark >> nth=0"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "itemName",
+            "strategy": "attribute",
+            "attribute": "data-gtm-item-name",
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "term",
+      "type": "custom",
+      "name": "검색어(«#» 앞)",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "return { term: String(input.itemName).split('#')[0].trim() };",
+        "outputs": [
+          "term"
+        ],
+        "usesPage": false,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "search",
+      "type": "web",
+      "name": "검색",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a475",
+            "kind": "fill",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "목록 검색 칸(keyword)",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "input[name=\"keyword\"]:visible >> nth=0"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "value": "{{ $input.term }}"
+          },
+          {
+            "id": "a476",
+            "kind": "press",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "목록 검색 칸(keyword)",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "input[name=\"keyword\"]:visible >> nth=0"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "key": "Enter"
+          },
+          {
+            "id": "a477",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "result",
+      "type": "custom",
+      "name": "URL의 검색어 · 결과 이름",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "code": "const keyword = new URL(page.url()).searchParams.get('keyword') ?? '';\nconst names = await page.evaluate(() => [...document.querySelectorAll('button.bookmark')].map((b) => b.getAttribute('data-gtm-item-name') || '').filter(Boolean));\nconst t = String(input.term).toLowerCase();\nreturn { keyword, names, strays: names.filter((n) => !n.toLowerCase().includes(t)) };",
+        "outputs": [
+          "keyword",
+          "names",
+          "strays"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k478",
+            "label": "검색어가 URL에 반영된다",
+            "actual": "{{ $input.keyword }}",
+            "op": "eq",
+            "expected": "{{ $node.term.term }}"
+          },
+          {
+            "id": "k479",
+            "label": "검색 결과가 있다",
+            "actual": "{{ $input.names }}",
+            "op": "countGte",
+            "expected": "1"
+          },
+          {
+            "id": "k480",
+            "label": "결과가 모두 검색어를 포함한다(벗어난 결과 0)",
+            "actual": "{{ $input.strays }}",
+            "op": "countEq",
+            "expected": "0"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "list",
+        "port": "out"
+      },
+      "to": {
+        "node": "term"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "term",
+        "port": "out"
+      },
+      "to": {
+        "node": "search"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "search",
+        "port": "out"
+      },
+      "to": {
+        "node": "result"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "result",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

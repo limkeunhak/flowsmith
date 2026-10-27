@@ -1,0 +1,34 @@
+{
+  "name": "MSU QA · Swap & Warp (msu-e2e-test)",
+  "description": "msu-e2e-test tests/swapnwarp/의 visitor 시나리오 — 대상 qa.msu.io/swapnwarp",
+  "items": [
+    {
+      "id": "s01a",
+      "flowId": "swapnwarp-01-visitor",
+      "label": "[01-swap-page] 로그인하지 않은 방문자에게 스왑 화면과 지갑 연결 안내가 보인다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "s01b",
+      "flowId": "swapnwarp-01-tabs",
+      "label": "[01-swap-page] 스왑 · 워프 · 트랜잭션 탭이 각각의 경로로 열린다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "s04a",
+      "flowId": "swapnwarp-04-address-filter",
+      "label": "[04-transaction-filters] Transactions 페이지에서 지갑 주소로 필터링할 수 있다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "s04b",
+      "flowId": "swapnwarp-04-type-filter",
+      "label": "[04-transaction-filters] Transactions 페이지에서 트랜잭션 유형으로 필터링할 수 있다",
+      "params": {},
+      "enabled": true
+    }
+  ]
+}

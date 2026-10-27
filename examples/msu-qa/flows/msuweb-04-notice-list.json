@@ -1,0 +1,227 @@
+{
+  "schemaVersion": 1,
+  "id": "msuweb-04-notice-list",
+  "name": "MSU 웹 · 공지 목록",
+  "description": "04-notices: 공지 목록에 글이 노출된다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "/notices 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/notices"
+        },
+        "actions": [
+          {
+            "id": "a105",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a106",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a107",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "첫 공지",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[starts-with(@href,\"/notices/\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "href",
+            "strategy": "attribute",
+            "attribute": "href",
+            "transform": null
+          },
+          {
+            "id": "a108",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "첫 공지 제목",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[starts-with(@href,\"/notices/\")])[1]//h4"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "title",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a109",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "본문 전체",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "body"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "body",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k110",
+            "label": "공지가 하나는 있어야 한다",
+            "actual": "{{ $node.open.href }}",
+            "op": "startsWith",
+            "expected": "/notices/"
+          },
+          {
+            "id": "k111",
+            "label": "첫 공지 제목이 있다",
+            "actual": "{{ $node.open.title }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k112",
+            "label": "«TypeError»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "TypeError"
+          },
+          {
+            "id": "k113",
+            "label": "«ReferenceError»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "ReferenceError"
+          },
+          {
+            "id": "k114",
+            "label": "«at Object.»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "at Object."
+          },
+          {
+            "id": "k115",
+            "label": "«ECONNREFUSED»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "ECONNREFUSED"
+          },
+          {
+            "id": "k116",
+            "label": "«ETIMEDOUT»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "ETIMEDOUT"
+          },
+          {
+            "id": "k117",
+            "label": "«Internal Server»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "Internal Server"
+          },
+          {
+            "id": "k118",
+            "label": "«stacktrace»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "stacktrace"
+          },
+          {
+            "id": "k119",
+            "label": "«Traceback»가 노출되지 않는다",
+            "actual": "{{ $node.open.body }}",
+            "op": "notContains",
+            "expected": "Traceback"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

@@ -1,0 +1,339 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-13-img-alt",
+  "name": "Navigator · 보이는 이미지의 alt 속성",
+  "description": "13-links-and-a11y: 랜딩 · 아이템 상세 · 캐릭터 상세에서 보이는 이미지에 alt 속성이 빠진 것이 없다(alt=\"\"는 지정으로 본다)",
+  "params": [
+    {
+      "name": "character",
+      "label": "캐릭터 id",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "CHARd0311l7p0t3s73a6tds0",
+      "help": "QA — blahh"
+    }
+  ],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "landing",
+      "type": "web",
+      "name": "랜딩 · 랭킹 첫 아이템",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/navigator"
+        },
+        "actions": [
+          {
+            "id": "a950",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a951",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a952",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "랭킹 첫 아이템 링크",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[contains(@href,\"/navigator/nft/\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "nft",
+            "strategy": "link",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "altLanding",
+      "type": "custom",
+      "name": "랜딩 alt 누락",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "await page.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => {});\nconst missing = await page.evaluate(() => Array.from(document.querySelectorAll('img')).filter((i) => !!i.offsetParent).filter((i) => i.getAttribute('alt') === null).map((i) => (i.getAttribute('src') || '').split('?')[0].slice(-50)));\nreturn { missing: missing.join(', ') };",
+        "outputs": [
+          "missing"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "nft",
+      "type": "web",
+      "name": "아이템 상세",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "{{ $node.landing.nft }}"
+        },
+        "actions": [
+          {
+            "id": "a953",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a954",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "altNft",
+      "type": "custom",
+      "name": "아이템 상세 alt 누락",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "code": "await page.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => {});\nconst missing = await page.evaluate(() => Array.from(document.querySelectorAll('img')).filter((i) => !!i.offsetParent).filter((i) => i.getAttribute('alt') === null).map((i) => (i.getAttribute('src') || '').split('?')[0].slice(-50)));\nreturn { missing: missing.join(', ') };",
+        "outputs": [
+          "missing"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "character",
+      "type": "web",
+      "name": "캐릭터 상세",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/navigator/character/{{ $params.character }}"
+        },
+        "actions": [
+          {
+            "id": "a955",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          },
+          {
+            "id": "a956",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "altCharacter",
+      "type": "custom",
+      "name": "캐릭터 상세 alt 누락",
+      "position": {
+        "x": 1500,
+        "y": 0
+      },
+      "config": {
+        "code": "await page.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => {});\nconst missing = await page.evaluate(() => Array.from(document.querySelectorAll('img')).filter((i) => !!i.offsetParent).filter((i) => i.getAttribute('alt') === null).map((i) => (i.getAttribute('src') || '').split('?')[0].slice(-50)));\nreturn { missing: missing.join(', ') };",
+        "outputs": [
+          "missing"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 1800,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k957",
+            "label": "랜딩: alt 속성이 없는 이미지가 있으면 안 된다",
+            "actual": "{{ $node.altLanding.missing }}",
+            "op": "empty",
+            "expected": null
+          },
+          {
+            "id": "k958",
+            "label": "아이템 상세: alt 속성이 없는 이미지가 있으면 안 된다",
+            "actual": "{{ $node.altNft.missing }}",
+            "op": "empty",
+            "expected": null
+          },
+          {
+            "id": "k959",
+            "label": "캐릭터 상세: alt 속성이 없는 이미지가 있으면 안 된다",
+            "actual": "{{ $node.altCharacter.missing }}",
+            "op": "empty",
+            "expected": null
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "landing",
+        "port": "out"
+      },
+      "to": {
+        "node": "altLanding"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "altLanding",
+        "port": "out"
+      },
+      "to": {
+        "node": "nft"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "nft",
+        "port": "out"
+      },
+      "to": {
+        "node": "altNft"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "altNft",
+        "port": "out"
+      },
+      "to": {
+        "node": "character"
+      }
+    },
+    {
+      "id": "e5",
+      "from": {
+        "node": "character",
+        "port": "out"
+      },
+      "to": {
+        "node": "altCharacter"
+      }
+    },
+    {
+      "id": "e6",
+      "from": {
+        "node": "altCharacter",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

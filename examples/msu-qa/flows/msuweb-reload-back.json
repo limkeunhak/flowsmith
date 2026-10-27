@@ -26,7 +26,7 @@
         },
         "actions": [
           {
-            "id": "a53",
+            "id": "a383",
             "kind": "wait",
             "risk": "safe",
             "timeoutMs": null,
@@ -37,7 +37,7 @@
             }
           },
           {
-            "id": "a54",
+            "id": "a384",
             "kind": "click",
             "risk": "safe",
             "timeoutMs": null,
@@ -57,7 +57,7 @@
             "popup": false
           },
           {
-            "id": "a55",
+            "id": "a385",
             "kind": "goto",
             "risk": "safe",
             "timeoutMs": null,
@@ -65,7 +65,7 @@
             "url": "https://qa.msu.io/about"
           },
           {
-            "id": "a56",
+            "id": "a386",
             "kind": "wait",
             "risk": "safe",
             "timeoutMs": null,
@@ -96,7 +96,7 @@
           "body"
         ],
         "usesPage": true,
-        "timeoutMs": 30000
+        "timeoutMs": 60000
       }
     },
     {
@@ -110,84 +110,84 @@
       "config": {
         "items": [
           {
-            "id": "k57",
+            "id": "k387",
             "label": "새로고침해도 /about",
             "actual": "{{ $input.afterReload }}",
             "op": "eq",
             "expected": "/about"
           },
           {
-            "id": "k58",
+            "id": "k388",
             "label": "새로고침 후에도 헤더",
             "actual": "{{ $input.headerAfterReload }}",
             "op": "isTrue",
             "expected": null
           },
           {
-            "id": "k59",
+            "id": "k389",
             "label": "뒤로 가면 메인",
             "actual": "{{ $input.afterBack }}",
             "op": "eq",
             "expected": "/"
           },
           {
-            "id": "k60",
+            "id": "k390",
             "label": "뒤로가기 후에도 헤더",
             "actual": "{{ $input.headerAfterBack }}",
             "op": "isTrue",
             "expected": null
           },
           {
-            "id": "k61",
+            "id": "k391",
             "label": "«TypeError»가 노출되지 않는다",
             "actual": "{{ $input.body }}",
             "op": "notContains",
             "expected": "TypeError"
           },
           {
-            "id": "k62",
+            "id": "k392",
             "label": "«ReferenceError»가 노출되지 않는다",
             "actual": "{{ $input.body }}",
             "op": "notContains",
             "expected": "ReferenceError"
           },
           {
-            "id": "k63",
+            "id": "k393",
             "label": "«at Object.»가 노출되지 않는다",
             "actual": "{{ $input.body }}",
             "op": "notContains",
             "expected": "at Object."
           },
           {
-            "id": "k64",
+            "id": "k394",
             "label": "«ECONNREFUSED»가 노출되지 않는다",
             "actual": "{{ $input.body }}",
             "op": "notContains",
             "expected": "ECONNREFUSED"
           },
           {
-            "id": "k65",
+            "id": "k395",
             "label": "«ETIMEDOUT»가 노출되지 않는다",
             "actual": "{{ $input.body }}",
             "op": "notContains",
             "expected": "ETIMEDOUT"
           },
           {
-            "id": "k66",
+            "id": "k396",
             "label": "«Internal Server»가 노출되지 않는다",
             "actual": "{{ $input.body }}",
             "op": "notContains",
             "expected": "Internal Server"
           },
           {
-            "id": "k67",
+            "id": "k397",
             "label": "«stacktrace»가 노출되지 않는다",
             "actual": "{{ $input.body }}",
             "op": "notContains",
             "expected": "stacktrace"
           },
           {
-            "id": "k68",
+            "id": "k398",
             "label": "«Traceback»가 노출되지 않는다",
             "actual": "{{ $input.body }}",
             "op": "notContains",

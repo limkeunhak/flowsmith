@@ -1,0 +1,580 @@
+{
+  "schemaVersion": 1,
+  "id": "swapnwarp-04-type-filter",
+  "name": "Swap & Warp · 거래 내역 유형 필터",
+  "description": "04-transaction-filters: Type을 NXPC → NESO · NESO → NXPC로 바꾸면 URL · 요청 · 응답 · 화면이 그 방향만 — 기본은 All",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "start",
+      "type": "web",
+      "name": "Swap & Warp",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/swapnwarp"
+        },
+        "actions": [
+          {
+            "id": "a547",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 2000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "watch",
+      "type": "custom",
+      "name": "응답 듣기",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "page.__tx = [];\nif (!page.__txOn) { page.__txOn = true; page.on('response', async (r) => { if (!/\\/swapnwarp\\/api\\/swap\\/transaction\\?/.test(r.url())) return;\n  let entries = []; try { entries = (await r.json()).transactions ?? []; } catch {} page.__tx.push({ url: r.url(), entries }); }); }\nreturn { watching: true };",
+        "outputs": [
+          "watching"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "open",
+      "type": "web",
+      "name": "거래 내역 열기",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a548",
+            "kind": "goto",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "url": "https://qa.msu.io/swapnwarp/transactions"
+          },
+          {
+            "id": "a549",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 6000
+            }
+          },
+          {
+            "id": "a550",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a551",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "Type 칩",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "#asset_chip"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "chip",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "all",
+      "type": "custom",
+      "name": "처음 조회(All)",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "code": "const raw = await page.evaluate(() => localStorage.getItem('msu_auth_store'));\nlet isLogin = false; try { isLogin = JSON.parse(raw)?.state?.isLogin === true; } catch {}\nconst until = Date.now() + 15000;\nwhile (!page.__tx.length && Date.now() < until) await page.waitForTimeout(300);\nconst got = page.__tx.splice(0); const last = got[got.length - 1] ?? { url: '', entries: [] };\nconst req = last.url ? new URL(last.url).searchParams : new URLSearchParams();\nconst here = new URL(page.url()).searchParams;\nconst notice = await page.locator('[role=\"status\"][aria-label^=\"No transaction items found\"]').first().isVisible().catch(() => false);\nconst tableCount = await page.locator('#swap_table').count();\nreturn { isLogin, swapType: req.get('swapType') ?? '' };",
+        "outputs": [
+          "isLogin",
+          "swapType"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "pick_NXPC_TO_NESO",
+      "type": "web",
+      "name": "Type NXPC → NESO",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a552",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "Type 칩",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "#asset_chip"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a553",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "옵션 NXPC → NESO",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "//*[@role=\"option\" and starts-with(normalize-space(.),\"NXPC\") and substring(normalize-space(.), string-length(normalize-space(.)) - 3) = \"NESO\"]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a554",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": 10000,
+            "optional": false,
+            "wait": {
+              "kind": "visible",
+              "target": {
+                "label": "칩이 NXPC → NESO",
+                "locators": [
+                  {
+                    "kind": "xpath",
+                    "value": "//*[@id=\"asset_chip\" and starts-with(normalize-space(.),\"NXPC\")]"
+                  }
+                ],
+                "fingerprint": null,
+                "frames": [],
+                "verifiedAt": null
+              }
+            }
+          },
+          {
+            "id": "a555",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 3000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "s_NXPC_TO_NESO",
+      "type": "custom",
+      "name": "NXPC_TO_NESO 결과 — URL · 요청 · 응답 · 화면",
+      "position": {
+        "x": 1500,
+        "y": 0
+      },
+      "config": {
+        "code": "const until = Date.now() + 15000;\nwhile (!page.__tx.length && Date.now() < until) await page.waitForTimeout(300);\nconst got = page.__tx.splice(0); const last = got[got.length - 1] ?? { url: '', entries: [] };\nconst req = last.url ? new URL(last.url).searchParams : new URLSearchParams();\nconst here = new URL(page.url()).searchParams;\nconst notice = await page.locator('[role=\"status\"][aria-label^=\"No transaction items found\"]').first().isVisible().catch(() => false);\nconst tableCount = await page.locator('#swap_table').count();\nconst rows = await page.locator('#swap_table [role=\"row\"][aria-label^=\"Swap transaction row for\"]').evaluateAll((els) => els.map((row) => {\n  const cells = [...row.querySelectorAll('[role=\"cell\"]')].map((c) => (c.innerText || '').replace(/\\s+/g, ' ').trim());\n  const a = (cells[1] || '').match(/[\\d,]+(?:\\.\\d+)?/g) || [];\n  return { address: (row.getAttribute('aria-label') || '').replace('Swap transaction row for ', ''), pay: a[0] || '', receive: a[1] || '' }; }));\nconst want = 'SWAP_TYPE_NXPC_TO_NESO'; const num = (v) => Number(String(v).replace(/,/g, ''));\nreturn { transactionType: here.get('transactionType') ?? '', swapType: req.get('swapType') ?? '',\n  others: [...new Set(last.entries.filter((e) => e.swapType !== want).map((e) => e.swapType))],\n  respHas: last.entries.length > 0, shownHas: rows.length > 0,\n  wrongWay: rows.filter((r) => num(r.receive) <= num(r.pay)).map((r) => r.pay + '→' + r.receive),\n  rowsOrNotice: rows.length ? rows.length + '행' : notice ? '없음 안내' : '' };",
+        "outputs": [
+          "transactionType",
+          "swapType",
+          "others",
+          "respHas",
+          "shownHas",
+          "wrongWay",
+          "rowsOrNotice"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "pick_NESO_TO_NXPC",
+      "type": "web",
+      "name": "Type NESO → NXPC",
+      "position": {
+        "x": 1800,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a556",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "Type 칩",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "#asset_chip"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a557",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "옵션 NESO → NXPC",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "//*[@role=\"option\" and starts-with(normalize-space(.),\"NESO\") and substring(normalize-space(.), string-length(normalize-space(.)) - 3) = \"NXPC\"]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a558",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": 10000,
+            "optional": false,
+            "wait": {
+              "kind": "visible",
+              "target": {
+                "label": "칩이 NESO → NXPC",
+                "locators": [
+                  {
+                    "kind": "xpath",
+                    "value": "//*[@id=\"asset_chip\" and starts-with(normalize-space(.),\"NESO\")]"
+                  }
+                ],
+                "fingerprint": null,
+                "frames": [],
+                "verifiedAt": null
+              }
+            }
+          },
+          {
+            "id": "a559",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 3000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "s_NESO_TO_NXPC",
+      "type": "custom",
+      "name": "NESO_TO_NXPC 결과 — URL · 요청 · 응답 · 화면",
+      "position": {
+        "x": 2100,
+        "y": 0
+      },
+      "config": {
+        "code": "const until = Date.now() + 15000;\nwhile (!page.__tx.length && Date.now() < until) await page.waitForTimeout(300);\nconst got = page.__tx.splice(0); const last = got[got.length - 1] ?? { url: '', entries: [] };\nconst req = last.url ? new URL(last.url).searchParams : new URLSearchParams();\nconst here = new URL(page.url()).searchParams;\nconst notice = await page.locator('[role=\"status\"][aria-label^=\"No transaction items found\"]').first().isVisible().catch(() => false);\nconst tableCount = await page.locator('#swap_table').count();\nconst rows = await page.locator('#swap_table [role=\"row\"][aria-label^=\"Swap transaction row for\"]').evaluateAll((els) => els.map((row) => {\n  const cells = [...row.querySelectorAll('[role=\"cell\"]')].map((c) => (c.innerText || '').replace(/\\s+/g, ' ').trim());\n  const a = (cells[1] || '').match(/[\\d,]+(?:\\.\\d+)?/g) || [];\n  return { address: (row.getAttribute('aria-label') || '').replace('Swap transaction row for ', ''), pay: a[0] || '', receive: a[1] || '' }; }));\nconst want = 'SWAP_TYPE_NESO_TO_NXPC'; const num = (v) => Number(String(v).replace(/,/g, ''));\nreturn { transactionType: here.get('transactionType') ?? '', swapType: req.get('swapType') ?? '',\n  others: [...new Set(last.entries.filter((e) => e.swapType !== want).map((e) => e.swapType))],\n  respHas: last.entries.length > 0, shownHas: rows.length > 0,\n  wrongWay: rows.filter((r) => num(r.receive) >= num(r.pay)).map((r) => r.pay + '→' + r.receive),\n  rowsOrNotice: rows.length ? rows.length + '행' : notice ? '없음 안내' : '' };",
+        "outputs": [
+          "transactionType",
+          "swapType",
+          "others",
+          "respHas",
+          "shownHas",
+          "wrongWay",
+          "rowsOrNotice"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 2400,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k560",
+            "label": "전제: 로그인하지 않았다",
+            "actual": "{{ $node.all.isLogin }}",
+            "op": "isFalse",
+            "expected": null
+          },
+          {
+            "id": "k561",
+            "label": "기본값은 방향을 지정하지 않는다",
+            "actual": "{{ $node.all.swapType }}",
+            "op": "eq",
+            "expected": "SWAP_TYPE_UNSPECIFIED"
+          },
+          {
+            "id": "k562",
+            "label": "기본값은 All",
+            "actual": "{{ $node.open.chip }}",
+            "op": "matches",
+            "expected": "^All"
+          },
+          {
+            "id": "k563",
+            "label": "NXPC_TO_NESO: 고른 유형이 URL에 실린다",
+            "actual": "{{ $node.s_NXPC_TO_NESO.transactionType }}",
+            "op": "eq",
+            "expected": "SWAP_TYPE_NXPC_TO_NESO"
+          },
+          {
+            "id": "k564",
+            "label": "NXPC_TO_NESO: 조회 요청에 유형이 담긴다",
+            "actual": "{{ $node.s_NXPC_TO_NESO.swapType }}",
+            "op": "eq",
+            "expected": "SWAP_TYPE_NXPC_TO_NESO"
+          },
+          {
+            "id": "k565",
+            "label": "NXPC_TO_NESO: 응답에 다른 유형이 섞이지 않는다",
+            "actual": "{{ $node.s_NXPC_TO_NESO.others }}",
+            "op": "countEq",
+            "expected": "0"
+          },
+          {
+            "id": "k566",
+            "label": "NXPC_TO_NESO: 응답이 있으면 화면에도 행이 있다(있음 여부가 같다)",
+            "actual": "{{ $node.s_NXPC_TO_NESO.shownHas }}",
+            "op": "eq",
+            "expected": "{{ $node.s_NXPC_TO_NESO.respHas }}"
+          },
+          {
+            "id": "k567",
+            "label": "NXPC_TO_NESO: 지불 · 수령 크기가 방향과 맞다",
+            "actual": "{{ $node.s_NXPC_TO_NESO.wrongWay }}",
+            "op": "countEq",
+            "expected": "0"
+          },
+          {
+            "id": "k568",
+            "label": "NXPC_TO_NESO: 행이 있거나, 없으면 없다고 말한다",
+            "actual": "{{ $node.s_NXPC_TO_NESO.rowsOrNotice }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k569",
+            "label": "NESO_TO_NXPC: 고른 유형이 URL에 실린다",
+            "actual": "{{ $node.s_NESO_TO_NXPC.transactionType }}",
+            "op": "eq",
+            "expected": "SWAP_TYPE_NESO_TO_NXPC"
+          },
+          {
+            "id": "k570",
+            "label": "NESO_TO_NXPC: 조회 요청에 유형이 담긴다",
+            "actual": "{{ $node.s_NESO_TO_NXPC.swapType }}",
+            "op": "eq",
+            "expected": "SWAP_TYPE_NESO_TO_NXPC"
+          },
+          {
+            "id": "k571",
+            "label": "NESO_TO_NXPC: 응답에 다른 유형이 섞이지 않는다",
+            "actual": "{{ $node.s_NESO_TO_NXPC.others }}",
+            "op": "countEq",
+            "expected": "0"
+          },
+          {
+            "id": "k572",
+            "label": "NESO_TO_NXPC: 응답이 있으면 화면에도 행이 있다(있음 여부가 같다)",
+            "actual": "{{ $node.s_NESO_TO_NXPC.shownHas }}",
+            "op": "eq",
+            "expected": "{{ $node.s_NESO_TO_NXPC.respHas }}"
+          },
+          {
+            "id": "k573",
+            "label": "NESO_TO_NXPC: 지불 · 수령 크기가 방향과 맞다",
+            "actual": "{{ $node.s_NESO_TO_NXPC.wrongWay }}",
+            "op": "countEq",
+            "expected": "0"
+          },
+          {
+            "id": "k574",
+            "label": "NESO_TO_NXPC: 행이 있거나, 없으면 없다고 말한다",
+            "actual": "{{ $node.s_NESO_TO_NXPC.rowsOrNotice }}",
+            "op": "notEmpty",
+            "expected": null
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "start",
+        "port": "out"
+      },
+      "to": {
+        "node": "watch"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "watch",
+        "port": "out"
+      },
+      "to": {
+        "node": "open"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "all"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "all",
+        "port": "out"
+      },
+      "to": {
+        "node": "pick_NXPC_TO_NESO"
+      }
+    },
+    {
+      "id": "e5",
+      "from": {
+        "node": "pick_NXPC_TO_NESO",
+        "port": "out"
+      },
+      "to": {
+        "node": "s_NXPC_TO_NESO"
+      }
+    },
+    {
+      "id": "e6",
+      "from": {
+        "node": "s_NXPC_TO_NESO",
+        "port": "out"
+      },
+      "to": {
+        "node": "pick_NESO_TO_NXPC"
+      }
+    },
+    {
+      "id": "e7",
+      "from": {
+        "node": "pick_NESO_TO_NXPC",
+        "port": "out"
+      },
+      "to": {
+        "node": "s_NESO_TO_NXPC"
+      }
+    },
+    {
+      "id": "e8",
+      "from": {
+        "node": "s_NESO_TO_NXPC",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}
