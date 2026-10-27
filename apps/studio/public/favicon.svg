@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Flowsmith 마크 — 이어진 세 단계(Flow) 중 가운데를 망치(Smith)가 내리친다. 맞은 단계만 달군 주황. icons.tsx의 BrandMark와 같은 그림 -->
+  <rect width="64" height="64" rx="14" fill="#17130f"/>
+  <path d="M19 46.5h6.5M38.5 46.5H45" stroke="#f3e9dc" stroke-width="3.2" stroke-linecap="round"/>
+  <rect x="6" y="40" width="13" height="13" rx="3.2" fill="#f3e9dc"/>
+  <rect x="25.5" y="40" width="13" height="13" rx="3.2" fill="#ff6b2c"/>
+  <rect x="45" y="40" width="13" height="13" rx="3.2" fill="#f3e9dc"/>
+  <g transform="translate(32 38) rotate(-12)" fill="#f3e9dc">
+    <path d="M1 -13 L25 -24" stroke="#f3e9dc" stroke-width="4.6" stroke-linecap="round"/>
+    <path d="M-7 -2q0 2 2 2h10q2 0 2-2v-11l-2.6-3.2v-6.3q0-1.5-1.5-1.5h-5.8q-1.5 0-1.5 1.5v6.3L-7 -13Z"/>
+  </g>
+</svg>

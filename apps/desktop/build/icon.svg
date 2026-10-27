@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- 앱 아이콘 원본 — icon.png(1024)를 이 그림에서 뽑는다. macOS 격자: 1024 안에 824 타일(가장자리 100).
+       그림은 apps/studio/public/favicon.svg와 같다(64 격자를 824로 키운 것) -->
+  <g transform="translate(100 100) scale(12.875)">
+    <rect width="64" height="64" rx="14.4" fill="#17130f"/>
+    <path d="M19 46.5h6.5M38.5 46.5H45" stroke="#f3e9dc" stroke-width="3.2" stroke-linecap="round"/>
+    <rect x="6" y="40" width="13" height="13" rx="3.2" fill="#f3e9dc"/>
+    <rect x="25.5" y="40" width="13" height="13" rx="3.2" fill="#ff6b2c"/>
+    <rect x="45" y="40" width="13" height="13" rx="3.2" fill="#f3e9dc"/>
+    <g transform="translate(32 38) rotate(-12)" fill="#f3e9dc">
+      <path d="M1 -13 L25 -24" stroke="#f3e9dc" stroke-width="4.6" stroke-linecap="round"/>
+      <path d="M-7 -2q0 2 2 2h10q2 0 2-2v-11l-2.6-3.2v-6.3q0-1.5-1.5-1.5h-5.8q-1.5 0-1.5 1.5v6.3L-7 -13Z"/>
+    </g>
+    <path d="M21.5 37l-4.4-2.4M42.5 37l4.4-2.4M20.5 31.5l-4-.4" stroke="#ff6b2c" stroke-width="2.6" stroke-linecap="round"/>
+  </g>
+</svg>
