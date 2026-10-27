@@ -9,7 +9,7 @@
  * 초안은 이 화면이 들고 있다가 「저장」에서 서버로 간다. 문제는 브라우저에서 바로 계산한다 —
  * core의 `checkFlow`가 순수 함수라 서버와 같은 판정이 고치는 즉시 나온다.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { checkFlow, type Flow, type FlowNode, type Target, type WebAction, explainProblems, problemLine, type ProblemView, PROBE_STATUS_LABEL } from "@flowsmith/core";
 import { api, ApiError, listExtensions, type ExtensionMeta } from "../api.ts";
 import { addRecorded, applyTarget, hasAction, insertNode, promoteCandidate, splitStages, splitWebNode, targetLabel, type AddRequest, type Fix, type NodeChoice, stepNumbers } from "../model/index.ts";
@@ -32,6 +32,7 @@ import { SettingsPanel } from "./settings/SettingsPanel.tsx";
 import { NotifyPanel } from "./settings/NotifyPanel.tsx";
 import { Guide, guideItems } from "./Guide.tsx";
 import { useMe } from "../shell/me.ts";
+import { navigate, useLeaveGuard } from "../shell/nav.ts";
 import { useRun } from "./run/useRun.ts";
 import { Toast } from "./widgets.tsx";
 import { recallParams } from "../shell/remember.ts";
@@ -53,13 +54,39 @@ function useOutside(open: boolean, close: () => void) {
   return ref;
 }
 
-/** runId — 그 실행을 고른 «실행 기록»으로 연다 · panel "monitor" — 변경 감시 서랍을 열어 둔다(알림의 링크) */
-export function FlowEditor({ id, runId, panel }: { id: string; runId?: string; panel?: "monitor" }) {
-  const [drawer, setDrawer] = useState<Drawer>(panel === "monitor" ? { kind: "monitor" } : null);
+/**
+ * 주소가 정한다(App.tsx) — tab «runs»면 실행 기록(runId면 그 실행) · nodeId면 그 단계의 작업 시트 · panel "monitor"면 변경 감시 서랍(알림의 링크).
+ * ★시트 · 탭 · 실행을 바꾸는 것은 주소를 바꾸는 것 — 뒤로 가기가 시트를 닫고 탭을 돌린다(shell/nav.ts)
+ */
+export function FlowEditor({ id, tab, nodeId, runId, panel }: { id: string; tab: "editor" | "runs"; nodeId?: string; runId?: string; panel?: "monitor" }) {
+  const base = `#/flows/${encodeURIComponent(id)}`;
+  // 서랍 — 작업 시트(단계)는 주소에서 · 나머지(설정 · 트리거 · 알림 · 감시 · 고르기)는 여기서
+  const [panelDrawer, setPanelDrawer] = useState<Drawer>(panel === "monitor" ? { kind: "monitor" } : null);
+  useEffect(() => { if (panel === "monitor") setPanelDrawer({ kind: "monitor" }); }, [panel]);
+  const drawer: Drawer = nodeId ? { kind: "node", id: nodeId } : panelDrawer;
+  const sheetOpen = useRef(false);
+  sheetOpen.current = nodeId !== undefined;
+  /**
+   * 서랍 바꾸기 — 단계면 주소로(처음 열 때만 기록을 쌓고 · 단계를 오가면 바꿔 쓴다) · 시트를 닫을 때는 연 기록이면 뒤로(기록이 쌓이지 않게)
+   */
+  const setDrawer = useCallback((d: Drawer) => {
+    if (d?.kind === "node") {
+      navigate(`${base}/nodes/${encodeURIComponent(d.id)}`, sheetOpen.current ? { replace: true } : { state: { sheet: true } });
+      setPanelDrawer(null);
+      return;
+    }
+    if (sheetOpen.current) {
+      if ((history.state as { sheet?: boolean } | null)?.sheet) history.back();
+      else navigate(base, { replace: true });
+    }
+    setPanelDrawer(d);
+  }, [base]);
   // 사내 서버형 — 편집자보다 아래면 보기 전용(서버도 막는다 · 여기는 단추를 감춘다)
   const me = useMe();
   const canEdit = me.can("editor");
-  const [view, setViewTab] = useState<"editor" | "executions">(runId ? "executions" : "editor");
+  const view: "editor" | "executions" = tab === "runs" ? "executions" : "editor";
+  /** 탭 — 기록을 쌓는다(뒤로 가기가 편집기로 돌린다). 실행 기록은 고른 실행이 있으면 그 주소로 */
+  const setViewTab = useCallback((v: "editor" | "executions") => { navigate(v === "executions" ? `${base}/runs` : base); }, [base]);
   const [logOpen, setLogOpen] = useState(false);
   /** 실행 화면 보기 — 보고 있는 실행 id */
   const [watching, setWatching] = useState<string | null>(null);
@@ -90,6 +117,13 @@ export function FlowEditor({ id, runId, panel }: { id: string; runId?: string; p
   }, []);
   // 초안 — 읽기 · 고치기 · 저장 · 닫을 때 묻기(useFlowDraft)
   const { detail, setDetail, draft, update, dirty, save, ensureSaved, accept, busy, loadError } = useFlowDraft(id, say);
+  // 떠날 때 — 이 워크플로우 안(시트 · 탭)은 상관없다. 이름을 묻는 중(방금 만든 빈 것)이면 지우고 · 고침이 남았으면 묻는다
+  useLeaveGuard((_from, to) => {
+    const t = /^#\/flows\/([^/]+)/.exec(to);
+    if (t && decodeURIComponent(t[1]!) === id) return null;
+    if (naming) return { leave: () => { void api.deleteFlow(id).catch(() => undefined); } };
+    return dirty ? { ask: "저장하지 않은 고침이 있습니다. 떠날까요?" } : null;
+  });
   const run = useRun(draft, detail?.activeVersion ?? null);
   const monitor = useMonitor(id, (t) => say(t));
   const pinnedSet = useMemo(() => new Set(Object.keys(detail?.pins ?? {})), [detail?.pins]);
@@ -292,7 +326,6 @@ export function FlowEditor({ id, runId, panel }: { id: string; runId?: string; p
     else setDrawer(null);
     say(made > 1 ? `동작 ${actions.length}개를 노드 ${made}개로 나눠 넣었습니다 — 저장하면 남습니다` : `동작 ${actions.length}개를 넣었습니다 — 저장하면 남습니다`);
   };
-  const goList = (e: ReactMouseEvent) => { if (dirty && !confirm("저장하지 않은 고침이 있습니다. 떠날까요?")) e.preventDefault(); };
   /** 켜 둔 트리거 수 — 일정 · 다른 플로우가 끝나면 · 파일이 생기면 */
   const triggerCount = [...draft.settings.schedules, ...(draft.settings.after ?? []), ...(draft.settings.fileTriggers ?? [])].filter((t) => t.enabled).length;
 
@@ -300,7 +333,7 @@ export function FlowEditor({ id, runId, panel }: { id: string; runId?: string; p
     <div className={`editor${logOpen && run.view && view === "editor" ? " with-log" : ""}`}>
       <header className="topbar">
         <div className="topbar-left">
-          <a href="#/" className="icon-btn" title="목록" onClick={goList}><IconArrowLeft /></a>
+          <a href="#/" className="icon-btn" title="목록"><IconArrowLeft /></a>
           <span className="crumb">워크플로우 /</span>
           <input className="title-input" value={draft.name} aria-label="워크플로우 이름" onChange={(e) => update((f) => ({ ...f, name: e.target.value }))} />
           <span className={`save-state${dirty ? " dirty" : ""}`}>{dirty ? "저장 안 됨" : "저장됨"}</span>
@@ -366,7 +399,7 @@ export function FlowEditor({ id, runId, panel }: { id: string; runId?: string; p
       {comparing && <VersionDiff detail={detail} draft={draft} onClose={() => setComparing(false)} />}
       {naming && <NameModal initial={draft.name}
         onDone={(name) => { setNaming(false); void api.saveDraft(id, { ...draft, name }).then(accept, (e: Error) => say(e.message)); }}
-        onCancel={() => { setNaming(false); void api.deleteFlow(id).catch(() => undefined).finally(() => { location.hash = "#/"; }); }} />}
+        onCancel={() => { setNaming(false); void api.deleteFlow(id).catch(() => undefined).finally(() => { navigate("#/"); }); }} />}
       {pluginDrift.length > 0 && !recording && (
         <div className="drift-banner warn plugin-drift">
           <IconAlert size={16} />
@@ -379,7 +412,8 @@ export function FlowEditor({ id, runId, panel }: { id: string; runId?: string; p
       {recording ? (
         <main className="rec-main"><Recorder flow={draft} start={recording} onCommit={commitRecording} onRepick={applyRepick} onCancel={() => setRecording(null)} /></main>
       ) : view === "executions" ? (
-        <main className="exec-main"><Executions history={run.history} onReload={run.reloadHistory} onFix={onFix} draft={draft} {...(runId ? { initial: runId } : {})} /></main>
+        <main className="exec-main"><Executions history={run.history} onReload={run.reloadHistory} onFix={onFix} draft={draft} picked={runId ?? null}
+          onPick={(rid) => navigate(`${base}/runs/${encodeURIComponent(rid)}`, { replace: true })} /></main>
       ) : (
         <main className={`work${drawer && drawer.kind !== "node" ? " with-drawer" : ""}`}>
           <Canvas flow={aiPreview ?? draft} selected={aiPreview ? null : selected} statuses={aiPreview ? {} : run.statuses} issues={aiPreview ? new Map() : issues} drift={monitor.drift} pinned={pinnedSet} readOnly={!!aiPreview}

@@ -177,6 +177,8 @@ describe("AI 어시스턴트(떠 있는 창)", () => {
     await page.locator(".relay-node", { hasText: "목록 검사" }).waitFor();
     await page.locator(".topbar").getByRole("button", { name: "저장", exact: true }).click();
     await expect.poll(async () => (await api("GET", "/api/flows/ai-flow-1")).draft.nodes.length).toBe(3);
+    // 화면이 저장을 받아들일 때까지 — 그 전에 떠나면 «저장하지 않은 고침» 확인이 뜬다
+    await page.locator(".topbar .save-state", { hasText: "저장됨" }).waitFor();
     expect((await api("GET", "/api/flows/ai-flow-1")).draft.settings.schedules[0].cron).toBe("0 9 * * 1-5");
   });
 
