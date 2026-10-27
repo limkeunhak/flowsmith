@@ -71,8 +71,9 @@ export function probeTargets(a: WebAction): { target: Target; readsValue: boolea
     case "read": case "assert": return [{ target: a.target, readsValue: true, many: false }];
     case "pickRow": return [{ target: a.pick.rows, readsValue: true, many: true }];
     case "readTable": return [{ target: a.table.rows, readsValue: true, many: true }];
-    case "wait": return a.wait.kind === "visible" || a.wait.kind === "filled" ? [{ target: a.wait.target, readsValue: true, many: false }] : [];
-    case "goto": case "closeWindow": case "human": case "walletApprove": return [];   // 사람 기다리기 · MetaMask 승인 — 점검은 그 앞에서 멈춘다(web-node.ts)
+    // 사라질 때까지(hidden)는 요소가 없는 것이 정상이라 보지 않는다
+    case "wait": return a.wait.kind === "visible" || a.wait.kind === "filled" || a.wait.kind === "stable" || a.wait.kind === "changed" ? [{ target: a.wait.target, readsValue: true, many: false }] : [];
+    case "goto": case "closeWindow": case "recheck": case "human": case "walletApprove": return [];   // 사람 기다리기 · MetaMask 승인 — 점검은 그 앞에서 멈춘다(web-node.ts)
   }
 }
 

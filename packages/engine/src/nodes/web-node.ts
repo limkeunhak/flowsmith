@@ -135,6 +135,20 @@ export async function runWebNode(node: WebNode, env: NodeEnv): Promise<Output> {
   };
   const out: Output = {};
   const noSecrets: Scope = { ...scope, secrets: {} };
+  /**
+   * 넣은 칸 — «넣은 칸 다시 확인»이 다시 본다. 창마다(prim) 따로다(닫힌 팝업의 칸은 볼 수 없다).
+   * 같은 칸에 다시 넣으면 마지막 값만 남긴다. ★값은 메모리에만 있다(시크릿일 수 있다)
+   */
+  const entered: { prim: Primitives; key: string; kind: "fill" | "select" | "check"; target: Target; value: string | boolean }[] = [];
+  const remember = (kind: "fill" | "select" | "check", target: Target, value: string | boolean) => {
+    const key = JSON.stringify([target.frames, target.locators[0]]);
+    const at = entered.findIndex((x) => x.prim === prim && x.key === key);
+    if (at >= 0) entered.splice(at, 1);
+    entered.push({ prim, key, kind, target, value });
+  };
+  /** «값이 바뀔 때까지»가 견줄 값 — 바로 앞 동작 직전에 적는다. 앞 동작을 건너뛰었으면 기다릴 까닭이 없다 */
+  let before: string | null = null;
+  let prevSkipped = false;
 
   const t0 = Date.now();
   if (node.config.start.kind === "url") {
@@ -161,6 +175,12 @@ export async function runWebNode(node: WebNode, env: NodeEnv): Promise<Output> {
     // ★시크릿은 넣기 · 고르기 값에서만 꺼낸다 (검문소가 이미 막지만 실행에서도 한 번 더)
     const valueOf = (template: string, what: string) =>
       str(evaluate(template, a.kind === "fill" || a.kind === "select" ? scope : noSecrets).value, what);
+    // 다음이 «값이 바뀔 때까지»면 이 동작을 하기 **전**의 값을 적어 둔다 — 누른 뒤에 적으면 이미 바뀐 값과 견주게 된다
+    const nextAction = node.config.actions[i + 1];
+    const watching = nextAction?.kind === "wait" && nextAction.wait.kind === "changed" ? nextAction.wait.target : null;
+    const baseline = watching ? await prim.peek(watching) : null;
+    const skipped = prevSkipped;
+    prevSkipped = true;
 
     // «조건이 맞을 때만» — 안 맞으면 건너뛴다. ★조건을 못 읽으면(숫자가 아님 등) 건너뛰지 않고 멈춘다
     if (a.when) {
@@ -230,6 +250,7 @@ export async function runWebNode(node: WebNode, env: NodeEnv): Promise<Output> {
           label = a.target.label;
           const v = valueOf(a.value, label);
           const r = await prim.fill(a.target, v, timeout);
+          remember("fill", a.target, v);
           note = `${label}에 "${v}" 넣었습니다${r.retried ? " (한 번 다시 넣음)" : ""}`;
           break;
         }
@@ -237,14 +258,33 @@ export async function runWebNode(node: WebNode, env: NodeEnv): Promise<Output> {
           label = a.target.label;
           const v = valueOf(a.value, label);
           const r = await prim.select(a.target, v, timeout);
+          remember("select", a.target, v);
           note = `${label}에서 "${v}" 골랐습니다(${r.by}으로)`;
           break;
         }
         case "check":
           label = a.target.label;
           await prim.check(a.target, a.checked, timeout);
+          remember("check", a.target, a.checked);
           note = `${label} ${a.checked ? "켰습니다" : "껐습니다"}`;
           break;
+        case "recheck": {
+          label = "넣은 칸";
+          const here = entered.filter((x) => x.prim === prim);
+          if (here.length === 0) { note = "이 창에 넣은 칸이 없어 볼 것이 없었습니다"; break; }
+          const redone: string[] = [];
+          for (const x of here) {
+            if (await prim.holds(x.target, x.kind, x.value, timeout)) continue;
+            // 한 번만 다시 넣는다 — 넣기 · 고르기 · 체크가 각자 되읽기까지 하므로, 그래도 안 맞으면 거기서 멈춘다
+            if (x.kind === "fill") await prim.fill(x.target, String(x.value), timeout);
+            else if (x.kind === "select") await prim.select(x.target, String(x.value), timeout);
+            else await prim.check(x.target, x.value === true, timeout);
+            redone.push(x.target.label);
+          }
+          note = redone.length === 0 ? `넣은 칸 ${here.length}개가 그대로입니다`
+            : `넣은 칸 ${here.length}개 중 ${redone.length}개가 바뀌어 있어 다시 넣었습니다 — ${redone.join(" · ")}`;
+          break;
+        }
         case "press":
           label = a.target?.label ?? "페이지";
           await prim.press(a.target, a.key, timeout);
@@ -252,8 +292,8 @@ export async function runWebNode(node: WebNode, env: NodeEnv): Promise<Output> {
           break;
         case "wait":
           label = "target" in a.wait ? a.wait.target.label : a.wait.kind;
-          await prim.wait(a.wait, timeout);
-          note = `기다렸습니다 — ${label}`;
+          if (a.wait.kind === "changed" && skipped) { note = `앞 동작을 건너뛰어 바뀔 것이 없으므로 기다리지 않았습니다 — ${label}`; break; }
+          note = (await prim.wait(a.wait, timeout, before)) ?? `기다렸습니다 — ${label}`;
           break;
         case "read": {
           label = a.target.label;
@@ -265,9 +305,9 @@ export async function runWebNode(node: WebNode, env: NodeEnv): Promise<Output> {
         }
         case "readTable": {
           label = a.table.label;
-          const rows = await prim.readTable(a.table, timeout);
-          out[a.output] = rows;
-          note = `${label} → ${a.output} (${rows.length}행)`;
+          const r = await prim.readTable(a.table, timeout);
+          out[a.output] = r.rows;
+          note = `${label} → ${a.output} (${r.rows.length}행)${r.note ? ` — ${r.note}` : ""}`;
           break;
         }
         case "closeWindow": {
@@ -382,6 +422,8 @@ export async function runWebNode(node: WebNode, env: NodeEnv): Promise<Output> {
     }
     // 창이 스스로 닫혔으면(팝업의 닫기 단추) 연 창으로 돌아간다
     if (prim.page.isClosed() && goBack()) note += " — 창이 닫혀 연 창으로 돌아왔습니다";
+    before = baseline;
+    prevSkipped = false;
     env.step({ index, id: a.id, kind: a.kind, label, ms: Date.now() - started, note });
   }
   return out;
