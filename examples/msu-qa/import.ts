@@ -34,8 +34,13 @@ async function api(method: string, path: string, body?: unknown): Promise<{ stat
 // 워크플로우 — 만들기(이미 있으면 409 → 초안 바꾸기) → 버전(같으면 마지막 버전) → 게시
 for (const file of readdirSync(new URL("flows/", dir)).filter((f) => f.endsWith(".json") && picked(f.replace(/\.json$/, ""))).sort()) {
   const draft = JSON.parse(readFileSync(new URL(`flows/${file}`, dir), "utf8"));
-  const made = await api("POST", "/flows", { draft, team: null });
-  if (made.status === 409) await api("PUT", `/flows/${draft.id}/draft`, { draft });
+  // 묶음 — 이름 앞말(«Navigator · …» → Navigator). 서비스마다 한 묶음으로 목록에 모인다
+  const group = String(draft.name).split(" · ")[0]!;
+  const made = await api("POST", "/flows", { draft, team: null, group });
+  if (made.status === 409) {
+    await api("PUT", `/flows/${draft.id}/draft`, { draft });
+    await api("PUT", "/flow-group", { ids: [draft.id], group });
+  }
   const v = await api("POST", `/flows/${draft.id}/versions`, { note: "examples/msu-qa" });
   // 바뀐 것이 없으면 409 — 가장 높은 버전(목록은 최신순이지만 순서에 기대지 않는다)
   const version = v.data?.version ?? Math.max(...(await api("GET", `/flows/${draft.id}`)).data.versions.map((x: { version: number }) => x.version));

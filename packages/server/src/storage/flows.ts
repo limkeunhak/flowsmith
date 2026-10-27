@@ -18,7 +18,7 @@ export class FlowRepo {
   /** 읽은 버전(검문소를 거친 Flow) — 「uid\0버전」 */
   readonly #versions = new Map<string, Flow>();
   /** 초안에서 목록이 읽는 것 — 「flow id → (초안 글자, 것)」 */
-  readonly #facts = new Map<string, { json: string; facts: { problems: number; nodeTypes: string[]; schedules: string[] } }>();
+  readonly #facts = new Map<string, { json: string; facts: { problems: number; nodeTypes: string[]; schedules: string[]; description: string } }>();
 
   constructor(db: DatabaseSync, store: Store) {
     this.#db = db;
@@ -51,6 +51,7 @@ export class FlowRepo {
         activeVersion: (r["active_version"] as number | null) ?? null,
         latestVersion: (r["latest"] as number | null) ?? null,
         problems: d.problems,
+        description: d.description,
         updatedAt: String(r["updated_at"]),
         monitor: p ? { status: p["status"] as ProbeRow["status"], at: String(p["at"]), source: p["source"] as ProbeRow["source"] } : null,
         // 목록이 그림을 그리는 데 쓴다 — 쓰인 노드 종류(나온 차례) · 켜 둔 일정 · 마지막 실행
@@ -59,19 +60,22 @@ export class FlowRepo {
         lastRun: lr ? { status: lr["status"] as RunRow["status"], at: String(lr["at"]) } : null,
         team: r["team_id"] === null ? null : { id: String(r["team_id"]), name: teamName.get(String(r["team_id"])) ?? "(없는 팀)" },
         runOn: (r["run_on"] as string | null) ?? null,
+        group: (r["group_name"] as string | null) ?? null,
       };
     });
   }
 
-  /** 초안에서 목록이 읽는 것(문제 수 · 노드 종류 · 일정) — 초안이 바뀔 때만 다시 센다(글자를 견준다 — 검사보다 훨씬 싸다) */
-  #draftFacts(id: string, json: string): { problems: number; nodeTypes: string[]; schedules: string[] } {
+  /** 초안에서 목록이 읽는 것(문제 수 · 노드 종류 · 일정 · 설명) — 초안이 바뀔 때만 다시 센다(글자를 견준다 — 검사보다 훨씬 싸다) */
+  #draftFacts(id: string, json: string): { problems: number; nodeTypes: string[]; schedules: string[]; description: string } {
     const hit = this.#facts.get(id);
     if (hit && hit.json === json) return hit.facts;
-    const draft = JSON.parse(json) as { nodes?: { type?: unknown }[]; settings?: { schedules?: { cron?: unknown; enabled?: unknown }[] } };
+    const draft = JSON.parse(json) as { description?: unknown; nodes?: { type?: unknown }[]; settings?: { schedules?: { cron?: unknown; enabled?: unknown }[] } };
     const facts = {
       problems: checkFlow(draft).length,
       nodeTypes: [...new Set((Array.isArray(draft.nodes) ? draft.nodes : []).map((n) => String(n?.type ?? "")).filter(Boolean))],
       schedules: (Array.isArray(draft.settings?.schedules) ? draft.settings.schedules : []).filter((s) => s?.enabled !== false && typeof s?.cron === "string").map((s) => String(s.cron)),
+      // 목록은 한 줄만 보인다 — 첫 줄 · 200자까지(긴 설명을 매번 다 실어 보내지 않게)
+      description: typeof draft.description === "string" ? (draft.description.split("\n")[0] ?? "").slice(0, 200) : "",
     };
     this.#facts.set(id, { json, facts });
     return facts;
@@ -99,6 +103,7 @@ export class FlowRepo {
       createdAt: String(r["created_at"]), updatedAt: String(r["updated_at"]), updatedBy: (r["updated_by"] as string | null) ?? null,
       team: r["team_id"] === null || r["team_id"] === undefined ? null : { id: String(r["team_id"]), name: this.#teamName(String(r["team_id"])) },
       runOn: (r["run_on"] as string | null) ?? null,
+      group: (r["group_name"] as string | null) ?? null,
       pins: this.#pinsOf(r),
     };
   }
@@ -120,16 +125,16 @@ export class FlowRepo {
 
   #teamName(id: string): string { return String((this.#db.prepare("SELECT name FROM team WHERE id = ?").get(id) as Row | undefined)?.["name"] ?? "(없는 팀)"); }
 
-  /** team — 속할 팀(없으면 공용) */
-  createFlow(draft: unknown, team: string | null = null): FlowDetail {
+  /** team — 속할 팀(없으면 공용) · group — 묶음(없으면 묶음 없음) */
+  createFlow(draft: unknown, team: string | null = null, group: string | null = null): FlowDetail {
     const { id, name } = headOf(draft);
     const exists = this.#db.prepare("SELECT 1 FROM flow WHERE id = ?").get(id);
     if (exists) throw new StoreError(409, `워크플로우 "${id}"가 이미 있습니다`);
     const t = now();
     // ★uid는 늘 새로 — 들어온 JSON에 무엇이 있든(복사한 플로우가 원래 플로우의 파일에 쓰지 않게)
     if (team !== null) this.#store.getTeam(team);
-    this.#db.prepare("INSERT INTO flow (id, name, draft_json, active_version, uid, created_at, updated_at, team_id) VALUES (?, ?, ?, NULL, ?, ?, ?, ?)")
-      .run(id, name, JSON.stringify(draft), randomUUID(), t, t, team);
+    this.#db.prepare("INSERT INTO flow (id, name, draft_json, active_version, uid, created_at, updated_at, team_id, group_name) VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?)")
+      .run(id, name, JSON.stringify(draft), randomUUID(), t, t, team, groupName(group));
     return this.getFlow(id);
   }
 
@@ -290,5 +295,28 @@ export class FlowRepo {
     this.#db.prepare("UPDATE flow SET team_id = ? WHERE id = ?").run(team, flowId);
   }
 
+  /**
+   * 여럿을 한 묶음으로(null이면 묶음 없음) — 한 번에(하나라도 없으면 아무것도 옮기지 않는다).
+   * ★고친 때(updated_at)는 그대로 — 묶음은 정돈일 뿐 워크플로우를 고친 것이 아니다(«최근 고침» 차례가 흔들리지 않게)
+   */
+  setFlowGroup(ids: readonly string[], group: string | null): void {
+    const g = groupName(group);
+    for (const id of ids) this.flowRow(id);
+    const set = this.#db.prepare("UPDATE flow SET group_name = ? WHERE id = ?");
+    this.#db.exec("BEGIN");
+    try { for (const id of ids) set.run(g, id); this.#db.exec("COMMIT"); } catch (e) { this.#db.exec("ROLLBACK"); throw e; }
+  }
+
   flowIdByUid(uid: string): string | null { return ((this.#db.prepare("SELECT id FROM flow WHERE uid = ?").get(uid) as Row | undefined)?.["id"] as string | undefined) ?? null; }
+}
+
+/** 묶음 이름 — 앞뒤 빈칸을 떼고 · 빈 것은 null · 한 줄 · 40자까지 */
+export function groupName(v: unknown): string | null {
+  if (v === null || v === undefined) return null;
+  if (typeof v !== "string") throw new StoreError(400, "묶음은 이름(글자) 또는 null입니다");
+  const g = v.trim();
+  if (g === "") return null;
+  if (/[\r\n]/.test(g)) throw new StoreError(400, "묶음 이름은 한 줄이어야 합니다");
+  if (g.length > 40) throw new StoreError(400, "묶음 이름은 40자까지입니다");
+  return g;
 }

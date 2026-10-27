@@ -19,6 +19,8 @@ export interface FlowSummary {
   activeVersion: number | null;
   latestVersion: number | null;
   problems: number;
+  /** 초안 설명의 첫 줄(200자까지) — 목록이 이름 밑에 보인다 */
+  description: string;
   updatedAt: string;
   /** 마지막 변경 감시 — 없으면 null */
   monitor: { status: ProbeRow["status"]; at: string; source: ProbeRow["source"] } | null;
@@ -32,6 +34,8 @@ export interface FlowSummary {
   team: { id: string; name: string } | null;
   /** 어디서 도나 — null 서버 · 「worker:<id>」 · 「label:<라벨>」 */
   runOn: string | null;
+  /** 묶음 — 목록을 정돈하는 이름표(null이면 묶음 없음). 초안 밖에 있다 */
+  group: string | null;
 }
 
 export interface ProbeRow {
@@ -76,6 +80,7 @@ export interface FlowDetail {
   team: { id: string; name: string } | null;
   /** 어디서 도나 — null 서버 · 「worker:<id>」 · 「label:<라벨>」 */
   runOn: string | null;
+  group: string | null;
   /** 고정된 출력 — 노드 id → 출력(초안 시험에서 그 노드는 돌지 않고 이 값을 쓴다) */
   pins: Record<string, Record<string, unknown>>;
   /** 초안이 마지막 버전과 다른가 — 「버전 만들기」 단추를 켤지 */
