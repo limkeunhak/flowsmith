@@ -30,9 +30,28 @@ export const WEB_EACH_OUTPUTS = ["rows", "succeeded", "failed"] as const;
  * «파일로 저장»의 받아 올 곳 —
  *   url   그 주소를 **이 브라우저의 로그인으로** 받아 그대로 쓴다(Confluence PDF 내보내기 · 첨부). 화면은 옮기지 않는다
  *   page  지금 페이지를 PDF로 찍는다 — ★창 없는 브라우저(띄우기 · 창 없음)에서만. 사람의 크롬 · 창 있는 브라우저는 못 찍는다
+ *   screenshot  화면 캡처(PNG · JPEG) — 어느 브라우저에서나. 전체 페이지 · 보이는 화면 · 요소 하나 · 가릴 요소(개인정보)
+ *   html  지금 페이지(또는 요소 하나)의 HTML — 그 자리에서 연 것처럼 보이게 <base>(원래 주소)와 utf-8을 넣는다
  */
-export const SAVE_SOURCES = ["url", "page"] as const;
+export const SAVE_SOURCES = ["url", "page", "screenshot", "html"] as const;
 export type SaveSource = (typeof SAVE_SOURCES)[number];
+
+export const CAPTURE_AREAS = ["full", "viewport", "element"] as const;
+export const IMAGE_FORMATS = ["png", "jpeg"] as const;
+/** 화면 캡처 — 범위 · 요소(element일 때) · 형식 · JPEG 품질(1~100) · 가릴 요소들(그 자리를 칠해서 찍는다) */
+export interface CaptureOptions {
+  area: (typeof CAPTURE_AREAS)[number];
+  target: Target | null;
+  format: (typeof IMAGE_FORMATS)[number];
+  quality: number | null;
+  mask: Target[];
+}
+export const HTML_AREAS = ["page", "element"] as const;
+/** HTML 추출 — 페이지 전체(지금 그려진 DOM) · 요소 하나(outerHTML) */
+export interface HtmlOptions {
+  area: (typeof HTML_AREAS)[number];
+  target: Target | null;
+}
 
 export const LOCATOR_KINDS = ["testid", "role", "label", "placeholder", "text", "css", "xpath"] as const;
 export type LocatorKind = (typeof LOCATOR_KINDS)[number];
@@ -66,7 +85,7 @@ export interface Target {
 export const RISKS = ["safe", "unsafe"] as const;
 export type Risk = (typeof RISKS)[number];
 
-export const READ_STRATEGIES = ["auto", "value", "text", "innerText", "checked", "attribute", "selected", "link"] as const;
+export const READ_STRATEGIES = ["auto", "value", "text", "innerText", "checked", "attribute", "selected", "link", "html"] as const;
 export type ReadStrategy = (typeof READ_STRATEGIES)[number];
 
 export const WAIT_KINDS = ["fixed", "visible", "hidden", "url", "networkIdle", "filled", "stable", "changed"] as const;
@@ -198,7 +217,7 @@ export type WebAction =
    *   headers 받을 때 더 실을 요청 머리(url만) — 사이트의 요청 보호를 넘기는 것(Confluence `X-Atlassian-Token: no-check`) 같은 것. 쿠키 · 인증은 넣지 않는다(브라우저의 로그인을 쓴다)
    * ★`.pdf`로 끝나면 받은 것이 정말 PDF인지(«%PDF») 본다 — 로그인이 풀려 로그인 화면(HTML)이 오면 그것을 PDF로 저장하지 않고 멈춘다
    */
-  | (ActionBase & { kind: "save"; source: SaveSource; url: string; path: string; output: string | null; skipExisting: boolean; headers?: Record<string, string> });
+  | (ActionBase & { kind: "save"; source: SaveSource; url: string; path: string; output: string | null; skipExisting: boolean; headers?: Record<string, string>; capture?: CaptureOptions; html?: HtmlOptions });
 
 export const ACTION_KINDS = ["goto", "click", "fill", "select", "check", "press", "wait", "read", "readTable", "closeWindow", "switchWindow", "recheck", "pickRow", "assert", "human", "walletApprove", "save"] as const;
 /** MetaMask 승인을 기다리는 시간 — 기본 2분 · 10초~10분 */

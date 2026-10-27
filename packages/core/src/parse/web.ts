@@ -1,6 +1,6 @@
 /** 검문소 — 웹페이지 노드(위치 · 지문 · 기다리기 · 표 · 행 고르기 · 동작) */
 import {
-  ACTION_KINDS, HUMAN_DONE_KINDS, HUMAN_TIMEOUT, type HumanDone, LOCATOR_KINDS, READ_STRATEGIES, READ_TRANSFORMS, RISKS, ROW_PICK_BY, RELOAD_WAIT, SAVE_SOURCES, STABLE_WAIT, WAIT_KINDS, WALLET_APPROVE_TIMEOUT, type Fingerprint, type Locator, type RowPick, type TableColumn, type TableTarget, type Target, type Wait, type WebAction, type WebConfig,
+  ACTION_KINDS, HUMAN_DONE_KINDS, HUMAN_TIMEOUT, type HumanDone, LOCATOR_KINDS, READ_STRATEGIES, READ_TRANSFORMS, RISKS, ROW_PICK_BY, RELOAD_WAIT, SAVE_SOURCES, CAPTURE_AREAS, IMAGE_FORMATS, HTML_AREAS, STABLE_WAIT, WAIT_KINDS, WALLET_APPROVE_TIMEOUT, type Fingerprint, type Locator, type RowPick, type TableColumn, type TableTarget, type Target, type Wait, type WebAction, type WebConfig,
 } from "../model.ts";
 import { Checker, type Obj } from "./checker.ts";
 import { rule } from "./condition.ts";
@@ -179,7 +179,25 @@ function action(c: Checker, v: unknown, where: string): WebAction {
       const url = source === "url" ? c.text(o, "url", where) : c.str(o, "url", where, "");
       const path = c.text(o, "path", where);
       const output = o["output"] == null || o["output"] === "" ? null : c.name(o, "output", where);
-      const save = { ...base, kind, source, url, path, output, skipExisting: c.bool(o, "skipExisting", where, false) };
+      const save: Extract<WebAction, { kind: "save" }> = { ...base, kind, source, url, path, output, skipExisting: c.bool(o, "skipExisting", where, false) };
+      if (source === "screenshot") {
+        const w = `${where}.capture`;
+        const cap = o["capture"] == null ? {} : c.obj(o["capture"], w);
+        const area = c.oneOf(CAPTURE_AREAS, cap, "area", w, "full");
+        const format = c.oneOf(IMAGE_FORMATS, cap, "format", w, "png");
+        const quality = format === "jpeg" ? c.int(cap, "quality", w, 80, 1) : null;
+        if (quality !== null && quality > 100) c.fail(w, "JPEG 품질(quality)은 1~100입니다");
+        const mask = cap["mask"] == null ? [] : c.arr(cap, "mask", w).map((x, i) => target(c, x, `${w}.mask[${i}]`));
+        if (area === "element" && cap["target"] == null) c.fail(w, "요소 하나를 찍으려면 대상(target)이 있어야 합니다");
+        save.capture = { area, target: area === "element" ? target(c, cap["target"], `${w}.target`) : null, format, quality, mask };
+      }
+      if (source === "html") {
+        const w = `${where}.html`;
+        const h = o["html"] == null ? {} : c.obj(o["html"], w);
+        const area = c.oneOf(HTML_AREAS, h, "area", w, "page");
+        if (area === "element" && h["target"] == null) c.fail(w, "요소 하나의 HTML을 뽑으려면 대상(target)이 있어야 합니다");
+        save.html = { area, target: area === "element" ? target(c, h["target"], `${w}.target`) : null };
+      }
       if (o["headers"] == null) return save;
       const h = c.obj(o["headers"], `${where}.headers`);
       const headers: Record<string, string> = {};

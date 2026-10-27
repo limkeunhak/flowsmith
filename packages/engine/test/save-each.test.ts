@@ -44,6 +44,7 @@ beforeAll(async () => {
       if (q.headers["x-atlassian-token"] !== "no-check") { res.writeHead(403, { "content-type": "text/html" }); res.end("<html><body><h1>XSRF Security Token Missing</h1></body></html>"); return; }
       res.writeHead(200, { "content-type": "application/pdf" }); res.end("%PDF-1.4\nguarded\n%%EOF"); return;
     }
+    if (u.pathname === "/card") { res.writeHead(200, { "content-type": "text/html; charset=utf-8" }); res.end(`<html><head><title>카드</title></head><body><h1>머리말</h1><img src="/logo.png"><div id="card"><b id="name">홍길동</b> 고객</div><div style="height:2000px"></div></body></html>`); return; }
     if (u.pathname.startsWith("/download/temp/")) { res.writeHead(200, { "content-type": "application/pdf" }); res.end(`%PDF-1.4\n% page ${u.pathname}\n%%EOF`); return; }
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" }); res.end(`<h1 id=title>${u.searchParams.get("pageId") ?? "home"}</h1>`);
   });
@@ -148,4 +149,54 @@ describe("행마다 반복 · 파일로 저장", () => {
     expect(Buffer.byteLength(long)).toBeLessThanOrEqual(180);
     expect(long.endsWith(".pdf")).toBe(true);
   });
+});
+
+describe("화면 캡처 · HTML 추출", () => {
+  const shotFlow = (actions: unknown[]) => parseFlow({
+    schemaVersion: 1, id: "s", name: "s", settings: { defaultTimeoutMs: 5000 },
+    nodes: [{ id: "w", type: "web", name: "찍기", position: { x: 0, y: 0 }, config: { start: { kind: "url", url: `${url}/card` }, actions } }], edges: [],
+  });
+  const png = (b: Buffer) => b.subarray(1, 4).toString("latin1") === "PNG";
+
+  it("★전체 페이지 · 요소 하나 · JPEG — 가릴 요소는 칠해서 찍는다", async () => {
+    const r = await runFlow(shotFlow([
+      { id: "a", kind: "save", source: "screenshot", path: "shot/전체.png", capture: { area: "full" } },
+      { id: "b", kind: "save", source: "screenshot", path: "shot/카드.png", output: "card", capture: { area: "element", target: target("카드", "#card") } },
+      { id: "c", kind: "save", source: "screenshot", path: "shot/가림.png", capture: { area: "element", target: target("카드", "#card"), mask: [target("이름", "#name")] } },
+      { id: "d", kind: "save", source: "screenshot", path: "shot/작게.jpg", capture: { area: "viewport", format: "jpeg", quality: 50 } },
+    ]), { browser, files: { root, flowUid: "uid4" } });
+    expect(r.status, JSON.stringify(r.nodes[0]!.failure)).toBe("success");
+    expect(r.output).toEqual({ card: "shot/카드.png" });
+    const read = (f: string) => readFileSync(join(root, "uid4", "shot", f));
+    expect(png(read("전체.png"))).toBe(true);
+    expect(read("작게.jpg").subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))).toBe(true);
+    // 가린 것은 가리지 않은 것과 다르다(이름 자리를 칠했다)
+    expect(read("가림.png").equals(read("카드.png"))).toBe(false);
+    expect(r.nodes[0]!.steps.map((s) => s.note).join("\n")).toMatch(/«이름»|1곳 가림/);
+  }, 60_000);
+
+  it("요소가 없으면 그 까닭으로 멈춘다 · .pdf에 그림을 쓰지 않는다", async () => {
+    const r = await runFlow(shotFlow([{ id: "a", kind: "save", source: "screenshot", path: "x.png", capture: { area: "element", target: target("없는 것", "#nope") } }]), { browser, files: { root, flowUid: "uid4" } });
+    expect(r.nodes[0]!.failure!.message).toMatch(/찍을 요소 «없는 것»가 보이지 않습니다/);
+    const p = await runFlow(shotFlow([{ id: "a", kind: "save", source: "screenshot", path: "x.pdf" }]), { browser, files: { root, flowUid: "uid4" } });
+    expect(p.nodes[0]!.failure!.message).toMatch(/PDF가 아닙니다/);
+    expect(() => shotFlow([{ id: "a", kind: "save", source: "screenshot", path: "x.png", capture: { area: "element" } }])).toThrow(/대상\(target\)이 있어야/);
+  }, 60_000);
+
+  it("★HTML 추출 — 페이지 · 요소 하나에 원래 주소(<base>)와 utf-8 · 읽기의 «HTML 그대로»", async () => {
+    const r = await runFlow(shotFlow([
+      { id: "a", kind: "save", source: "html", path: "html/페이지.html" },
+      { id: "b", kind: "save", source: "html", path: "html/카드.html", html: { area: "element", target: target("카드", "#card") } },
+      { id: "c", kind: "read", output: "cardHtml", strategy: "html", target: target("카드", "#card") },
+    ]), { browser, files: { root, flowUid: "uid5" } });
+    expect(r.status, JSON.stringify(r.nodes[0]!.failure)).toBe("success");
+    const page = readFileSync(join(root, "uid5", "html", "페이지.html"), "utf8");
+    expect(page).toMatch(new RegExp(`<head[^>]*><meta charset="utf-8"><base href="${url}/card">`));
+    expect(page).toContain('<img src="/logo.png">');
+    const card = readFileSync(join(root, "uid5", "html", "카드.html"), "utf8");
+    expect(card).toMatch(/^<!doctype html>/);
+    expect(card).toContain('<div id="card"><b id="name">홍길동</b> 고객</div>');
+    expect(card).not.toContain("머리말");
+    expect((r.output as Record<string, string>)["cardHtml"]).toBe('<div id="card"><b id="name">홍길동</b> 고객</div>');
+  }, 60_000);
 });

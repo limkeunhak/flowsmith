@@ -83,7 +83,17 @@ function describeBare(a: WebAction, h: H): string {
       const minutes = Math.round((a.timeoutMs ?? HUMAN_TIMEOUT.defaultMs) / 60_000 * 10) / 10;
       return `${a.appears ? `${josa(q(a.appears.label), "이가")} 보일 때만 ` : ""}사람을 기다립니다 — «${a.prompt}» · ${until} 이어 갑니다(${minutes}분까지)`;
     }
-    case "save": return `${a.source === "url" ? `${josa(q(h(a.url)), "을를")} 이 브라우저의 로그인으로 받아` : "지금 페이지를 PDF로 찍어"} ${q(h(a.path))}에 저장합니다${a.skipExisting ? "(이미 있으면 건너뜀)" : ""}`;
+    case "save": {
+      const to = `${q(h(a.path))}에 저장합니다${a.skipExisting ? "(이미 있으면 건너뜀)" : ""}`;
+      if (a.source === "url") return `${josa(q(h(a.url)), "을를")} 이 브라우저의 로그인으로 받아 ${to}`;
+      if (a.source === "screenshot") {
+        const c = a.capture;
+        const what = !c || c.area === "full" ? "전체 페이지" : c.area === "viewport" ? "보이는 화면" : q(c.target?.label ?? "요소");
+        return `${josa(what, "을를")} ${(c?.format ?? "png").toUpperCase()}로 찍어${c?.mask.length ? `(${c.mask.length}곳 가리고)` : ""} ${to}`;
+      }
+      if (a.source === "html") return `${a.html?.area === "element" ? `${q(a.html.target?.label ?? "요소")}의` : "페이지"} HTML을 뽑아 ${to}`;
+      return `지금 페이지를 PDF로 찍어 ${to}`;
+    }
     case "walletApprove": {
       const d = a.done;
       const until = d.kind === "hidden" ? `${josa(q(d.target.label), "이가")} 사라질` : d.kind === "visible" ? `${josa(q(d.target.label), "이가")} 보일` : `주소가 /${d.pattern}/ 에 맞을`;
@@ -121,6 +131,9 @@ export function subtitleOf(n: FlowNode): string {
       const c = n.config.actions.length;
       // 사람 기다리기뿐 — 그 안내 문구 · 접속만 — 그 주소(split.ts webFace와 같은 판단)
       if (c > 0 && n.config.actions.every((a) => a.kind === "human")) return n.config.actions.map((a) => (a.kind === "human" ? `🙋 ${a.prompt}` : "")).join(" · ");
+      // 화면 캡처 · HTML 추출뿐 — 저장할 곳
+      const only = c === 1 ? n.config.actions[0]! : null;
+      if (only?.kind === "save" && (only.source === "screenshot" || only.source === "html")) return `${only.source === "screenshot" ? "📷" : "🧾"} ${only.path || "저장할 경로를 정하세요"}`;
       if (c === 0 && n.config.start.kind === "url") return n.config.start.url ? `접속 · ${n.config.start.url.replace(/^https?:\/\//, "")}` : "접속 · 주소를 넣으세요";
       return `${n.config.start.kind === "continue" ? "이어서 · " : ""}동작 ${c}개`;
     }

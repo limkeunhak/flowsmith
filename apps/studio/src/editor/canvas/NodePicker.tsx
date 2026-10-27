@@ -8,7 +8,7 @@ import type { NodeType } from "@flowsmith/core";
 import { listExtensions, type ExtensionMeta } from "../../api.ts";
 import type { NodeChoice } from "../../model/index.ts";
 import { IconSearch, IconX, NodeIconExt } from "../../icons.tsx";
-import { HUMAN_META, NODE_GROUPS, NODE_META } from "../nodeMeta.tsx";
+import { CAPTURE_META, HTML_META, HUMAN_META, NODE_GROUPS, NODE_META } from "../nodeMeta.tsx";
 
 export { NODE_META } from "../nodeMeta.tsx";
 
@@ -26,7 +26,18 @@ export function NodePicker({ title, onPick, onClose }: { title: string; onPick: 
   const types = BASIC.filter((t) => hit(`${NODE_META[t].title} ${NODE_META[t].desc} ${NODE_META[t].keywords}`));
   const shownExts = exts.filter((e) => hit(`${e.title} ${e.description} ${e.id} 확장`));
   const human = showHuman(hit);
-  const first: NodeChoice | undefined = types[0] ?? (human ? "human" : undefined) ?? shownExts[0];
+  // 화면 캡처 · HTML 추출 — 속은 웹페이지 노드(저장 동작 하나 · model/nodes.ts newNode)
+  const presets = ([["capture", CAPTURE_META], ["html", HTML_META]] as const).filter(([, m]) => hit(`${m.title} ${m.desc} ${m.keywords}`));
+  const first: NodeChoice | undefined = types[0] ?? (human ? "human" : undefined) ?? presets[0]?.[0] ?? shownExts[0];
+  const presetItems = presets.map(([id, m]) => (
+    <button key={id} className="picker-item" onClick={() => onPick(id)}>
+      <span className="picker-icon t-web"><m.icon size={24} /></span>
+      <span className="grow">
+        <span className="picker-title">{m.title}</span>
+        <span className="picker-desc">{m.desc}</span>
+      </span>
+    </button>
+  ));
   const humanItem = (
     <button key="human" className="picker-item" onClick={() => onPick("human")}>
       <span className="picker-icon t-human"><HUMAN_META.icon size={24} /></span>
@@ -75,6 +86,7 @@ export function NodePicker({ title, onPick, onClose }: { title: string; onPick: 
           <div className="picker-list">
             {types.map(typeItem)}
             {human && humanItem}
+            {presetItems}
             {shownExts.map(extItem)}
           </div>
         ) : NODE_GROUPS.map((g) => {
@@ -87,12 +99,13 @@ export function NodePicker({ title, onPick, onClose }: { title: string; onPick: 
               <div className="picker-list">
                 {inGroup.map(typeItem)}
                 {g.id === "web" && humanItem}
+                {g.id === "web" && presetItems}
                 {ex.map(extItem)}
               </div>
             </div>
           );
         })}
-        {types.length === 0 && !human && shownExts.length === 0 &&<div className="empty small">맞는 노드가 없습니다 — 다른 말로 찾아보세요</div>}
+        {types.length === 0 && !human && presets.length === 0 && shownExts.length === 0 &&<div className="empty small">맞는 노드가 없습니다 — 다른 말로 찾아보세요</div>}
       </div>
     </div>
   );

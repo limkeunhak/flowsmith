@@ -134,7 +134,12 @@ function targetsOf(n: FlowNode): { where: string; target: Target; click: boolean
       case "walletApprove":
         if (a.done.kind !== "url") out.push({ where: `${w} 끝났다는 표시`, target: a.done.target, click: false });
         break;
-      case "goto": case "closeWindow": case "switchWindow": case "recheck": case "save": break;
+      case "save":
+        if (a.capture?.target) out.push({ where: `${w} 찍을 요소`, target: a.capture.target, click: false });
+        a.capture?.mask.forEach((m, j) => out.push({ where: `${w} 가릴 요소 ${j + 1}`, target: m, click: false }));
+        if (a.html?.target) out.push({ where: `${w} HTML을 뽑을 요소`, target: a.html.target, click: false });
+        break;
+      case "goto": case "closeWindow": case "switchWindow": case "recheck": break;
     }
   });
   return out;

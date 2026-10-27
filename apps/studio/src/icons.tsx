@@ -79,6 +79,10 @@ export const NodeIconWeb = (p: P) => <Svg {...p}><rect x="3" y="4.5" width="18" 
 export const NodeIconHuman = (p: P) => <Svg {...p}><circle cx="10" cy="7.5" r="3.5" {...soft} /><path d="M3.5 20c.6-3.9 3.2-6 6.5-6s5.9 2.1 6.5 6Z" {...soft} /><circle cx="10" cy="7.5" r="3.5" /><path d="M3.5 20c.6-3.9 3.2-6 6.5-6 1.5 0 2.8.4 3.9 1.2" /><circle cx="18" cy="17" r="3.6" /><path d="M18 15.3V17l1.2.9" /></Svg>;
 /** 페이지 접속 — 창 + 들어가는 화살표 */
 export const NodeIconOpen = (p: P) => <Svg {...p}><rect x="3" y="4.5" width="18" height="15" rx="2.5" {...soft} /><rect x="3" y="4.5" width="18" height="15" rx="2.5" /><path d="M3 9h18" /><path d="M6 6.8h.01M8.4 6.8h.01" strokeWidth={2.4} /><path d="M8 14.5h7m-2.5-2.5 2.5 2.5-2.5 2.5" /></Svg>;
+/** 화면 캡처 — 사진기 */
+export const NodeIconCapture = (p: P) => <Svg {...p}><rect x="3" y="7" width="18" height="13" rx="2.5" {...soft} /><path d="M8.5 7 10 4.5h4L15.5 7H18.5A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5v-8A2.5 2.5 0 0 1 5.5 7Z" /><circle cx="12" cy="13.3" r="3.6" /></Svg>;
+/** HTML 추출 — 창 + 꺾쇠 */
+export const NodeIconHtml = (p: P) => <Svg {...p}><rect x="3" y="4.5" width="18" height="15" rx="2.5" {...soft} /><rect x="3" y="4.5" width="18" height="15" rx="2.5" /><path d="M3 9h18" /><path d="m9.5 12.2-2.6 2.4 2.6 2.4M14.5 12.2l2.6 2.4-2.6 2.4" /></Svg>;
 export const NodeIconIf = (p: P) => <Svg {...p}><path d="M12 3.2 20.8 12 12 20.8 3.2 12Z" {...soft} /><path d="M12 3.2 20.8 12 12 20.8 3.2 12Z" /><path d="M8.6 12h3.1m0 0 2.7-2.7m-2.7 2.7 2.7 2.7" /></Svg>;
 export const NodeIconTransform = (p: P) => <Svg {...p}><path d="M4 5h16l-6 7.4V19l-4-1.8v-4.8Z" {...soft} /><path d="M4 5h16l-6 7.4V19l-4-1.8v-4.8Z" /><path d="M18.5 15.5v4M16.5 17.5h4" /></Svg>;
 export const NodeIconFileIn = (p: P) => <Svg {...p}><path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8L14 3.5Z" {...soft} /><path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8L14 3.5Z" /><path d="M14 3.5V8h4.5M12 11v6M9.5 14.5 12 17l2.5-2.5" /></Svg>;

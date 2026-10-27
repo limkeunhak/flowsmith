@@ -40,7 +40,7 @@ export function targetOf(a: WebAction): Target | null {
     // 사람 기다리기 — «이 화면일 때만»이 있으면 그것, 없으면 끝났다는 표시의 요소
     case "human": return a.appears ?? (a.done.kind === "url" ? null : a.done.target);
     case "walletApprove": return a.done.kind === "url" ? null : a.done.target;
-    case "save": return null;
+    case "save": return a.capture?.target ?? a.html?.target ?? null;
     default: return a.target;
   }
 }
@@ -54,7 +54,7 @@ export function withTarget(a: WebAction, target: Target): WebAction {
     case "goto": case "closeWindow": case "switchWindow": case "recheck": return a;
     case "human": return a.appears ? { ...a, appears: target } : a.done.kind === "url" ? a : { ...a, done: { ...a.done, target } };
     case "walletApprove": return a.done.kind === "url" ? a : { ...a, done: { ...a.done, target } };
-    case "save": return a;
+    case "save": return a.capture?.target ? { ...a, capture: { ...a.capture, target } } : a.html?.target ? { ...a, html: { ...a.html, target } } : a;
     default: return { ...a, target };
   }
 }
