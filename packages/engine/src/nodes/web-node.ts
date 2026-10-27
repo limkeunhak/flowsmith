@@ -12,6 +12,7 @@ import { describeLocator, locateAll } from "../browser/locate.ts";
 import { pause, PROBLEMS, retryable, RunStopped, StepError, toFailure } from "../errors.ts";
 import type { Primitives } from "../browser/primitives.ts";
 import { inspectTarget, ProbeStop, probeTargets } from "../probe.ts";
+import { FileStoreError, opsOf, rootedPath, UID_RE, type FileStoreOptions } from "./file-common.ts";
 
 const josa = (w: string) => `${w}을(를)`;
 const norm = (s: string): string => s.replace(/\s+/g, " ").trim();
@@ -118,6 +119,8 @@ export interface NodeEnv {
   signal?: AbortSignal;
   /** 실패하면 다시 — 플로우 설정(동작마다 따로 정할 수 있다) */
   retry?: { count: number; delayMs: number };
+  /** «파일로 저장»이 쓰는 곳 — 이 워크플로우의 폴더(files/<uuid>) */
+  files?: FileStoreOptions;
   /**
    * 사람이 이 실행의 화면을 만질 수 있으면 — 사람의 크롬(attach) · 서버의 실행 화면 · 화면이 보이는 워커.
    * 없으면 «사람 기다리기»는 기다리지 않고 바로 멈춘다(아무도 로그인할 수 없다)
@@ -157,7 +160,102 @@ function toNumber(v: unknown, label: string): number {
   return n;
 }
 
+/** «파일로 저장» — 큰 PDF는 만드는 데 오래 걸린다(위키 PDF 내보내기). 동작에 시간 제한이 없으면 이만큼 */
+const SAVE_TIMEOUT_MS = 180_000;
+
+/** 경로 마디마다 파일 이름에 못 쓰는 글자를 바꾼다(제목이 그대로 파일 이름이 된다) — 「..」 · 빈 마디도 막는다 */
+export function safeFilePath(rel: string): string {
+  const parts = rel.split("/").filter((p) => p.trim() !== "").map((p) => {
+    let s = p.replace(/[\\:*?"<>|\u0000-\u001f]/gu, "_").replace(/\s+/gu, " ").trim().replace(/[. ]+$/u, "");
+    if (s === "" || s === "." || s === "..") s = "_";
+    // 너무 긴 이름은 자른다(확장자는 남긴다) — 디스크 · 압축 도구가 255바이트를 넘기면 못 다룬다
+    if (Buffer.byteLength(s) > 180) {
+      const ext = /\.[A-Za-z0-9]{1,8}$/u.exec(s)?.[0] ?? "";
+      let base = s.slice(0, s.length - ext.length);
+      while (Buffer.byteLength(base + ext) > 180) base = base.slice(0, -1);
+      s = base.trimEnd() + ext;
+    }
+    return s;
+  });
+  return parts.length ? parts.join("/") : "_";
+}
+
+async function saveFile(
+  a: Extract<WebAction, { kind: "save" }>, page: Page, files: FileStoreOptions | undefined,
+  value: (template: string, what: string) => string, timeoutMs: number,
+): Promise<{ path: string; note: string }> {
+  const fail = (message: string) => new StepError({ problem: "other", message, label: "파일로 저장", locator: null, candidates: [] });
+  if (!files) throw fail("파일을 둘 곳이 없습니다 — 서버에 등록된 워크플로우로 돌리세요");
+  if (!files.flowUid || !UID_RE.test(files.flowUid)) throw new FileStoreError("이 워크플로우의 폴더(uuid)를 모릅니다 — 서버에 등록된 워크플로우로 돌리세요");
+  const rel = safeFilePath(value(a.path, "저장할 경로"));
+  const full = rootedPath(`${files.flowUid}/${rel}`);
+  if (full === null || !full.startsWith(`${files.flowUid}/`)) throw fail(`「${rel}」는 이 워크플로우의 폴더 밖입니다`);
+  const fs = opsOf(files);
+  if (a.skipExisting && (await fs.stat(full))?.isFile) return { path: rel, note: `이미 있어 건너뛰었습니다 — ${rel}` };
+  let bytes: Buffer;
+  let how: string;
+  if (a.source === "url") {
+    const url = new URL(value(a.url, "받을 주소"), page.url()).toString();
+    // ★이 브라우저의 로그인(쿠키)으로 받는다 — 화면은 옮기지 않는다
+    const res = await page.context().request.get(url, { timeout: timeoutMs, maxRedirects: 10 });
+    if (!res.ok()) throw fail(`${url}을(를) 받지 못했습니다 — HTTP ${res.status()}`);
+    bytes = await res.body();
+    how = `${res.headers()["content-type"]?.split(";")[0] ?? "?"}`;
+    // 같은 사이트의 로그인 화면으로 돌아왔다(주소가 바뀜) — 내용 검사보다 먼저 알린다
+    if (/login|signin|sso/iu.test(new URL(res.url()).pathname) && !/login|signin|sso/iu.test(new URL(url).pathname)) {
+      throw fail(`받으려던 주소가 로그인 화면(${res.url()})으로 넘어갔습니다 — 로그인이 풀렸거나 권한이 없습니다`);
+    }
+  } else {
+    bytes = await page.pdf({ printBackground: true, format: "A4", timeout: timeoutMs } as Parameters<Page["pdf"]>[0]).catch((e: Error) => {
+      throw fail(`지금 페이지를 PDF로 찍지 못했습니다 — 창 없는 브라우저(띄우기)에서만 됩니다. 사람의 크롬 · 창 있는 브라우저면 «주소에서 받기»를 쓰세요(${e.message.split("\n")[0]})`);
+    });
+    how = "페이지 PDF";
+  }
+  // ★.pdf인데 PDF가 아니면 쓰지 않는다 — 로그인 화면 · 오류 화면(HTML)을 PDF 이름으로 남기지 않게
+  if (rel.toLowerCase().endsWith(".pdf") && bytes.subarray(0, 5).toString("latin1") !== "%PDF-") {
+    const head = bytes.subarray(0, 200).toString("utf8").replace(/\s+/gu, " ").trim().slice(0, 80);
+    throw fail(`받은 것이 PDF가 아닙니다(${how} · ${bytes.length}바이트 · «${head}») — 로그인이 풀렸거나 권한이 없거나 내보내기가 꺼져 있습니다`);
+  }
+  await fs.writeBytes(full, bytes);
+  return { path: rel, note: `${rel}에 저장했습니다 — ${Math.max(1, Math.round(bytes.length / 1024))}KB(${how})` };
+}
+
+/** 결과 행에 그 행의 값을 함께 — 어느 행의 결과인지 남게(객체면 칸 그대로 · 아니면 item) */
+const rowOf = (item: unknown): Record<string, unknown> =>
+  item !== null && typeof item === "object" && !Array.isArray(item) ? { ...(item as Record<string, unknown>) } : { item };
+
+/** 그 행에서 시작 · 동작을 돈다 — «행마다 반복». 행마다 읽은 것을 rows로 모은다 */
+async function runEach(node: WebNode, env: NodeEnv): Promise<Output> {
+  const each = node.config.each!;
+  const v = evaluate(each.items, { ...env.scope, secrets: {} }).value;
+  let items: unknown[];
+  if (Array.isArray(v)) items = v;
+  else if (typeof v === "string" && v.trim().startsWith("[")) { try { items = JSON.parse(v); } catch { items = []; } }
+  else throw new StepError({ problem: "other", message: `반복할 행들이 목록이 아닙니다 — ${typeof v}`, label: "행마다 반복", locator: null, candidates: [] });
+  const one: WebNode = { ...node, config: { start: node.config.start, actions: node.config.actions } };
+  const rows: Record<string, unknown>[] = [];
+  let failed = 0;
+  for (const [i, item] of items.entries()) {
+    if (env.signal?.aborted) throw new RunStopped();
+    const tag = `[${i + 1}/${items.length}]`;
+    const rowEnv: NodeEnv = { ...env, scope: { ...env.scope, item }, step: (s) => env.step({ ...s, note: `${tag} ${s.note}` }) };
+    try {
+      const got = await runWebNode(one, rowEnv);
+      rows.push({ ...rowOf(item), ...got, ok: true, error: "" });
+    } catch (e) {
+      if (e instanceof RunStopped || env.signal?.aborted || e instanceof ProbeStop) throw e;
+      if (each.onError === "stop") throw e;
+      failed++;
+      const message = toFailure(e).message.split("\n")[0]!;
+      rows.push({ ...rowOf(item), ok: false, error: message });
+      env.step({ index: 0, id: "each", kind: "start", label: "행마다 반복", ms: 0, note: `${tag} 실패해 다음 행으로 — ${message}` });
+    }
+  }
+  return { rows, succeeded: rows.length - failed, failed };
+}
+
 export async function runWebNode(node: WebNode, env: NodeEnv): Promise<Output> {
+  if (node.config.each) return runEach(node, env);
   const { scope } = env;
   let prim = env.prim;
   /** 연 창들 — 팝업으로 옮겨 가면 쌓고, 닫히면 꺼낸다 */
@@ -444,6 +542,14 @@ export async function runWebNode(node: WebNode, env: NodeEnv): Promise<Output> {
             env.human.finished({ index, actionId: a.id, prompt: a.prompt, outcome });
           }
           note = `사람이 끝냈습니다 — ${durationText(Date.now() - started)} 기다림`;
+          break;
+        }
+        case "save": {
+          label = "파일로 저장";
+          const saved = await saveFile(a, prim.page, env.files, (t, w) => valueOf(t, w), a.timeoutMs ?? SAVE_TIMEOUT_MS);
+          label = saved.path;
+          note = saved.note;
+          if (a.output) out[a.output] = saved.path;
           break;
         }
         case "walletApprove": {

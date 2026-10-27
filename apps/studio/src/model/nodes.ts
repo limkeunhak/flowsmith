@@ -97,6 +97,8 @@ export function newAction(kind: WebAction["kind"], taken: Iterable<string>): Web
     case "human": return { ...base, kind, prompt: "로그인해 주세요", appears: null, done: { kind: "url", pattern: "" } };
     // MetaMask 승인 — 끝났다는 표시(로그인 뒤에만 보이는 것)는 녹화로 고르는 것이 쉽다. 손으로 넣으면 주소부터
     case "walletApprove": return { ...base, kind, done: { kind: "url", pattern: "" } };
+    // 파일로 저장 — 주소에서 받기(이 브라우저의 로그인으로)가 기본 · 끊긴 수집을 이어 하게 «이미 있으면 건너뛰기»를 켜 둔다
+    case "save": return { ...base, kind, source: "url", url: "", path: "", output: null, skipExisting: true };
   }
 }
 
