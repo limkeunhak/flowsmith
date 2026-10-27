@@ -95,13 +95,27 @@
   --side-active-text: #fff8ef;
   --side-accent: var(--ember-500);
 
+  /* 작업대(2026-10-27) — 주 단추는 숯, 불씨(주황)는 «실행 · 도는 중»에만. n8n의 대표색이 주황이라 주 단추를 주황으로 두면 그쪽처럼 보인다 */
+  --primary: var(--char-800);
+  --primary-hover: var(--char-600);
+  --on-primary: #fff8ef;
+  --run: var(--ember-500);
+  --run-hover: var(--ember-400);
+  --on-run: #1a0c04;
+  /* 고른 단계 — 흐린 그림자 대신 어긋난 그림자(작업대에서 들어 올린 공작물) */
+  --lift: var(--char-800);
+  /* 모눈 — 점 대신 작은 칸 · 큰 칸 */
+  --grid-minor: #ebe5dc;
+  --grid-major: #ddd5c9;
+
   --shadow-sm: 0 1px 2px rgb(28 25 21 / .06);
   --shadow: 0 4px 16px rgb(28 25 21 / .08), 0 1px 3px rgb(28 25 21 / .06);
   --shadow-lg: 0 14px 36px rgb(28 25 21 / .16);
-  --radius: 8px;
-  --mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
-  /* 글꼴 — Pretendard(앱에 함께 묶는다 · 사내망에서도) */
-  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  --radius: 6px;
+  /* 고정폭 — 코드 · 값 · 시간. 한글은 Plex Mono에 없어 Plex Sans KR로 잇는다(코드 안의 한글 이름) */
+  --mono: "IBM Plex Mono", "IBM Plex Sans KR", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* 글꼴 — IBM Plex Sans KR(앱에 함께 묶는다 · 사내망에서도 · main.tsx) */
+  --font-sans: "IBM Plex Sans KR", -apple-system, BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
   /* 글자 크기 단계 — 이 밖의 크기는 쓰지 않는다 */
   --fs-11: 11px; --fs-12: 12px; --fs-13: 13px; --fs-14: 14px; --fs-15: 15px; --fs-16: 16px; --fs-20: 20px; --fs-24: 24px;
   color-scheme: light;
@@ -148,6 +162,9 @@
     --side-border: #221c17;
     --side-hover: #1d1813;
     --side-active: #2a221b;
+    --primary: var(--cream); --primary-hover: #fff8ef; --on-primary: var(--char-800);
+    --lift: #6b5e50;
+    --grid-minor: #1c1814; --grid-major: #262019;
     --shadow-sm: 0 1px 2px rgb(0 0 0 / .4);
     --shadow: 0 4px 16px rgb(0 0 0 / .45);
     --shadow-lg: 0 14px 36px rgb(0 0 0 / .55);
@@ -193,6 +210,9 @@
   --side-border: #221c17;
   --side-hover: #1d1813;
   --side-active: #2a221b;
+  --primary: var(--cream); --primary-hover: #fff8ef; --on-primary: var(--char-800);
+  --lift: #6b5e50;
+  --grid-minor: #1c1814; --grid-major: #262019;
   --shadow-sm: 0 1px 2px rgb(0 0 0 / .4);
   --shadow: 0 4px 16px rgb(0 0 0 / .45);
   --shadow-lg: 0 14px 36px rgb(0 0 0 / .55);

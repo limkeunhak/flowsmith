@@ -211,7 +211,7 @@ export function FlowEditor({ id, runId, panel }: { id: string; runId?: string; p
     // Tab · ＋버튼은 위치를 모른다 — 고른 노드 뒤, 없으면 맨 끝 노드 오른쪽
     if (req.kind === "at" && req.position.x === 0 && req.position.y === 0 && draft.nodes.length > 0) {
       const last = draft.nodes.reduce((a, b) => (b.position.x > a.position.x ? b : a));
-      req = { kind: "at", position: { x: last.position.x + 220, y: last.position.y } };
+      req = { kind: "at", position: { x: last.position.x + 260, y: last.position.y } };
     }
     const r = insertNode(draft, type, req);
     update(() => r.flow);

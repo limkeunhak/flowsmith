@@ -158,7 +158,7 @@ export type AddRequest =
   | { kind: "between"; edge: string }
   | { kind: "at"; position: { x: number; y: number } };
 
-const GAP_X = 220;
+const GAP_X = 260;   // 공정 카드 폭(196) + 사이 64
 const near = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.abs(a.x - b.x) < 150 && Math.abs(a.y - b.y) < 110;
 
 /** 노드를 넣고 잇는다 — n8n처럼 출력 점 뒤 · 엣지 사이 · 빈 곳 */

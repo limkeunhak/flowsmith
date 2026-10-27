@@ -90,8 +90,10 @@ function NoteText({ id, text, readOnly, onCommit }: { id: string; text: string; 
   );
 }
 
-const TILE = 96;
-const PORT_GAP = 34;
+/** 공정 카드 — 가로 196 · 높이는 포트 수에 따라(최소 64). 새로 놓는 간격은 graph.ts의 GAP_X(260) */
+const TILE = 64;
+const CARD_W = 196;
+const PORT_GAP = 30;
 
 function StatusBadge({ status }: { status: NodeStatus | null }) {
   if (!status || status === "pending") return null;
@@ -127,7 +129,12 @@ function RelayNode({ data, selected }: NodeProps<FNode>) {
       )}
       <div className="tile" style={{ height }}>
         <Handle type="target" position={Position.Left} id="in" />
-        <span className="tile-icon"><Icon size={38} strokeWidth={1.7} /></span>
+        <span className="tile-icon"><Icon size={22} strokeWidth={1.8} /></span>
+        <div className="tile-body">
+          <div className="tile-kicker">{start ? "시작 · " : ""}{meta.title}</div>
+          <div className="tile-name" title={node.name}>{node.name}</div>
+          <div className="tile-sub">{subtitleOf(node)}</div>
+        </div>
         <StatusBadge status={status} />
         {drift && <span className={`tile-drift ${drift}`} title={drift === "broken" ? "변경 감시: 요소를 못 찾습니다" : "변경 감시: 요소가 바뀌었습니다"}>{drift === "broken" ? "깨짐" : "바뀜"}</span>}
         {issues.length > 0 && <span className="tile-issue" title={issues.join("\n")}><IconAlert size={15} strokeWidth={2.2} /></span>}
@@ -135,7 +142,12 @@ function RelayNode({ data, selected }: NodeProps<FNode>) {
         {ports.map((p, i) => (
           <div key={p.id} className="port" style={{ top: topOf(i) }}>
             {p.end === null && <Handle type="source" position={Position.Right} id={p.id} style={{ top: 0 }} />}
-            {node.type === "condition" && <span className={`port-label${p.end ? " end" : ""}`}>{p.label}{p.end ? ` → ${p.end}` : ""}</span>}
+            {/* 갈래 이름은 짧게 — 카드 사이(64)를 넘으면 옆 카드 밑으로 겹친다. 끝나는 갈래는 작은 도장으로, 전체 문구는 툴팁에 */}
+            {node.type === "condition" && (
+              <span className={`port-label${p.end ? " end" : ""}`} title={p.end ? `${p.label} → ${p.end}` : p.label}>
+                {p.label}{p.end && <span className="port-end">{p.end.endsWith("실패") ? "✕ 끝" : "✓ 끝"}</span>}
+              </span>
+            )}
             {node.type !== "condition" && p.id === BLOCKED_PORT && (
               <span className="port-label blocked" title="고르면 안 되는 행에 걸리면 이쪽으로 갑니다 — 잇지 않으면 그 자리에서 멈춥니다(실패)">
                 {p.label}{connected.includes(p.id) ? "" : " → 멈춤"}
@@ -152,8 +164,6 @@ function RelayNode({ data, selected }: NodeProps<FNode>) {
           </div>
         ))}
       </div>
-      <div className="tile-name" title={node.name}>{node.name}</div>
-      <div className="tile-sub">{subtitleOf(node)}</div>
     </div>
   );
 }
@@ -319,7 +329,7 @@ function Inner({ flow, selected, statuses, issues, drift, pinned, aiMarks, readO
   const centerAdd = useCallback(() => {
     const box = wrap.current?.getBoundingClientRect();
     const p = rf.screenToFlowPosition({ x: (box?.left ?? 0) + (box?.width ?? 800) / 2, y: (box?.top ?? 0) + (box?.height ?? 600) / 2 });
-    onRequestAdd({ kind: "at", position: { x: p.x - TILE / 2, y: p.y - TILE / 2 } });
+    onRequestAdd({ kind: "at", position: { x: p.x - CARD_W / 2, y: p.y - TILE / 2 } });
   }, [rf, onRequestAdd]);
 
   const fitted = useRef(false);
@@ -334,7 +344,7 @@ function Inner({ flow, selected, statuses, issues, drift, pinned, aiMarks, readO
     const box = wrap.current?.getBoundingClientRect();
     const tl = rf.screenToFlowPosition({ x: box?.left ?? 0, y: box?.top ?? 0 });
     const br = rf.screenToFlowPosition({ x: (box?.left ?? 0) + (box?.width ?? 800), y: (box?.top ?? 0) + (box?.height ?? 600) });
-    const taken = rf.getNodes().map((n) => ({ x: n.position.x, y: n.position.y, width: n.measured?.width ?? n.width ?? TILE, height: n.measured?.height ?? n.height ?? TILE }));
+    const taken = rf.getNodes().map((n) => ({ x: n.position.x, y: n.position.y, width: n.measured?.width ?? n.width ?? CARD_W, height: n.measured?.height ?? n.height ?? TILE }));
     const size = { width: 260, height: 140 };
     const at = freeSpot(taken, size, { x: tl.x, y: tl.y, width: br.x - tl.x, height: br.y - tl.y });
     onChange((f) => ({ ...f, notes: [...(f.notes ?? []), { id: nextId("m", (f.notes ?? []).map((n) => n.id)), text: "", position: { x: at.x, y: at.y }, ...size, color: "yellow" }] }));
@@ -369,7 +379,9 @@ function Inner({ flow, selected, statuses, issues, drift, pinned, aiMarks, readO
           minZoom={0.25} maxZoom={2}
           defaultEdgeOptions={{ type: "relay" }}
         >
-          <Background variant={BackgroundVariant.Dots} gap={20} size={1.3} />
+          {/* 모눈 — 작은 칸 24 · 큰 칸 120(점 무늬 대신) */}
+          <Background id="minor" variant={BackgroundVariant.Lines} gap={24} lineWidth={1} color="var(--grid-minor)" />
+          <Background id="major" variant={BackgroundVariant.Lines} gap={120} lineWidth={1} color="var(--grid-major)" />
           <Controls showInteractive={false} position="bottom-left" />
         </ReactFlow>
         {menu && (
