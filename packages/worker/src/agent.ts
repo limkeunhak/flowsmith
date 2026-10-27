@@ -215,6 +215,8 @@ export class WorkerAgent {
       write: async (path, text) => { await f("write", path, text); },
       // 바이트는 base64 글로 실어 보낸다(서버가 풀어 쓴다)
       writeBytes: async (path, data) => { await f("writeBytes", path, Buffer.from(data).toString("base64")); },
+      // 압축은 파일이 있는 서버에서 — 묶을 것을 이 PC로 가져오지 않는다
+      zip: async (src, include, dest, ifExists) => (await f("zip", src, JSON.stringify({ include, dest, ifExists }))) as { count: number; bytes: number },
       append: async (path, text) => { await f("append", path, text); },
       stat: async (path) => (await f("stat", path)) as Awaited<ReturnType<FileOps["stat"]>>,
       remove: async (path) => { await f("remove", path); },

@@ -3,7 +3,7 @@
  * 캔버스 타일 · 노드 고르기 · 노드 창이 같이 쓴다(한 곳에 두어 서로를 가져가지 않게 — 의존 점검 2026-10-17).
  */
 import type { FlowNode, NodeType } from "@flowsmith/core";
-import { NodeIconApproval, NodeIconCall, NodeIconCheck, NodeIconCode, NodeIconExt, NodeIconFileIn, NodeIconFileOut, NodeIconHttp, NodeIconHuman, NodeIconIf, NodeIconOpen, NodeIconTransform, NodeIconWeb } from "../icons.tsx";
+import { NodeIconApproval, NodeIconCall, NodeIconCheck, NodeIconCode, NodeIconExt, NodeIconFileIn, NodeIconFileOut, NodeIconHttp, NodeIconHuman, NodeIconIf, NodeIconOpen, NodeIconZip, NodeIconTransform, NodeIconWeb } from "../icons.tsx";
 import { webFace } from "../model/split.ts";
 
 export type NodeGroup = "web" | "data" | "flow" | "connect" | "advanced";
@@ -19,6 +19,7 @@ export const NODE_GROUPS: { id: NodeGroup; title: string }[] = [
 export const NODE_META: Record<NodeType, { title: string; desc: string; icon: typeof NodeIconWeb; keywords: string; group: NodeGroup }> = {
   web: { title: "웹페이지", desc: "페이지를 열고 누르기 · 넣기 · 읽기를 합니다. 사람이 한 일을 녹화해 만듭니다", icon: NodeIconWeb, group: "web", keywords: "web page 브라우저 클릭 입력 읽기 로그인 녹화" },
   transform: { title: "값 다듬기", desc: "코드 없이 목록을 다듬습니다 — 칸 고르기 · 거르기 · 겹침 빼기 · 값 바꾸기 · 숫자/날짜 형식 · 정렬", icon: NodeIconTransform, group: "data", keywords: "transform filter map dedupe sort format 다듬기 거르기 필터 중복 정렬 변환 칸 열 이름 바꾸기 숫자 날짜" },
+  zip: { title: "압축(zip)", desc: "폴더의 파일들(PDF · 캡처 · CSV)을 zip 하나로 묶습니다 — 한 번에 내려받게", icon: NodeIconZip, group: "data", keywords: "zip 압축 묶기 묶음 아카이브 archive 내려받기 다운로드" },
   fileWrite: { title: "파일 쓰기", desc: "앞에서 모은 것을 파일에 씁니다 — CSV · JSON · 텍스트, 이어 붙이기 · 날짜별 파일 · 엑셀로 받기", icon: NodeIconFileOut, group: "data", keywords: "store save file csv json excel 엑셀 저장 파일 쓰기 기록 수집" },
   fileRead: { title: "파일 읽기", desc: "다른 워크플로우가 파일 쓰기로 남긴 파일을 읽습니다 — 오늘 · 어제 · 가장 최근 파일", icon: NodeIconFileIn, group: "data", keywords: "file read csv json load 파일 읽기 불러오기" },
   condition: { title: "조건", desc: "앞에서 받은 값에 따라 갈래를 나누거나 워크플로우를 끝냅니다", icon: NodeIconIf, group: "flow", keywords: "if 분기 갈래 비교 조건" },

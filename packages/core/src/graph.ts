@@ -6,6 +6,7 @@
  */
 import { APPROVAL_OUTPUTS, CHECK_OUTPUTS, BLOCKED_OUTPUTS, BLOCKED_PORT, ELSE_PORT, FLOW_CALL_OUTPUTS, HTTP_OUTPUTS, WEB_EACH_OUTPUTS, OUT_PORT, TRANSFORM_OUTPUTS, SECRET_PARTS, type Edge, type Flow, type FlowNode, type Target } from "./model.ts";
 import { FILE_READ_OUTPUTS, STORE_OUTPUTS } from "./nodes/file.ts";
+import { ZIP_OUTPUTS } from "./nodes/zip.ts";
 import { ExprError, refsOf, type Ref } from "./expr.ts";
 import { walletSecretParam } from "./wallet.ts";
 
@@ -77,6 +78,9 @@ function templatesOf(n: FlowNode): { where: string; template: string; secrets: b
       break;
     case "fileWrite":
       out.push({ where: "저장할 값", template: n.config.data, secrets: false });
+      break;
+    case "zip":
+      out.push({ where: "묶을 폴더", template: n.config.from.dir, secrets: false }, { where: "결과 폴더", template: n.config.to.dir, secrets: false }, { where: "결과 이름", template: n.config.to.name, secrets: false });
       break;
     case "fileRead":
       break; // 표현식 자리가 없다
@@ -228,6 +232,7 @@ export function compile(flow: Flow): CompiledFlow {
       case "custom": outputs.set(id, new Set(n.config.outputs)); break;
       case "extension": outputs.set(id, new Set(n.config.outputs)); break;
       case "fileWrite": outputs.set(id, new Set(STORE_OUTPUTS)); break;
+      case "zip": outputs.set(id, new Set(ZIP_OUTPUTS)); break;
       case "fileRead": outputs.set(id, new Set(FILE_READ_OUTPUTS)); break;
       case "flowCall": outputs.set(id, new Set(FLOW_CALL_OUTPUTS)); break;
       case "http": outputs.set(id, new Set(HTTP_OUTPUTS)); break;
