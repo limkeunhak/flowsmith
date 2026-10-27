@@ -306,9 +306,9 @@ export async function runFlow(flow: Flow, opts: RunOptions = {}): Promise<RunRes
               : start.kind === "tab" ? await session.tab(start.match)
               : session.page ?? await session.pageForUrl();   // 이어서 — 페이지가 없으면 빈 페이지(노드가 «이어 갈 페이지 없음»으로 멈춘다)
             const output = await runWebNode(node, {
-              prim: primFor(page), primFor, onPage: (p, opened) => session.follow(p, opened), scope, defaultTimeoutMs: flow.settings.defaultTimeoutMs,
+              prim: primFor(page), primFor, onPage: (p, opened) => session.follow(p, opened), openerOf: (p) => session.openerOf(p), scope, defaultTimeoutMs: flow.settings.defaultTimeoutMs,
               signal: stop.signal, retry: { count: flow.settings.retries, delayMs: flow.settings.retryDelayMs },
-              ...(opts.probe ? { probe: { report: (f) => { findings.push(f); } } } : {}),
+              ...(opts.probe ? { probe: { report: (f) => { findings.push(f); } } } : { actionPause: flow.settings.actionPause }),
               step: (s) => { rec.steps.push(s); emit({ kind: "step", nodeId: node.id, step: s }); },
               ...(walletHook ? { wallet: walletHook } : {}),
               ...(humanOk ? { human: {

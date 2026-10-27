@@ -27,6 +27,7 @@ export const DEFAULT_SETTINGS: FlowSettings = {
   schedules: [],
   retries: 0,
   retryDelayMs: 2_000,
+  actionPause: { minMs: 0, maxMs: 0 },
   runTimeoutMin: 60,
   notify: [],
   locks: [],
@@ -91,6 +92,16 @@ function notifyRule(c: Checker, x: unknown, i: number): NotifyRule {
     } else if (!url.trim().startsWith("{{") && !/^https?:\/\//i.test(url.trim())) c.fail(w, "주소는 http:// 또는 https://로 시작해야 합니다");
   }
   return { id: c.id(r, "id", w), on, channel, url, attach: c.bool(r, "attach", w, false), firstOnly: c.bool(r, "firstOnly", w, true), enabled: c.bool(r, "enabled", w, true) };
+}
+
+/** 동작 사이 쉬기 — 없으면 쉬지 않는다. 0~60초 · 최대가 최소보다 작으면 안 된다 */
+function actionPauseOf(c: Checker, v: unknown): FlowSettings["actionPause"] {
+  if (v == null) return { ...DEFAULT_SETTINGS.actionPause };
+  const o = c.obj(v, "settings.actionPause");
+  const minMs = Math.min(60_000, c.int(o, "minMs", "settings.actionPause", 0, 0));
+  const maxMs = Math.min(60_000, c.int(o, "maxMs", "settings.actionPause", minMs, 0));
+  if (maxMs < minMs) c.fail("settings.actionPause", `최대(maxMs ${maxMs})가 최소(minMs ${minMs})보다 작습니다`);
+  return { minMs, maxMs };
 }
 
 function settings(c: Checker, v: unknown): FlowSettings {
@@ -175,6 +186,7 @@ function settings(c: Checker, v: unknown): FlowSettings {
     fileTriggers,
     retries: Math.min(retries, 5),
     retryDelayMs: c.int(o, "retryDelayMs", "settings", DEFAULT_SETTINGS.retryDelayMs, 0),
+    actionPause: actionPauseOf(c, o["actionPause"]),
     runTimeoutMin,
     forbiddenLabels,
     defaultTimeoutMs: c.int(o, "defaultTimeoutMs", "settings", DEFAULT_SETTINGS.defaultTimeoutMs, 100),

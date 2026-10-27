@@ -124,7 +124,7 @@ function targetsOf(n: FlowNode): { where: string; target: Target; click: boolean
       case "walletApprove":
         if (a.done.kind !== "url") out.push({ where: `${w} 끝났다는 표시`, target: a.done.target, click: false });
         break;
-      case "goto": case "closeWindow": case "recheck": break;
+      case "goto": case "closeWindow": case "switchWindow": case "recheck": break;
     }
   });
   return out;

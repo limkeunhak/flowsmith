@@ -11,7 +11,7 @@ import { aiBridge } from "./ai/bridge.ts";
 import { useMe } from "./shell/me.ts";
 import { api, ApiError, type FlowSummary } from "./api.ts";
 import { blankFlow, newFlowId, SCHEDULE_CHOICES, TEMPLATES, type FlowChoice, type Template } from "./model/index.ts";
-import { IconAlert, IconCheck, IconPlay, IconPlus, IconSearch, IconTrash, IconX } from "./icons.tsx";
+import { IconAlert, IconCheck, IconCopy, IconPlay, IconPlus, IconSearch, IconTrash, IconX } from "./icons.tsx";
 import { ago } from "./format.ts";
 
 
@@ -126,6 +126,17 @@ export function FlowList({ only = null }: { only?: "templates" | null }) {
     void load();
   }
 
+  /** 복제 — 초안만 «이름 (사본)»으로. 만들고 나면 그 캔버스로 */
+  async function duplicate(f: FlowSummary) {
+    setError(null);
+    try {
+      const d = await api.duplicateFlow(f.id);
+      location.hash = `#/flows/${encodeURIComponent(d.id)}`;
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : String(e));
+    }
+  }
+
   const [only2, setOnly2] = useState<"all" | "published" | "todo" | "failed">("all");
   const counts = {
     all: (flows ?? []).length,
@@ -236,6 +247,7 @@ export function FlowList({ only = null }: { only?: "templates" | null }) {
                   {f.activeVersion !== null && me.can("runner") && (
                     <a className="icon-btn" href={`#/run/${encodeURIComponent(f.id)}`} title="실행 폼 — 입력만 넣고 게시된 버전을 돌립니다(이 주소를 실행자에게 주세요)" onClick={(e) => e.stopPropagation()}><IconPlay size={16} /></a>
                   )}
+                  {me.can("editor") && <button className="icon-btn" title="복제 — 초안만 «이름 (사본)»으로 만듭니다(버전 · 실행 기록 · 시크릿 값은 안 가져갑니다)" onClick={(e) => { e.stopPropagation(); void duplicate(f); }}><IconCopy /></button>}
                   <button className="icon-btn" title="지우기" onClick={(e) => { e.stopPropagation(); void remove(f); }}><IconTrash /></button>
                 </div>
               ))}

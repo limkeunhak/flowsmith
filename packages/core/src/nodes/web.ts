@@ -105,13 +105,24 @@ export const HUMAN_DONE_KINDS = ["hidden", "visible", "url"] as const;
 /** 사람을 기다리는 시간 — 기본 5분 · 10초~30분 */
 export const HUMAN_TIMEOUT = { defaultMs: 5 * 60_000, minMs: 10_000, maxMs: 30 * 60_000 } as const;
 
+/**
+ * **누르면 뜨는 브라우저 확인창**(alert · confirm)에 답하기 — 등록 · 삭제 앞의 «정말 하시겠습니까?» 같은 것.
+ *   accept  참이면 «확인», 거짓이면 «취소»
+ *   expect  확인창 문구에 들어 있어야 할 글자 — 다르면 «취소»로 닫고 **멈춘다**(다른 경고 알림을 등록 확인으로 넘기지 않게). 비우면 보지 않는다
+ * ★확인창이 뜨지 않으면 멈춘다. 이 칸이 없는 누르기에서 뜬 확인창은 브라우저 기본대로 «취소»로 닫힌다(Playwright)
+ */
+export interface DialogAnswer {
+  accept: boolean;
+  expect: string;
+}
+
 /** 읽은 글자를 바꾸는 법 — number: 숫자 · 부호 · 소수점만 남겨 숫자로(「651,170원」→ 651170) */
 export const READ_TRANSFORMS = ["number"] as const;
 export type ReadTransform = (typeof READ_TRANSFORMS)[number];
 
 export type WebAction =
   | (ActionBase & { kind: "goto"; url: string })
-  | (ActionBase & { kind: "click"; target: Target; popup: boolean })
+  | (ActionBase & { kind: "click"; target: Target; popup: boolean; dialog?: DialogAnswer })
   | (ActionBase & { kind: "fill"; target: Target; value: string })
   | (ActionBase & { kind: "select"; target: Target; value: string })
   | (ActionBase & { kind: "check"; target: Target; checked: boolean })
@@ -121,6 +132,11 @@ export type WebAction =
   | (ActionBase & { kind: "readTable"; table: TableTarget; output: string })
   /** 팝업 창을 닫고 연 창으로 돌아간다(닫기 단추가 없을 때) */
   | (ActionBase & { kind: "closeWindow" })
+  /**
+   * **새 창으로 옮기기** — 누르기와 바로 이어지지 않고 열리는 창(확인창에 답한 뒤 열리는 창 · 늦게 열리는 창)으로 옮겨 간다.
+   * 지금 창이 연 창 중 아직 옮겨 가지 않은 가장 최근 것을 시간 제한까지 기다린다. 닫히면 연 창으로 돌아온다(누르기의 팝업과 같다)
+   */
+  | (ActionBase & { kind: "switchWindow" })
   /**
    * **넣은 칸 다시 확인** — 이 노드에서 지금 창에 넣고 · 고르고 · 켠 칸을 다시 읽는다. 지워졌거나 바뀐 칸은 한 번만 다시 넣고,
    * 그래도 안 맞으면 멈춘다. 늦게 온 조회 응답이 이미 넣은 칸을 지우는 화면에서, 제출 · 계산 단추 바로 앞에 둔다
@@ -146,7 +162,7 @@ export type WebAction =
    */
   | (ActionBase & { kind: "walletApprove"; done: HumanDone });
 
-export const ACTION_KINDS = ["goto", "click", "fill", "select", "check", "press", "wait", "read", "readTable", "closeWindow", "recheck", "pickRow", "assert", "human", "walletApprove"] as const;
+export const ACTION_KINDS = ["goto", "click", "fill", "select", "check", "press", "wait", "read", "readTable", "closeWindow", "switchWindow", "recheck", "pickRow", "assert", "human", "walletApprove"] as const;
 /** MetaMask 승인을 기다리는 시간 — 기본 2분 · 10초~10분 */
 export const WALLET_APPROVE_TIMEOUT = { defaultMs: 2 * 60_000, minMs: 10_000, maxMs: 10 * 60_000 } as const;
 export type ActionKind = WebAction["kind"];

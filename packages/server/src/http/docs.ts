@@ -51,6 +51,7 @@ export const DOCS: Record<string, RouteDoc> = {
   "PUT /api/flows/:id/draft": { tag: "워크플로우", summary: "초안 저장", description: "틀려 있어도 저장된다(편집 중). 실행 · 게시는 문제가 없어야 한다.", body: { "*draft": "워크플로우 초안(JSON)" }, example: { draft: FLOW_EXAMPLE } },
   "DELETE /api/flows/:id": { tag: "워크플로우", summary: "워크플로우 지우기", ok: 204 },
   "PUT /api/flows/:id/team": { tag: "워크플로우", summary: "팀 옮기기", body: { "*team": "팀 id — 공용이면 null" }, example: { team: null } },
+  "POST /api/flows/:id/duplicate": { tag: "워크플로우", summary: "워크플로우 복제", description: "초안만 새 워크플로우로 — id는 «원래id-copy»(겹치면 -copy2 …) · 이름은 «원래 이름 (사본)» · 팀은 원래 것. 버전 · 게시 · 실행 기록 · 고정 출력 · 시크릿 값은 가져오지 않는다(시크릿은 정의만 — 값은 새로 넣는다).", body: { name: "새 이름(없으면 «… (사본)»)", team: "둘 팀 id(없으면 원래 팀 · 공용은 null)" }, example: {}, ok: 201 },
   "POST /api/flows/:id/versions": { tag: "워크플로우", summary: "초안을 버전으로 굳힌다", description: "검문소를 통과해야 한다. 마지막 버전과 같으면 만들지 않는다.", body: { note: "메모" }, example: { note: "" }, ok: 201 },
   "GET /api/flows/:id/versions/:v": { tag: "워크플로우", summary: "그 버전의 매니페스트" },
   "PUT /api/flows/:id/pins/:nodeId": { tag: "워크플로우", summary: "노드 출력 고정(pin data)", description: "초안 시험에서 그 노드는 돌지 않고 이 값을 내놓는다(게시된 버전 · 일정 · 웹훅은 늘 진짜로). 버전에 들어가지 않는다.", body: { "*output": "그 노드가 내놓을 값(객체)" }, example: { output: { status: "배송중" } } },
