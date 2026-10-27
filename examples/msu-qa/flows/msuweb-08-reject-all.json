@@ -1,0 +1,196 @@
+{
+  "schemaVersion": 1,
+  "id": "msuweb-08-reject-all",
+  "name": "MSU 웹 · 쿠키 전체 거부",
+  "description": "08-cookie-consent: 전체 거부 — 필수만 동의, 나머지는 거부로 기록된다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "첫 방문",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/"
+        },
+        "actions": [
+          {
+            "id": "a295",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a292",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "배너 «Reject All»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:visible:has-text(\"Reject All\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a293",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 2500
+            }
+          },
+          {
+            "id": "a294",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 배너",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "#cookiebotBanner"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "banner",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "consent",
+      "type": "custom",
+      "name": "기록된 쿠키 동의",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "const raw = (await page.context().cookies()).find((c) => c.name === 'CookieConsent')?.value ?? '';\nconst text = decodeURIComponent(raw);\nconst v = (k) => { const m = text.match(new RegExp(k + ':(true|false)')); return m ? m[1] : ''; };\nconst consent = { recorded: raw !== '', raw: text, necessary: v('necessary'), preferences: v('preferences'), statistics: v('statistics'), marketing: v('marketing') };\nreturn consent;",
+        "outputs": [
+          "recorded",
+          "raw",
+          "necessary",
+          "preferences",
+          "statistics",
+          "marketing"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k296",
+            "label": "배너가 닫혀야 한다",
+            "actual": "{{ $node.open.banner }}",
+            "op": "empty",
+            "expected": null
+          },
+          {
+            "id": "k297",
+            "label": "거부도 기록되어야 한다",
+            "actual": "{{ $input.recorded }}",
+            "op": "isTrue",
+            "expected": null
+          },
+          {
+            "id": "k298",
+            "label": "필수 항목은 남아야 한다",
+            "actual": "{{ $input.necessary }}",
+            "op": "isTrue",
+            "expected": null
+          },
+          {
+            "id": "k299",
+            "label": "preferences 는 거부로 기록되어야 한다",
+            "actual": "{{ $input.preferences }}",
+            "op": "isFalse",
+            "expected": null
+          },
+          {
+            "id": "k300",
+            "label": "statistics 는 거부로 기록되어야 한다",
+            "actual": "{{ $input.statistics }}",
+            "op": "isFalse",
+            "expected": null
+          },
+          {
+            "id": "k301",
+            "label": "marketing 는 거부로 기록되어야 한다",
+            "actual": "{{ $input.marketing }}",
+            "op": "isFalse",
+            "expected": null
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "consent"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "consent",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

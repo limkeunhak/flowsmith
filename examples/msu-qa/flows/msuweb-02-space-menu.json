@@ -1,0 +1,328 @@
+{
+  "schemaVersion": 1,
+  "id": "msuweb-02-space-menu",
+  "name": "MSU 웹 · MSU Space 메뉴 → Resource Search · Forum",
+  "description": "02-navigation-links: MSU Space 메뉴(마우스를 올리면 열림)에 세 곳이 새 창 링크로 있다 — 올리기 · 항목 수는 코드로",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "메인 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/"
+        },
+        "actions": [
+          {
+            "id": "a66",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a67",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "hover",
+      "type": "custom",
+      "name": "MSU Space 에 마우스 올리기",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "const t = page.locator('header a[data-link=\"gnb-link\"]', { hasText: 'MSU Space' }).first();\nawait t.waitFor({ state: 'visible', timeout: 20000 }); await t.hover();\nawait page.locator('[role=\"listbox\"]').first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});\nawait page.waitForTimeout(600);\nreturn { options: await page.locator('[role=\"option\"]').count() };",
+        "outputs": [
+          "options"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "menu",
+      "type": "web",
+      "name": "메뉴 항목 읽기",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a68",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "메뉴 «MSU Space»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//header//*[@role=\"listbox\"]//a[normalize-space(.)=\"MSU Space\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "MSUSpaceHref",
+            "strategy": "attribute",
+            "attribute": "href",
+            "transform": null
+          },
+          {
+            "id": "a69",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "메뉴 «MSU Space»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//header//*[@role=\"listbox\"]//a[normalize-space(.)=\"MSU Space\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "MSUSpaceTarget",
+            "strategy": "attribute",
+            "attribute": "target",
+            "transform": null
+          },
+          {
+            "id": "a70",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "메뉴 «MSU Resource Search»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//header//*[@role=\"listbox\"]//a[normalize-space(.)=\"MSU Resource Search\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "MSUResourceSearchHref",
+            "strategy": "attribute",
+            "attribute": "href",
+            "transform": null
+          },
+          {
+            "id": "a71",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "메뉴 «MSU Resource Search»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//header//*[@role=\"listbox\"]//a[normalize-space(.)=\"MSU Resource Search\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "MSUResourceSearchTarget",
+            "strategy": "attribute",
+            "attribute": "target",
+            "transform": null
+          },
+          {
+            "id": "a72",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "메뉴 «MSU Forum»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//header//*[@role=\"listbox\"]//a[normalize-space(.)=\"MSU Forum\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "MSUForumHref",
+            "strategy": "attribute",
+            "attribute": "href",
+            "transform": null
+          },
+          {
+            "id": "a73",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "메뉴 «MSU Forum»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//header//*[@role=\"listbox\"]//a[normalize-space(.)=\"MSU Forum\"])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "MSUForumTarget",
+            "strategy": "attribute",
+            "attribute": "target",
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k74",
+            "label": "세 개의 항목이 있어야 한다",
+            "actual": "{{ $node.hover.options }}",
+            "op": "eq",
+            "expected": "3"
+          },
+          {
+            "id": "k75",
+            "label": "MSU Space 의 링크",
+            "actual": "{{ $node.menu.MSUSpaceHref }}",
+            "op": "eq",
+            "expected": "https://verse8.io/msu"
+          },
+          {
+            "id": "k76",
+            "label": "MSU Space 는 새 창으로 열려야 한다",
+            "actual": "{{ $node.menu.MSUSpaceTarget }}",
+            "op": "eq",
+            "expected": "_blank"
+          },
+          {
+            "id": "k77",
+            "label": "MSU Resource Search 의 링크",
+            "actual": "{{ $node.menu.MSUResourceSearchHref }}",
+            "op": "eq",
+            "expected": "https://resource-search.msu.io/search"
+          },
+          {
+            "id": "k78",
+            "label": "MSU Resource Search 는 새 창으로 열려야 한다",
+            "actual": "{{ $node.menu.MSUResourceSearchTarget }}",
+            "op": "eq",
+            "expected": "_blank"
+          },
+          {
+            "id": "k79",
+            "label": "MSU Forum 의 링크",
+            "actual": "{{ $node.menu.MSUForumHref }}",
+            "op": "eq",
+            "expected": "https://forum.msu.io"
+          },
+          {
+            "id": "k80",
+            "label": "MSU Forum 는 새 창으로 열려야 한다",
+            "actual": "{{ $node.menu.MSUForumTarget }}",
+            "op": "eq",
+            "expected": "_blank"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "hover"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "hover",
+        "port": "out"
+      },
+      "to": {
+        "node": "menu"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "menu",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

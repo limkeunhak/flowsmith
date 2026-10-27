@@ -42,6 +42,258 @@
         "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
       },
       "enabled": true
+    },
+    {
+      "id": "n04a",
+      "flowId": "navigator-04-nft-tabs",
+      "label": "[04-detail-pages] NFT 상세가 열리고 Info · History · Activity 탭을 오갈 수 있다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "n04b",
+      "flowId": "navigator-04-nft-history-param",
+      "label": "[04-detail-pages] URL의 tab 파라미터로 History 탭에 바로 진입할 수 있다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "n04c",
+      "flowId": "navigator-04-character",
+      "label": "[04-detail-pages] 캐릭터 상세가 열린다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "n04d",
+      "flowId": "navigator-04-owner-tabs",
+      "label": "[04-detail-pages] 소유자 상세에 보유 자산 탭 4종과 더보기가 있다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "n05a",
+      "flowId": "navigator-05-unknown-no-leak",
+      "label": "[05-not-found] 존재하지 않는 NFT 조회 시 내부 정보가 노출되지 않는다",
+      "params": {
+        "path": "nft/ITEMdoesnotexist000000000"
+      },
+      "enabled": true
+    },
+    {
+      "id": "n05b",
+      "flowId": "navigator-05-unknown-no-leak",
+      "label": "[05-not-found] 존재하지 않는 캐릭터 조회 시 내부 정보가 노출되지 않는다",
+      "params": {
+        "path": "character/CHARdoesnotexist000000000"
+      },
+      "enabled": true
+    },
+    {
+      "id": "n05c",
+      "flowId": "navigator-05-unknown-no-leak",
+      "label": "[05-not-found] 존재하지 않는 지갑 주소 조회 시 내부 정보가 노출되지 않는다",
+      "params": {
+        "path": "owner/0xdeadbeef"
+      },
+      "enabled": true
+    },
+    {
+      "id": "n05d",
+      "flowId": "navigator-05-not-found-404",
+      "label": "[05-not-found] 존재하지 않는 NFT · 지갑 주소는 404 로 처리된다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "n06a",
+      "flowId": "navigator-06-owner-tab-url",
+      "label": "[06-owner-listing] 탭을 전환하면 주소는 유지된 채 해당 목록으로 바뀐다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "n06b",
+      "flowId": "navigator-06-owner-more",
+      "label": "[06-owner-listing] More 를 누르면 목록이 늘어나고 더 불러올 것이 없으면 사라진다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "n06c",
+      "flowId": "navigator-06-owner-roundtrip",
+      "label": "[06-owner-listing] 탭을 전환했다 돌아와도 불러온 목록에 다시 닿을 수 있다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "n07a",
+      "flowId": "navigator-07-character-tabs",
+      "label": "[07-character-detail] 캐릭터 상세는 상위 탭과 Info 안의 하위 탭을 함께 제공한다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "n07b",
+      "flowId": "navigator-07-character-tab-url",
+      "label": "[07-character-detail] 상위 탭을 전환하면 주소에 반영되고 같은 주소로 다시 열 수 있다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "n07c",
+      "flowId": "navigator-07-holding-items",
+      "label": "[07-character-detail] Holding items 탭은 아이템 분류 탭을 제공한다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "n09a",
+      "flowId": "navigator-09-watch-signin",
+      "label": "[09-watchlist] 비로그인 상태에서 지켜보기를 누르면 로그인 창이 뜬다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "n10a",
+      "flowId": "navigator-10-period-refetch",
+      "label": "[10-ranking] 기간을 바꾸면 그 기간으로 다시 조회한다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "n10b",
+      "flowId": "navigator-10-boards-link",
+      "label": "[10-ranking] 랭킹 보드가 노출되고 각 항목이 상세로 연결된다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "n11a",
+      "flowId": "navigator-11-activity-table",
+      "label": "[11-activity-history] Activity 탭에 거래 내역이 표로 나온다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "n11b",
+      "flowId": "navigator-11-activity-filter",
+      "label": "[11-activity-history] 거래 종류를 고르면 그 종류만 남고 주소에 반영된다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "n11c",
+      "flowId": "navigator-11-filter-link",
+      "label": "[11-activity-history] 필터가 걸린 주소를 그대로 열면 같은 결과가 나온다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "n11d",
+      "flowId": "navigator-11-history-table",
+      "label": "[11-activity-history] History 탭에 아이템 이력이 표로 나온다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "n12a",
+      "flowId": "navigator-12-nickname-from-wallet",
+      "label": "[12-nickname-detail] 지갑의 Nicknames 탭에서 닉네임 상세로 들어갈 수 있다",
+      "params": {
+        "owner": "0x18B8958F05263D89281f1bdd97AFfc5879394292"
+      },
+      "enabled": true
+    },
+    {
+      "id": "n12b",
+      "flowId": "navigator-12-nickname-activity",
+      "label": "[12-nickname-detail] 닉네임 상세에 발행 · 거래 내역이 나온다",
+      "params": {
+        "owner": "0x18B8958F05263D89281f1bdd97AFfc5879394292"
+      },
+      "enabled": true
+    },
+    {
+      "id": "n12c",
+      "flowId": "navigator-12-nickname-404",
+      "label": "[12-nickname-detail] 존재하지 않는 닉네임은 404 로 처리된다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "n13a",
+      "flowId": "navigator-13-footer-links",
+      "label": "[13-links-and-a11y] 푸터의 외부 링크는 새 창으로, 보안 속성과 함께 열린다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "n13b",
+      "flowId": "navigator-13-marketplace-handoff",
+      "label": "[13-links-and-a11y] 아이템 상세에서 마켓플레이스의 같은 아이템으로 이어진다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "n13c",
+      "flowId": "navigator-13-img-alt",
+      "label": "[13-links-and-a11y] 화면에 보이는 이미지에는 대체 텍스트가 지정되어 있다",
+      "params": {
+        "character": "CHARd0311l7p0t3s73a6tds0"
+      },
+      "enabled": true
+    },
+    {
+      "id": "n14a",
+      "flowId": "navigator-14-viewport",
+      "label": "[14-responsive] 데스크톱 1920 에서 가로 스크롤 없이 검색과 랭킹이 노출된다",
+      "params": {
+        "width": "1920",
+        "height": "1080"
+      },
+      "enabled": true
+    },
+    {
+      "id": "n14b",
+      "flowId": "navigator-14-viewport",
+      "label": "[14-responsive] 데스크톱 1440 에서 가로 스크롤 없이 검색과 랭킹이 노출된다",
+      "params": {
+        "width": "1440",
+        "height": "900"
+      },
+      "enabled": true
+    },
+    {
+      "id": "n14c",
+      "flowId": "navigator-14-viewport",
+      "label": "[14-responsive] 태블릿 768 에서 가로 스크롤 없이 검색과 랭킹이 노출된다",
+      "params": {
+        "width": "768",
+        "height": "1024"
+      },
+      "enabled": true
+    },
+    {
+      "id": "n14d",
+      "flowId": "navigator-14-viewport",
+      "label": "[14-responsive] 모바일 390 에서 가로 스크롤 없이 검색과 랭킹이 노출된다",
+      "params": {
+        "width": "390",
+        "height": "844"
+      },
+      "enabled": true
+    },
+    {
+      "id": "n14e",
+      "flowId": "navigator-14-mobile-search",
+      "label": "[14-responsive] 모바일에서도 검색으로 상세에 도달한다",
+      "params": {
+        "width": "390",
+        "height": "844",
+        "name": "blahh"
+      },
+      "enabled": true
     }
   ]
 }

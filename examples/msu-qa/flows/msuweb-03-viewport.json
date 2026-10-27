@@ -1,0 +1,263 @@
+{
+  "schemaVersion": 1,
+  "id": "msuweb-03-viewport",
+  "name": "MSU 웹 · 화면 너비별 가로 스크롤 · 헤더 · 푸터",
+  "description": "03-responsive: 그 너비에서 가로 스크롤 없이 헤더와 푸터가 보인다 — 너비 · 높이는 실행 입력, 크기 바꾸기 · 넘침 재기는 코드로",
+  "params": [
+    {
+      "name": "width",
+      "label": "화면 너비",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "1920",
+      "help": ""
+    },
+    {
+      "name": "height",
+      "label": "화면 높이",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "1080",
+      "help": ""
+    }
+  ],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "메인 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/"
+        },
+        "actions": [
+          {
+            "id": "a81",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 3000
+            }
+          },
+          {
+            "id": "a82",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "size",
+      "type": "custom",
+      "name": "화면 크기 바꾸고 다시 열기",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "await page.setViewportSize({ width: Number(ctx.params.width), height: Number(ctx.params.height) });\nawait page.reload({ waitUntil: 'domcontentloaded' }); await page.waitForTimeout(4000);\nreturn { width: String(page.viewportSize().width) };",
+        "outputs": [
+          "width"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "shell",
+      "type": "web",
+      "name": "헤더 · 푸터 읽기",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a83",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "header",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "header"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "header",
+            "strategy": "text",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a84",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "footer",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "footer"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "footer",
+            "strategy": "text",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "overflow",
+      "type": "custom",
+      "name": "가로 넘침 재기",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "code": "const [sw, iw] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);\nreturn { scrollWidth: sw, innerWidth: iw, overflow: sw - iw > 2 };",
+        "outputs": [
+          "scrollWidth",
+          "innerWidth",
+          "overflow"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k85",
+            "label": "그 너비로 열렸다",
+            "actual": "{{ $node.size.width }}",
+            "op": "eq",
+            "expected": "{{ $params.width }}"
+          },
+          {
+            "id": "k86",
+            "label": "헤더가 있어야 한다",
+            "actual": "{{ $node.shell.header }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k87",
+            "label": "푸터가 있어야 한다",
+            "actual": "{{ $node.shell.footer }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k88",
+            "label": "가로 스크롤이 생기면 안 된다",
+            "actual": "{{ $node.overflow.overflow }}",
+            "op": "isFalse",
+            "expected": null
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "size"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "size",
+        "port": "out"
+      },
+      "to": {
+        "node": "shell"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "shell",
+        "port": "out"
+      },
+      "to": {
+        "node": "overflow"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "overflow",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

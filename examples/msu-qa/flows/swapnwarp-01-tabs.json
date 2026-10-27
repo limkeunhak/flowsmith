@@ -1,0 +1,224 @@
+{
+  "schemaVersion": 1,
+  "id": "swapnwarp-01-tabs",
+  "name": "Swap & Warp · 워프 · 트랜잭션 경로",
+  "description": "01-swap-page: /swapnwarp/warp · /swapnwarp/transactions 가 각자의 경로로 열린다(원본처럼 주소로 들어간다)",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "warp",
+      "type": "web",
+      "name": "워프 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/swapnwarp"
+        },
+        "actions": [
+          {
+            "id": "a519",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a520",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a521",
+            "kind": "goto",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "url": "https://qa.msu.io/swapnwarp/warp"
+          },
+          {
+            "id": "a522",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 3000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "w_warp",
+      "type": "custom",
+      "name": "로그인 상태 · 지금 주소",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "const raw = await page.evaluate(() => localStorage.getItem('msu_auth_store'));\nlet isLogin = false; try { isLogin = JSON.parse(raw)?.state?.isLogin === true; } catch {}\nreturn { isLogin, url: decodeURIComponent(page.url()), title: await page.title() };",
+        "outputs": [
+          "isLogin",
+          "url",
+          "title"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "tx",
+      "type": "web",
+      "name": "트랜잭션 열기",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a523",
+            "kind": "goto",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "url": "https://qa.msu.io/swapnwarp/transactions"
+          },
+          {
+            "id": "a524",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 3000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "w_tx",
+      "type": "custom",
+      "name": "로그인 상태 · 지금 주소",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "code": "const raw = await page.evaluate(() => localStorage.getItem('msu_auth_store'));\nlet isLogin = false; try { isLogin = JSON.parse(raw)?.state?.isLogin === true; } catch {}\nreturn { isLogin, url: decodeURIComponent(page.url()), title: await page.title() };",
+        "outputs": [
+          "isLogin",
+          "url",
+          "title"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k525",
+            "label": "워프 경로",
+            "actual": "{{ $node.w_warp.url }}",
+            "op": "contains",
+            "expected": "/swapnwarp/warp"
+          },
+          {
+            "id": "k526",
+            "label": "트랜잭션 경로",
+            "actual": "{{ $node.w_tx.url }}",
+            "op": "contains",
+            "expected": "/swapnwarp/transactions"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "warp",
+        "port": "out"
+      },
+      "to": {
+        "node": "w_warp"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "w_warp",
+        "port": "out"
+      },
+      "to": {
+        "node": "tx"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "tx",
+        "port": "out"
+      },
+      "to": {
+        "node": "w_tx"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "w_tx",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

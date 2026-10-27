@@ -26,7 +26,7 @@
         },
         "actions": [
           {
-            "id": "a84",
+            "id": "a993",
             "kind": "wait",
             "risk": "safe",
             "timeoutMs": null,
@@ -37,7 +37,7 @@
             }
           },
           {
-            "id": "a85",
+            "id": "a994",
             "kind": "click",
             "risk": "safe",
             "timeoutMs": null,
@@ -57,7 +57,7 @@
             "popup": false
           },
           {
-            "id": "a86",
+            "id": "a995",
             "kind": "read",
             "risk": "safe",
             "timeoutMs": null,
@@ -80,7 +80,7 @@
             "transform": null
           },
           {
-            "id": "a87",
+            "id": "a996",
             "kind": "read",
             "risk": "safe",
             "timeoutMs": null,
@@ -103,7 +103,7 @@
             "transform": null
           },
           {
-            "id": "a88",
+            "id": "a997",
             "kind": "click",
             "risk": "safe",
             "timeoutMs": null,
@@ -123,7 +123,7 @@
             "popup": false
           },
           {
-            "id": "a89",
+            "id": "a998",
             "kind": "wait",
             "risk": "safe",
             "timeoutMs": null,
@@ -134,7 +134,7 @@
             }
           },
           {
-            "id": "a90",
+            "id": "a999",
             "kind": "read",
             "risk": "safe",
             "timeoutMs": null,
@@ -157,7 +157,7 @@
             "transform": null
           },
           {
-            "id": "a91",
+            "id": "a1000",
             "kind": "read",
             "risk": "safe",
             "timeoutMs": null,
@@ -193,28 +193,28 @@
       "config": {
         "items": [
           {
-            "id": "k92",
+            "id": "k1001",
             "label": "기본 선택은 7Days",
             "actual": "{{ $input.before7 }}",
             "op": "eq",
             "expected": "true"
           },
           {
-            "id": "k93",
+            "id": "k1002",
             "label": "랭킹 섹션이 있다",
             "actual": "{{ $input.ranking }}",
             "op": "notEmpty",
             "expected": null
           },
           {
-            "id": "k94",
+            "id": "k1003",
             "label": "30Days를 누르면 30Days가 선택",
             "actual": "{{ $input.after30 }}",
             "op": "eq",
             "expected": "true"
           },
           {
-            "id": "k95",
+            "id": "k1004",
             "label": "7Days는 선택이 풀린다",
             "actual": "{{ $input.after7 }}",
             "op": "eq",

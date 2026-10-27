@@ -1,0 +1,203 @@
+{
+  "schemaVersion": 1,
+  "id": "msuweb-09-keyboard-gnb",
+  "name": "MSU 웹 · Tab 으로 GNB → Enter",
+  "description": "09-accessibility: 맨 위에서 Tab 만으로 GNB 의 Notices 에 닿고 Enter 로 /notices 에 간다 — Tab 순서 · 초점은 코드로",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "메인 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/"
+        },
+        "actions": [
+          {
+            "id": "a189",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a190",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "tab",
+      "type": "custom",
+      "name": "Tab 으로 걷기",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "const order = []; let landed = '';\nfor (let i = 0; i < 12 && !landed; i += 1) {\n  await page.keyboard.press('Tab');\n  const f = await page.evaluate(() => { const el = document.activeElement; if (!el || el === document.body) return '(없음)'; const name = (el.innerText || el.getAttribute('aria-label') || el.getAttribute('href') || '').trim(); return el.tagName + ':' + name.slice(0, 40).replace(/\\n/g, ' '); });\n  order.push(f); if (f.includes('Notices')) landed = f;\n}\nreturn { landed, order: order.join(' → ') };",
+        "outputs": [
+          "landed",
+          "order"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "enter",
+      "type": "web",
+      "name": "Enter",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a191",
+            "kind": "press",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": null,
+            "key": "Enter"
+          },
+          {
+            "id": "a192",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "at",
+      "type": "custom",
+      "name": "지금 경로",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "code": "return { path: new URL(page.url()).pathname };",
+        "outputs": [
+          "path"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k193",
+            "label": "Tab 만으로 GNB 의 Notices 에 닿아야 한다",
+            "actual": "{{ $node.tab.landed }}",
+            "op": "contains",
+            "expected": "Notices"
+          },
+          {
+            "id": "k194",
+            "label": "Enter 로 이동해야 한다",
+            "actual": "{{ $node.at.path }}",
+            "op": "eq",
+            "expected": "/notices"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "tab"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "tab",
+        "port": "out"
+      },
+      "to": {
+        "node": "enter"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "enter",
+        "port": "out"
+      },
+      "to": {
+        "node": "at"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "at",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

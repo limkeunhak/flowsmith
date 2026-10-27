@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-06-owner-more",
+  "name": "Navigator · 지갑 상세 More 페이징",
+  "description": "06-owner-listing: Character 목록의 More를 누르면 서버가 더 보내 주고, 다 불러오면 More가 사라진다 — 응답 건수 세기는 코드로",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "seed",
+      "type": "custom",
+      "name": "2페이지 이상인 지갑 찾기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "code": "const base = \"https://qa.msu.io\"; const open = async (u) => { await page.goto(new URL(u, base).href, { waitUntil: 'domcontentloaded' }); await page.waitForTimeout(4000); };\nconst hrefs = async (k) => [...new Set(await page.locator(`a[href*=\"/navigator/${k}/\"]`).evaluateAll((as) => as.map((a) => a.getAttribute('href'))))];\nawait open(\"https://qa.msu.io/navigator\");\nawait page.locator('a[href*=\"/navigator/nft/\"]').first().waitFor({ state: 'attached', timeout: 30000 });\nconst items = await hrefs('nft'); const seen = [];\nfor (const it of items.slice(0, 5)) {\n  await open(it);\n  const o = await page.locator('a[href*=\"/navigator/owner/\"]').first().getAttribute('href', { timeout: 15000 }).catch(() => null);\n  if (!o || seen.includes(o)) continue; seen.push(o);\n  await open(o);\n  await page.locator('a[href*=\"/navigator/character/\"]').first().waitFor({ state: 'attached', timeout: 15000 }).catch(() => {});\n  const chars = await hrefs('character'); if (!chars.length) continue;\n  if (!(await page.getByRole('button', { name: 'More', exact: true }).first().isVisible().catch(() => false))) continue;\n  return { character: chars[0].split('/navigator/character/')[1], characterUrl: new URL(chars[0], base).href, owner: o.split('/navigator/owner/')[1], ownerUrl: new URL(o, base).href };\n}\nthrow new Error('랭킹 아이템 ' + items.length + '개의 소유자(' + seen.length + '명) 중 캐릭터 목록이 2페이지 이상인 지갑이 없습니다');",
+        "outputs": [
+          "character",
+          "characterUrl",
+          "owner",
+          "ownerUrl"
+        ],
+        "usesPage": true,
+        "timeoutMs": 180000
+      }
+    },
+    {
+      "id": "paging",
+      "type": "custom",
+      "name": "More 끝까지 · 서버 응답 건수 세기",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "let total = 0;\nconst on = async (res) => { if (!/\\/inventory\\/[^/]+\\/characters-v2/.test(res.url())) return; try { const b = await res.json(); total += (b.characters ?? []).length; } catch {} };\npage.on('response', on);\nawait page.goto(input.ownerUrl, { waitUntil: 'domcontentloaded' });\nawait page.locator('a[href*=\"/navigator/character/\"]').first().waitFor({ state: 'attached', timeout: 20000 });\nawait page.waitForTimeout(3000);\nconst dd = page.locator('dt:text-is(\"Character\") + dd').first();\nconst raw = (await dd.innerText({ timeout: 15000 }).catch(() => '')).replace(/[,\\s]/g, '');\nconst held = raw && !Number.isNaN(Number(raw)) ? Number(raw) : null;\nconst firstPage = total;\nconst budget = held && firstPage ? Math.ceil(held / firstPage) + 3 : 10;\nconst more = page.getByRole('button', { name: 'More', exact: true }).first();\nlet clicks = 0;\nwhile (clicks < budget && (await more.isVisible().catch(() => false))) { await more.click(); await page.waitForTimeout(3000); clicks += 1; }\nawait page.waitForTimeout(1500); page.off('response', on);\nconst moreLeft = await more.isVisible().catch(() => false);\nreturn { held: held ?? '', firstPage, total, clicks, budget, moreLeft };",
+        "outputs": [
+          "held",
+          "firstPage",
+          "total",
+          "clicks",
+          "budget",
+          "moreLeft"
+        ],
+        "usesPage": true,
+        "timeoutMs": 180000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k693",
+            "label": "More 를 한 번은 눌렀어야 한다",
+            "actual": "{{ $input.clicks }}",
+            "op": "gt",
+            "expected": "0"
+          },
+          {
+            "id": "k694",
+            "label": "More 를 누르면 더 불러와야 한다",
+            "actual": "{{ $input.total }}",
+            "op": "gt",
+            "expected": "{{ $input.firstPage }}"
+          },
+          {
+            "id": "k695",
+            "label": "예산 안에 More 가 사라져야 한다",
+            "actual": "{{ $input.moreLeft }}",
+            "op": "isFalse",
+            "expected": null
+          },
+          {
+            "id": "k696",
+            "label": "More 가 사라졌으면 보유한 수만큼 다 불러왔어야 한다",
+            "actual": "{{ $input.total }}",
+            "op": "eq",
+            "expected": "{{ $input.held }}"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "seed",
+        "port": "out"
+      },
+      "to": {
+        "node": "paging"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "paging",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

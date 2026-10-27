@@ -1,0 +1,503 @@
+{
+  "schemaVersion": 1,
+  "id": "msuweb-02-gnb-click",
+  "name": "MSU 웹 · GNB 메뉴 누르기 → 이동",
+  "description": "02-navigation-links: GNB 메뉴(About · Notices · Builder Apps)를 누르면 그 페이지로 가고 헤더가 있다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "go0",
+      "type": "web",
+      "name": "About 누르기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/"
+        },
+        "actions": [
+          {
+            "id": "a11",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a12",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a13",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "GNB «About»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//header//a[@data-link=\"gnb-link\"][contains(normalize-space(.),\"About\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a14",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a15",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "header",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "header"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "header",
+            "strategy": "text",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "at0",
+      "type": "custom",
+      "name": "지금 경로",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "return { path: new URL(page.url()).pathname };",
+        "outputs": [
+          "path"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "go1",
+      "type": "web",
+      "name": "Notices 누르기",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a16",
+            "kind": "goto",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "url": "https://qa.msu.io/"
+          },
+          {
+            "id": "a17",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a18",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a19",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "GNB «Notices»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//header//a[@data-link=\"gnb-link\"][contains(normalize-space(.),\"Notices\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a20",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a21",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "header",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "header"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "header",
+            "strategy": "text",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "at1",
+      "type": "custom",
+      "name": "지금 경로",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "code": "return { path: new URL(page.url()).pathname };",
+        "outputs": [
+          "path"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "go2",
+      "type": "web",
+      "name": "Builder Apps 누르기",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a22",
+            "kind": "goto",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "url": "https://qa.msu.io/"
+          },
+          {
+            "id": "a23",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a24",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a25",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "GNB «Builder Apps»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//header//a[@data-link=\"gnb-link\"][contains(normalize-space(.),\"Builder Apps\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a26",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a27",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "header",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "header"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "header",
+            "strategy": "text",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "at2",
+      "type": "custom",
+      "name": "지금 경로",
+      "position": {
+        "x": 1500,
+        "y": 0
+      },
+      "config": {
+        "code": "return { path: new URL(page.url()).pathname };",
+        "outputs": [
+          "path"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 1800,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k28",
+            "label": "About 클릭 후 경로",
+            "actual": "{{ $node.at0.path }}",
+            "op": "eq",
+            "expected": "/about"
+          },
+          {
+            "id": "k29",
+            "label": "About 페이지에도 헤더가 있어야 한다",
+            "actual": "{{ $node.go0.header }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k30",
+            "label": "Notices 클릭 후 경로",
+            "actual": "{{ $node.at1.path }}",
+            "op": "eq",
+            "expected": "/notices"
+          },
+          {
+            "id": "k31",
+            "label": "Notices 페이지에도 헤더가 있어야 한다",
+            "actual": "{{ $node.go1.header }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k32",
+            "label": "Builder Apps 클릭 후 경로",
+            "actual": "{{ $node.at2.path }}",
+            "op": "eq",
+            "expected": "/builder-apps"
+          },
+          {
+            "id": "k33",
+            "label": "Builder Apps 페이지에도 헤더가 있어야 한다",
+            "actual": "{{ $node.go2.header }}",
+            "op": "notEmpty",
+            "expected": null
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "go0",
+        "port": "out"
+      },
+      "to": {
+        "node": "at0"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "at0",
+        "port": "out"
+      },
+      "to": {
+        "node": "go1"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "go1",
+        "port": "out"
+      },
+      "to": {
+        "node": "at1"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "at1",
+        "port": "out"
+      },
+      "to": {
+        "node": "go2"
+      }
+    },
+    {
+      "id": "e5",
+      "from": {
+        "node": "go2",
+        "port": "out"
+      },
+      "to": {
+        "node": "at2"
+      }
+    },
+    {
+      "id": "e6",
+      "from": {
+        "node": "at2",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

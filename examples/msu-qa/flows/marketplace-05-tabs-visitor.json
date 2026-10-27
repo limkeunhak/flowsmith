@@ -1,0 +1,830 @@
+{
+  "schemaVersion": 1,
+  "id": "marketplace-05-tabs-visitor",
+  "name": "마켓플레이스 · 탐색 탭 다섯",
+  "description": "05-explore-tabs: NFT · 캐릭터 · 닉네임 · FT · Bid 탭이 각자의 경로와 화면으로 열린다 — 목록 탭은 카드가 있거나 «없다»고 말한다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "start",
+      "type": "web",
+      "name": "마켓플레이스",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/marketplace"
+        },
+        "actions": [
+          {
+            "id": "a419",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 1000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "t_nft",
+      "type": "web",
+      "name": "nft 탭 열기",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a420",
+            "kind": "goto",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "url": "https://qa.msu.io/marketplace/nft"
+          },
+          {
+            "id": "a421",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 6000
+            }
+          },
+          {
+            "id": "a422",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a423",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "nft 탭의 표식",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "input[name=\"keyword\"][placeholder=\"Search Items\"]:visible >> nth=0"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "hook",
+            "strategy": "attribute",
+            "attribute": "placeholder",
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "w_nft",
+      "type": "custom",
+      "name": "로그인 상태 · 지금 주소",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "code": "const raw = await page.evaluate(() => localStorage.getItem('msu_auth_store'));\nlet isLogin = false; try { isLogin = JSON.parse(raw)?.state?.isLogin === true; } catch {}\nreturn { isLogin, path: new URL(page.url()).pathname, url: decodeURIComponent(page.url()), title: await page.title() };",
+        "outputs": [
+          "isLogin",
+          "path",
+          "url",
+          "title"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "l_nft",
+      "type": "custom",
+      "name": "nft 목록 상태",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "code": "const cards = await page.locator('[data-gtm-target=\"nft_card\"][data-gtm-token-id]').count();\nconst notice = await page.locator('text=/There are no .* yet/').first().isVisible().catch(() => false);\nreturn { state: cards > 0 ? `${cards}개 카드` : notice ? '매물 없음(안내 문구)' : '' };",
+        "outputs": [
+          "state"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "t_character",
+      "type": "web",
+      "name": "character 탭 열기",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a424",
+            "kind": "goto",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "url": "https://qa.msu.io/marketplace/character"
+          },
+          {
+            "id": "a425",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 6000
+            }
+          },
+          {
+            "id": "a426",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a427",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "character 탭의 표식",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "input[name=\"keyword\"][placeholder=\"Search Characters\"]:visible >> nth=0"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "hook",
+            "strategy": "attribute",
+            "attribute": "placeholder",
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "w_character",
+      "type": "custom",
+      "name": "로그인 상태 · 지금 주소",
+      "position": {
+        "x": 1500,
+        "y": 0
+      },
+      "config": {
+        "code": "const raw = await page.evaluate(() => localStorage.getItem('msu_auth_store'));\nlet isLogin = false; try { isLogin = JSON.parse(raw)?.state?.isLogin === true; } catch {}\nreturn { isLogin, path: new URL(page.url()).pathname, url: decodeURIComponent(page.url()), title: await page.title() };",
+        "outputs": [
+          "isLogin",
+          "path",
+          "url",
+          "title"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "l_character",
+      "type": "custom",
+      "name": "character 목록 상태",
+      "position": {
+        "x": 1800,
+        "y": 0
+      },
+      "config": {
+        "code": "const cards = await page.locator('[data-gtm-target=\"character_card\"][data-gtm-token-id]').count();\nconst notice = await page.locator('text=/There are no .* yet/').first().isVisible().catch(() => false);\nreturn { state: cards > 0 ? `${cards}개 카드` : notice ? '매물 없음(안내 문구)' : '' };",
+        "outputs": [
+          "state"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "t_nickname",
+      "type": "web",
+      "name": "nickname 탭 열기",
+      "position": {
+        "x": 2100,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a428",
+            "kind": "goto",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "url": "https://qa.msu.io/marketplace/nickname"
+          },
+          {
+            "id": "a429",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 6000
+            }
+          },
+          {
+            "id": "a430",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a431",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "nickname 탭의 표식",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "input[name=\"keyword\"][placeholder=\"Search Nicknames\"]:visible >> nth=0"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "hook",
+            "strategy": "attribute",
+            "attribute": "placeholder",
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "w_nickname",
+      "type": "custom",
+      "name": "로그인 상태 · 지금 주소",
+      "position": {
+        "x": 2400,
+        "y": 0
+      },
+      "config": {
+        "code": "const raw = await page.evaluate(() => localStorage.getItem('msu_auth_store'));\nlet isLogin = false; try { isLogin = JSON.parse(raw)?.state?.isLogin === true; } catch {}\nreturn { isLogin, path: new URL(page.url()).pathname, url: decodeURIComponent(page.url()), title: await page.title() };",
+        "outputs": [
+          "isLogin",
+          "path",
+          "url",
+          "title"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "l_nickname",
+      "type": "custom",
+      "name": "nickname 목록 상태",
+      "position": {
+        "x": 2700,
+        "y": 0
+      },
+      "config": {
+        "code": "const cards = await page.locator('[data-gtm-target=\"nickname_card\"][data-gtm-token-id]').count();\nconst notice = await page.locator('text=/There are no .* yet/').first().isVisible().catch(() => false);\nreturn { state: cards > 0 ? `${cards}개 카드` : notice ? '매물 없음(안내 문구)' : '' };",
+        "outputs": [
+          "state"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "t_ft",
+      "type": "web",
+      "name": "ft 탭 열기",
+      "position": {
+        "x": 3000,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a432",
+            "kind": "goto",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "url": "https://qa.msu.io/marketplace/ft"
+          },
+          {
+            "id": "a433",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 6000
+            }
+          },
+          {
+            "id": "a434",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a435",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "ft 탭의 표식",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "[data-gtm-target=\"refresh_btn\"]:visible >> nth=0"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "hook",
+            "strategy": "attribute",
+            "attribute": "data-gtm-target",
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "w_ft",
+      "type": "custom",
+      "name": "로그인 상태 · 지금 주소",
+      "position": {
+        "x": 3300,
+        "y": 0
+      },
+      "config": {
+        "code": "const raw = await page.evaluate(() => localStorage.getItem('msu_auth_store'));\nlet isLogin = false; try { isLogin = JSON.parse(raw)?.state?.isLogin === true; } catch {}\nreturn { isLogin, path: new URL(page.url()).pathname, url: decodeURIComponent(page.url()), title: await page.title() };",
+        "outputs": [
+          "isLogin",
+          "path",
+          "url",
+          "title"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "t_bid",
+      "type": "web",
+      "name": "bid 탭 열기",
+      "position": {
+        "x": 3600,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a436",
+            "kind": "goto",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "url": "https://qa.msu.io/marketplace/bid"
+          },
+          {
+            "id": "a437",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 6000
+            }
+          },
+          {
+            "id": "a438",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a439",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "bid 탭의 표식",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "[data-gtm-target=\"heart_btn\"]:visible >> nth=0"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "hook",
+            "strategy": "attribute",
+            "attribute": "data-gtm-target",
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "w_bid",
+      "type": "custom",
+      "name": "로그인 상태 · 지금 주소",
+      "position": {
+        "x": 3900,
+        "y": 0
+      },
+      "config": {
+        "code": "const raw = await page.evaluate(() => localStorage.getItem('msu_auth_store'));\nlet isLogin = false; try { isLogin = JSON.parse(raw)?.state?.isLogin === true; } catch {}\nreturn { isLogin, path: new URL(page.url()).pathname, url: decodeURIComponent(page.url()), title: await page.title() };",
+        "outputs": [
+          "isLogin",
+          "path",
+          "url",
+          "title"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 4200,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k440",
+            "label": "nft 탭 경로",
+            "actual": "{{ $node.w_nft.url }}",
+            "op": "contains",
+            "expected": "/marketplace/nft"
+          },
+          {
+            "id": "k441",
+            "label": "nft 탭의 콘텐츠가 보인다",
+            "actual": "{{ $node.t_nft.hook }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k442",
+            "label": "nft 탭은 카드를 보여주거나 비었다고 말한다",
+            "actual": "{{ $node.l_nft.state }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k443",
+            "label": "character 탭 경로",
+            "actual": "{{ $node.w_character.url }}",
+            "op": "contains",
+            "expected": "/marketplace/character"
+          },
+          {
+            "id": "k444",
+            "label": "character 탭의 콘텐츠가 보인다",
+            "actual": "{{ $node.t_character.hook }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k445",
+            "label": "character 탭은 카드를 보여주거나 비었다고 말한다",
+            "actual": "{{ $node.l_character.state }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k446",
+            "label": "nickname 탭 경로",
+            "actual": "{{ $node.w_nickname.url }}",
+            "op": "contains",
+            "expected": "/marketplace/nickname"
+          },
+          {
+            "id": "k447",
+            "label": "nickname 탭의 콘텐츠가 보인다",
+            "actual": "{{ $node.t_nickname.hook }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k448",
+            "label": "nickname 탭은 카드를 보여주거나 비었다고 말한다",
+            "actual": "{{ $node.l_nickname.state }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k449",
+            "label": "ft 탭 경로",
+            "actual": "{{ $node.w_ft.url }}",
+            "op": "contains",
+            "expected": "/marketplace/ft"
+          },
+          {
+            "id": "k450",
+            "label": "ft 탭의 콘텐츠가 보인다",
+            "actual": "{{ $node.t_ft.hook }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k451",
+            "label": "bid 탭 경로",
+            "actual": "{{ $node.w_bid.url }}",
+            "op": "contains",
+            "expected": "/marketplace/bid"
+          },
+          {
+            "id": "k452",
+            "label": "bid 탭의 콘텐츠가 보인다",
+            "actual": "{{ $node.t_bid.hook }}",
+            "op": "notEmpty",
+            "expected": null
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "start",
+        "port": "out"
+      },
+      "to": {
+        "node": "t_nft"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "t_nft",
+        "port": "out"
+      },
+      "to": {
+        "node": "w_nft"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "w_nft",
+        "port": "out"
+      },
+      "to": {
+        "node": "l_nft"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "l_nft",
+        "port": "out"
+      },
+      "to": {
+        "node": "t_character"
+      }
+    },
+    {
+      "id": "e5",
+      "from": {
+        "node": "t_character",
+        "port": "out"
+      },
+      "to": {
+        "node": "w_character"
+      }
+    },
+    {
+      "id": "e6",
+      "from": {
+        "node": "w_character",
+        "port": "out"
+      },
+      "to": {
+        "node": "l_character"
+      }
+    },
+    {
+      "id": "e7",
+      "from": {
+        "node": "l_character",
+        "port": "out"
+      },
+      "to": {
+        "node": "t_nickname"
+      }
+    },
+    {
+      "id": "e8",
+      "from": {
+        "node": "t_nickname",
+        "port": "out"
+      },
+      "to": {
+        "node": "w_nickname"
+      }
+    },
+    {
+      "id": "e9",
+      "from": {
+        "node": "w_nickname",
+        "port": "out"
+      },
+      "to": {
+        "node": "l_nickname"
+      }
+    },
+    {
+      "id": "e10",
+      "from": {
+        "node": "l_nickname",
+        "port": "out"
+      },
+      "to": {
+        "node": "t_ft"
+      }
+    },
+    {
+      "id": "e11",
+      "from": {
+        "node": "t_ft",
+        "port": "out"
+      },
+      "to": {
+        "node": "w_ft"
+      }
+    },
+    {
+      "id": "e12",
+      "from": {
+        "node": "w_ft",
+        "port": "out"
+      },
+      "to": {
+        "node": "t_bid"
+      }
+    },
+    {
+      "id": "e13",
+      "from": {
+        "node": "t_bid",
+        "port": "out"
+      },
+      "to": {
+        "node": "w_bid"
+      }
+    },
+    {
+      "id": "e14",
+      "from": {
+        "node": "w_bid",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

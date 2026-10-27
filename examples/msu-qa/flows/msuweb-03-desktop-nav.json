@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "id": "msuweb-03-desktop-nav",
+  "name": "MSU 웹 · 데스크톱 GNB 펼침",
+  "description": "03-responsive: 1440×900 에서 GNB 메뉴가 펼쳐져 보인다 — 보이는 항목 수는 코드로",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "메인 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/"
+        },
+        "actions": [
+          {
+            "id": "a89",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 3000
+            }
+          },
+          {
+            "id": "a90",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "nav",
+      "type": "custom",
+      "name": "1440×900 · 보이는 GNB 수",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "await page.setViewportSize({ width: Number(1440), height: Number(900) });\nawait page.reload({ waitUntil: 'domcontentloaded' }); await page.waitForTimeout(4000);\nreturn { visible: await page.locator('header a[data-link=\"gnb-link\"]').evaluateAll((els) => els.filter((e) => e.offsetParent).length) };",
+        "outputs": [
+          "visible"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k91",
+            "label": "데스크톱에서는 GNB 메뉴가 보여야 한다",
+            "actual": "{{ $node.nav.visible }}",
+            "op": "gt",
+            "expected": "0"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "nav"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "nav",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

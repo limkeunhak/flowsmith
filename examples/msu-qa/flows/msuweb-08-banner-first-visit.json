@@ -1,0 +1,205 @@
+{
+  "schemaVersion": 1,
+  "id": "msuweb-08-banner-first-visit",
+  "name": "MSU 웹 · 첫 방문에 쿠키 배너",
+  "description": "08-cookie-consent: 처음 방문하면 배너가 보이고 아무것도 기록되지 않았으며, 정책 링크 · 전체 동의 · 전체 거부가 있다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "첫 방문",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/"
+        },
+        "actions": [
+          {
+            "id": "a272",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a269",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 배너",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "#cookiebotBanner"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "banner",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a270",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "배너 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:visible:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "acceptAll",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          },
+          {
+            "id": "a271",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "배너 «Reject All»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:visible:has-text(\"Reject All\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "rejectAll",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "consent",
+      "type": "custom",
+      "name": "기록된 쿠키 동의 · 정책 링크 수",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "const raw = (await page.context().cookies()).find((c) => c.name === 'CookieConsent')?.value ?? '';\nconst text = decodeURIComponent(raw);\nconst v = (k) => { const m = text.match(new RegExp(k + ':(true|false)')); return m ? m[1] : ''; };\nconst consent = { recorded: raw !== '', raw: text, necessary: v('necessary'), preferences: v('preferences'), statistics: v('statistics'), marketing: v('marketing') };\nconst policyLinks = await page.locator('#cookiebotBanner a[href*=\"cookie\"]').count();\nreturn { ...consent, policyLinks };",
+        "outputs": [
+          "recorded",
+          "raw",
+          "necessary",
+          "preferences",
+          "statistics",
+          "marketing",
+          "policyLinks"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k273",
+            "label": "쿠키 배너가 보여야 한다",
+            "actual": "{{ $node.open.banner }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k274",
+            "label": "아직 아무것도 기록되지 않아야 한다",
+            "actual": "{{ $input.recorded }}",
+            "op": "isFalse",
+            "expected": null
+          },
+          {
+            "id": "k275",
+            "label": "쿠키 정책 링크가 있어야 한다",
+            "actual": "{{ $input.policyLinks }}",
+            "op": "eq",
+            "expected": "1"
+          },
+          {
+            "id": "k276",
+            "label": "전체 동의 버튼이 있어야 한다",
+            "actual": "{{ $node.open.acceptAll }}",
+            "op": "eq",
+            "expected": "Accept All Cookies"
+          },
+          {
+            "id": "k277",
+            "label": "전체 거부 버튼이 있어야 한다",
+            "actual": "{{ $node.open.rejectAll }}",
+            "op": "eq",
+            "expected": "Reject All"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "consent"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "consent",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

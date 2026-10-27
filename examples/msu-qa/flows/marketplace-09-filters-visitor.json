@@ -1,0 +1,531 @@
+{
+  "schemaVersion": 1,
+  "id": "marketplace-09-filters-visitor",
+  "name": "마켓플레이스 · 비회원은 키워드만, 상세 필터는 안 걸린다",
+  "description": "09-search-filters: 비회원의 키워드 검색은 조회 요청을 보내고 결과를 좁힌다 · 가격 필터 Search는 요청 · URL · 목록 · 모달 어느 것도 바꾸지 않는다",
+  "params": [
+    {
+      "name": "priceMax",
+      "label": "가격 상한(NESO)",
+      "required": true,
+      "type": "text",
+      "options": [],
+      "default": "2",
+      "help": "원본 MSU_FILTER_PRICE_MAX 기본값"
+    }
+  ],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "list",
+      "type": "web",
+      "name": "NFT 목록",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/marketplace/nft"
+        },
+        "actions": [
+          {
+            "id": "a489",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 6000
+            }
+          },
+          {
+            "id": "a490",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a491",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "첫 카드 이름",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//*[@data-gtm-target=\"nft_card\" and @data-gtm-token-id and @data-gtm-item-name])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "firstName",
+            "strategy": "attribute",
+            "attribute": "data-gtm-item-name",
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "prep",
+      "type": "custom",
+      "name": "로그인 상태 · 검색어 · 요청 듣기",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "const raw = await page.evaluate(() => localStorage.getItem('msu_auth_store'));\nlet isLogin = false; try { isLogin = JSON.parse(raw)?.state?.isLogin === true; } catch {}\npage.__explore = [];\nif (!page.__exploreOn) { page.__exploreOn = true; page.on('request', (r) => { if (/\\/api\\/marketplace\\/explore\\/items$/.test(r.url())) page.__explore.push(r.postData() || ''); }); }\nreturn { isLogin, term: String(input.firstName || 'AbsoLab Piercing Spear').split('#')[0].trim() };",
+        "outputs": [
+          "isLogin",
+          "term"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "search",
+      "type": "web",
+      "name": "키워드 검색",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a492",
+            "kind": "fill",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "목록 검색 칸(keyword)",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "input[name=\"keyword\"]:visible >> nth=0"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "value": "{{ $input.term }}"
+          },
+          {
+            "id": "a493",
+            "kind": "press",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "목록 검색 칸(keyword)",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "input[name=\"keyword\"]:visible >> nth=0"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "key": "Enter"
+          },
+          {
+            "id": "a494",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 5000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "kw",
+      "type": "custom",
+      "name": "키워드 검색 결과 · 나간 요청",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "code": "const calls = page.__explore.splice(0);\nconst cards = await page.evaluate(() => { const m = new Map();\n  for (const el of document.querySelectorAll('[data-gtm-target=\"nft_card\"][data-gtm-token-id]')) { const id = el.getAttribute('data-gtm-token-id'); const n = el.getAttribute('data-gtm-item-name'); if (id && n) m.set(id, n); }\n  return { names: [...m.values()], ids: [...new Set([...document.querySelectorAll('article[data-gtm-target=\"nft_card\"][data-gtm-token-id]')].map((e) => e.getAttribute('data-gtm-token-id')))] }; });\nconst t = String(input.term).toLowerCase();\nconst notice = cards.names.length ? '' : await page.locator('text=/No (search )?results|There are no .* yet/i').first().waitFor({ state: 'visible', timeout: 10000 }).then(() => '없음 안내', () => '');\nreturn { notice, keyword: new URL(page.url()).searchParams.get('keyword') ?? '', callCount: calls.length, lastBody: calls[calls.length - 1] ?? '',\n  hits: cards.names, firstHit: cards.names[0] ?? '', strays: cards.names.filter((n) => !n.toLowerCase().includes(t)) };",
+        "outputs": [
+          "keyword",
+          "callCount",
+          "lastBody",
+          "hits",
+          "firstHit",
+          "strays",
+          "notice"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "reopen",
+      "type": "web",
+      "name": "NFT 목록 다시",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a495",
+            "kind": "goto",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "url": "https://qa.msu.io/marketplace/nft"
+          },
+          {
+            "id": "a496",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 6000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "before",
+      "type": "custom",
+      "name": "필터 전 URL · 카드 수",
+      "position": {
+        "x": 1500,
+        "y": 0
+      },
+      "config": {
+        "code": "const cards = await page.evaluate(() => { const m = new Map();\n  for (const el of document.querySelectorAll('[data-gtm-target=\"nft_card\"][data-gtm-token-id]')) { const id = el.getAttribute('data-gtm-token-id'); const n = el.getAttribute('data-gtm-item-name'); if (id && n) m.set(id, n); }\n  return { names: [...m.values()], ids: [...new Set([...document.querySelectorAll('article[data-gtm-target=\"nft_card\"][data-gtm-token-id]')].map((e) => e.getAttribute('data-gtm-token-id')))] }; });\npage.__explore = [];\nif (!page.__exploreOn) { page.__exploreOn = true; page.on('request', (r) => { if (/\\/api\\/marketplace\\/explore\\/items$/.test(r.url())) page.__explore.push(r.postData() || ''); }); }\nreturn { url: page.url(), cards: cards.ids.length };",
+        "outputs": [
+          "url",
+          "cards"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "filter",
+      "type": "web",
+      "name": "가격 상한 · 필터 Search",
+      "position": {
+        "x": 1800,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a497",
+            "kind": "fill",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "가격 상한(priceRange.1)",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "input[name=\"priceRange.1\"]:visible >> nth=0"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "value": "{{ $params.priceMax }}"
+          },
+          {
+            "id": "a498",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "필터 Search",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "//button[normalize-space(.)=\"Search\"]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a499",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 3000
+            }
+          },
+          {
+            "id": "a500",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "Sign in 모달",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "#w3a-modal:visible, .w3a-modal-container:visible"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "modal",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "after",
+      "type": "custom",
+      "name": "필터 후 요청 · URL · 카드 수",
+      "position": {
+        "x": 2100,
+        "y": 0
+      },
+      "config": {
+        "code": "const cards = await page.evaluate(() => { const m = new Map();\n  for (const el of document.querySelectorAll('[data-gtm-target=\"nft_card\"][data-gtm-token-id]')) { const id = el.getAttribute('data-gtm-token-id'); const n = el.getAttribute('data-gtm-item-name'); if (id && n) m.set(id, n); }\n  return { names: [...m.values()], ids: [...new Set([...document.querySelectorAll('article[data-gtm-target=\"nft_card\"][data-gtm-token-id]')].map((e) => e.getAttribute('data-gtm-token-id')))] }; });\nreturn { callCount: page.__explore.splice(0).length, url: page.url(), cards: cards.ids.length };",
+        "outputs": [
+          "callCount",
+          "url",
+          "cards"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 2400,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k501",
+            "label": "전제: 로그인하지 않았다",
+            "actual": "{{ $node.prep.isLogin }}",
+            "op": "isFalse",
+            "expected": null
+          },
+          {
+            "id": "k502",
+            "label": "검색어가 URL에 실린다",
+            "actual": "{{ $node.kw.keyword }}",
+            "op": "eq",
+            "expected": "{{ $node.prep.term }}"
+          },
+          {
+            "id": "k503",
+            "label": "키워드 검색은 조회 요청을 보낸다",
+            "actual": "{{ $node.kw.callCount }}",
+            "op": "gt",
+            "expected": "0"
+          },
+          {
+            "id": "k504",
+            "label": "조회 요청에 검색어가 담긴다",
+            "actual": "{{ $node.kw.lastBody }}",
+            "op": "contains",
+            "expected": "{{ $node.prep.term }}"
+          },
+          {
+            "id": "k505",
+            "label": "결과가 모두 검색어를 포함한다(벗어난 결과 0)",
+            "actual": "{{ $node.kw.strays }}",
+            "op": "countEq",
+            "expected": "0"
+          },
+          {
+            "id": "k506",
+            "label": "결과가 있거나, 없으면 없다고 말한다",
+            "actual": "{{ $node.kw.firstHit }}{{ $node.kw.notice }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k507",
+            "label": "비회원의 필터 Search는 조회 요청을 보내지 않는다",
+            "actual": "{{ $node.after.callCount }}",
+            "op": "eq",
+            "expected": "0"
+          },
+          {
+            "id": "k508",
+            "label": "비회원의 필터 Search는 URL을 바꾸지 않는다",
+            "actual": "{{ $node.after.url }}",
+            "op": "eq",
+            "expected": "{{ $node.before.url }}"
+          },
+          {
+            "id": "k509",
+            "label": "목록도 그대로다(카드 수)",
+            "actual": "{{ $node.after.cards }}",
+            "op": "eq",
+            "expected": "{{ $node.before.cards }}"
+          },
+          {
+            "id": "k510",
+            "label": "로그인 창을 띄우지도 않는다(현재 동작)",
+            "actual": "{{ $node.filter.modal }}",
+            "op": "empty",
+            "expected": null
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "list",
+        "port": "out"
+      },
+      "to": {
+        "node": "prep"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "prep",
+        "port": "out"
+      },
+      "to": {
+        "node": "search"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "search",
+        "port": "out"
+      },
+      "to": {
+        "node": "kw"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "kw",
+        "port": "out"
+      },
+      "to": {
+        "node": "reopen"
+      }
+    },
+    {
+      "id": "e5",
+      "from": {
+        "node": "reopen",
+        "port": "out"
+      },
+      "to": {
+        "node": "before"
+      }
+    },
+    {
+      "id": "e6",
+      "from": {
+        "node": "before",
+        "port": "out"
+      },
+      "to": {
+        "node": "filter"
+      }
+    },
+    {
+      "id": "e7",
+      "from": {
+        "node": "filter",
+        "port": "out"
+      },
+      "to": {
+        "node": "after"
+      }
+    },
+    {
+      "id": "e8",
+      "from": {
+        "node": "after",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

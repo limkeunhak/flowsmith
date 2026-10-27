@@ -1,0 +1,179 @@
+{
+  "schemaVersion": 1,
+  "id": "marketplace-07-watchlist-visitor",
+  "name": "마켓플레이스 · Bid Watch List는 로그인 요구",
+  "description": "07-bid-signed-out: 비회원이 Bid 페이지의 Watch List(하트)를 누르면 Sign in 모달이 열린다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "Bid 탭 · 하트 누르기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/marketplace/bid"
+        },
+        "actions": [
+          {
+            "id": "a481",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 6000
+            }
+          },
+          {
+            "id": "a482",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a483",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "Watch List(heart_btn)",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "[data-gtm-target=\"heart_btn\"]:visible >> nth=0"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "heart",
+            "strategy": "attribute",
+            "attribute": "data-gtm-target",
+            "transform": null
+          },
+          {
+            "id": "a484",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "Watch List(heart_btn)",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "[data-gtm-target=\"heart_btn\"]:visible >> nth=0"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a485",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a486",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "Sign in 모달",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "#w3a-modal:visible, .w3a-modal-container:visible"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "modal",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k487",
+            "label": "Watch List 버튼이 보인다",
+            "actual": "{{ $input.heart }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k488",
+            "label": "Watch List는 로그인을 요구한다(Sign in 모달)",
+            "actual": "{{ $input.modal }}",
+            "op": "notEmpty",
+            "expected": null
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

@@ -1,0 +1,235 @@
+{
+  "schemaVersion": 1,
+  "id": "msuweb-08-close-only",
+  "name": "MSU 웹 · 쿠키 배너 닫기만",
+  "description": "08-cookie-consent: X로 닫기만 하면 아무것도 기록되지 않고, 새로고침하면 다시 묻는다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "첫 방문",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/"
+        },
+        "actions": [
+          {
+            "id": "a318",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a315",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "배너의 첫 버튼(X)",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//*[@id='cookiebotBanner']//button)[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a316",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 2000
+            }
+          },
+          {
+            "id": "a317",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 배너",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "#cookiebotBanner"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "banner",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "consent",
+      "type": "custom",
+      "name": "기록된 쿠키 동의 → 새로고침",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "const raw = (await page.context().cookies()).find((c) => c.name === 'CookieConsent')?.value ?? '';\nconst text = decodeURIComponent(raw);\nconst v = (k) => { const m = text.match(new RegExp(k + ':(true|false)')); return m ? m[1] : ''; };\nconst consent = { recorded: raw !== '', raw: text, necessary: v('necessary'), preferences: v('preferences'), statistics: v('statistics'), marketing: v('marketing') };\nawait page.reload({ waitUntil: 'domcontentloaded' });\nreturn consent;",
+        "outputs": [
+          "recorded",
+          "raw",
+          "necessary",
+          "preferences",
+          "statistics",
+          "marketing"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "again",
+      "type": "web",
+      "name": "새로고침 뒤 배너",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a319",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a320",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 배너",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "#cookiebotBanner"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "bannerAgain",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k321",
+            "label": "배너가 닫혀야 한다",
+            "actual": "{{ $node.open.banner }}",
+            "op": "empty",
+            "expected": null
+          },
+          {
+            "id": "k322",
+            "label": "닫기만 했으면 아무것도 기록되면 안 된다",
+            "actual": "{{ $node.consent.recorded }}",
+            "op": "isFalse",
+            "expected": null
+          },
+          {
+            "id": "k323",
+            "label": "다시 물어야 한다",
+            "actual": "{{ $node.again.bannerAgain }}",
+            "op": "notEmpty",
+            "expected": null
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "consent"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "consent",
+        "port": "out"
+      },
+      "to": {
+        "node": "again"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "again",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

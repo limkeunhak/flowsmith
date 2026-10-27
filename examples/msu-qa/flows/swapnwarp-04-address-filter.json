@@ -1,0 +1,420 @@
+{
+  "schemaVersion": 1,
+  "id": "swapnwarp-04-address-filter",
+  "name": "Swap & Warp · 거래 내역 지갑 주소 필터",
+  "description": "04-transaction-filters: 화면 첫 행의 지갑으로 거르면 URL · 요청 · 응답 · 화면이 모두 그 지갑만 · 쓰이지 않은 주소면 «없음»",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "거래 내역 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/swapnwarp/transactions"
+        },
+        "actions": [
+          {
+            "id": "a527",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 6000
+            }
+          },
+          {
+            "id": "a528",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a529",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 1000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "before",
+      "type": "custom",
+      "name": "필터 전 행 · 대상 지갑 · 응답 듣기",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "const raw = await page.evaluate(() => localStorage.getItem('msu_auth_store'));\nlet isLogin = false; try { isLogin = JSON.parse(raw)?.state?.isLogin === true; } catch {}\nconst rows = await page.locator('#swap_table [role=\"row\"][aria-label^=\"Swap transaction row for\"]').evaluateAll((els) => els.map((row) => {\n  const cells = [...row.querySelectorAll('[role=\"cell\"]')].map((c) => (c.innerText || '').replace(/\\s+/g, ' ').trim());\n  const a = (cells[1] || '').match(/[\\d,]+(?:\\.\\d+)?/g) || [];\n  return { address: (row.getAttribute('aria-label') || '').replace('Swap transaction row for ', ''), pay: a[0] || '', receive: a[1] || '' }; }));\npage.__tx = [];\nif (!page.__txOn) { page.__txOn = true; page.on('response', async (r) => { if (!/\\/swapnwarp\\/api\\/swap\\/transaction\\?/.test(r.url())) return;\n  let entries = []; try { entries = (await r.json()).transactions ?? []; } catch {} page.__tx.push({ url: r.url(), entries }); }); }\nreturn { isLogin, rows: rows.map((r) => r.address), target: rows[0]?.address ?? '' };",
+        "outputs": [
+          "isLogin",
+          "rows",
+          "target"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "search",
+      "type": "web",
+      "name": "그 지갑으로 검색",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a530",
+            "kind": "fill",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "주소 · 해시 검색 칸",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "input[placeholder=\"Search by Address and Tx hash\"]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "value": "{{ $input.target }}"
+          },
+          {
+            "id": "a531",
+            "kind": "press",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "주소 · 해시 검색 칸",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "input[placeholder=\"Search by Address and Tx hash\"]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "key": "Enter"
+          },
+          {
+            "id": "a532",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "hit",
+      "type": "custom",
+      "name": "검색 결과 — URL · 요청 · 응답 · 화면",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "code": "const until = Date.now() + 15000;\nwhile (!page.__tx.length && Date.now() < until) await page.waitForTimeout(300);\nconst got = page.__tx.splice(0); const last = got[got.length - 1] ?? { url: '', entries: [] };\nconst req = last.url ? new URL(last.url).searchParams : new URLSearchParams();\nconst here = new URL(page.url()).searchParams;\nconst notice = await page.locator('[role=\"status\"][aria-label^=\"No transaction items found\"]').first().isVisible().catch(() => false);\nconst tableCount = await page.locator('#swap_table').count();\nconst rows = await page.locator('#swap_table [role=\"row\"][aria-label^=\"Swap transaction row for\"]').evaluateAll((els) => els.map((row) => {\n  const cells = [...row.querySelectorAll('[role=\"cell\"]')].map((c) => (c.innerText || '').replace(/\\s+/g, ' ').trim());\n  const a = (cells[1] || '').match(/[\\d,]+(?:\\.\\d+)?/g) || [];\n  return { address: (row.getAttribute('aria-label') || '').replace('Swap transaction row for ', ''), pay: a[0] || '', receive: a[1] || '' }; }));\nconst t = String(input.target).toLowerCase();\nreturn { searchValue: here.get('searchValue') ?? '', reqAddr: req.get('addressOrTxhash') ?? '', entries: last.entries.map((e) => e.walletAddress),\n  strays: last.entries.filter((e) => String(e.walletAddress).toLowerCase() !== t).map((e) => e.walletAddress),\n  shown: rows.map((r) => r.address), shownStrays: rows.filter((r) => r.address.toLowerCase() !== t).map((r) => r.address) };",
+        "outputs": [
+          "searchValue",
+          "reqAddr",
+          "entries",
+          "strays",
+          "shown",
+          "shownStrays"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "searchEmpty",
+      "type": "web",
+      "name": "쓰이지 않은 주소로 검색",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a533",
+            "kind": "fill",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "주소 · 해시 검색 칸",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "input[placeholder=\"Search by Address and Tx hash\"]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "value": "0x0000000000000000000000000000000000000001"
+          },
+          {
+            "id": "a534",
+            "kind": "press",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "target": {
+              "label": "주소 · 해시 검색 칸",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "input[placeholder=\"Search by Address and Tx hash\"]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "key": "Enter"
+          },
+          {
+            "id": "a535",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "empty",
+      "type": "custom",
+      "name": "빈 결과 — 응답 · 안내 · 표",
+      "position": {
+        "x": 1500,
+        "y": 0
+      },
+      "config": {
+        "code": "const until = Date.now() + 15000;\nwhile (!page.__tx.length && Date.now() < until) await page.waitForTimeout(300);\nconst got = page.__tx.splice(0); const last = got[got.length - 1] ?? { url: '', entries: [] };\nconst req = last.url ? new URL(last.url).searchParams : new URLSearchParams();\nconst here = new URL(page.url()).searchParams;\nconst notice = await page.locator('[role=\"status\"][aria-label^=\"No transaction items found\"]').first().isVisible().catch(() => false);\nconst tableCount = await page.locator('#swap_table').count();\nreturn { entries: last.entries.map((e) => e.walletAddress), notice, tableCount };",
+        "outputs": [
+          "entries",
+          "notice",
+          "tableCount"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 1800,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k536",
+            "label": "전제: 로그인하지 않았다",
+            "actual": "{{ $node.before.isLogin }}",
+            "op": "isFalse",
+            "expected": null
+          },
+          {
+            "id": "k537",
+            "label": "전제: 거를 대상이 있다",
+            "actual": "{{ $node.before.rows }}",
+            "op": "countGte",
+            "expected": "1"
+          },
+          {
+            "id": "k538",
+            "label": "검색어가 URL에 실린다(searchValue)",
+            "actual": "{{ $node.hit.searchValue }}",
+            "op": "eq",
+            "expected": "{{ $node.before.target }}"
+          },
+          {
+            "id": "k539",
+            "label": "조회 요청에 주소가 담긴다(addressOrTxhash)",
+            "actual": "{{ $node.hit.reqAddr }}",
+            "op": "eq",
+            "expected": "{{ $node.before.target }}"
+          },
+          {
+            "id": "k540",
+            "label": "다른 지갑의 거래가 섞여 오지 않는다",
+            "actual": "{{ $node.hit.strays }}",
+            "op": "countEq",
+            "expected": "0"
+          },
+          {
+            "id": "k541",
+            "label": "고른 지갑에는 거래가 최소 한 건",
+            "actual": "{{ $node.hit.entries }}",
+            "op": "countGte",
+            "expected": "1"
+          },
+          {
+            "id": "k542",
+            "label": "화면에도 그 지갑의 행만 남는다",
+            "actual": "{{ $node.hit.shownStrays }}",
+            "op": "countEq",
+            "expected": "0"
+          },
+          {
+            "id": "k543",
+            "label": "응답이 있으면 화면에도 행이 있다",
+            "actual": "{{ $node.hit.shown }}",
+            "op": "countGte",
+            "expected": "1"
+          },
+          {
+            "id": "k544",
+            "label": "쓰이지 않은 주소에는 거래가 없다",
+            "actual": "{{ $node.empty.entries }}",
+            "op": "countEq",
+            "expected": "0"
+          },
+          {
+            "id": "k545",
+            "label": "결과가 없으면 없다고 말한다",
+            "actual": "{{ $node.empty.notice }}",
+            "op": "isTrue",
+            "expected": null
+          },
+          {
+            "id": "k546",
+            "label": "결과가 없으면 표를 그리지 않는다(현재 동작)",
+            "actual": "{{ $node.empty.tableCount }}",
+            "op": "eq",
+            "expected": "0"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "before"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "before",
+        "port": "out"
+      },
+      "to": {
+        "node": "search"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "search",
+        "port": "out"
+      },
+      "to": {
+        "node": "hit"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "hit",
+        "port": "out"
+      },
+      "to": {
+        "node": "searchEmpty"
+      }
+    },
+    {
+      "id": "e5",
+      "from": {
+        "node": "searchEmpty",
+        "port": "out"
+      },
+      "to": {
+        "node": "empty"
+      }
+    },
+    {
+      "id": "e6",
+      "from": {
+        "node": "empty",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

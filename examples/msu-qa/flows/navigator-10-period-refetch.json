@@ -1,0 +1,357 @@
+{
+  "schemaVersion": 1,
+  "id": "navigator-10-period-refetch",
+  "name": "Navigator · 기간을 바꾸면 그 기간으로 다시 조회",
+  "description": "10-ranking: 30Days · All 을 누를 때마다 equipment · decoration 보드를 그 기간(duration=30 · -1)으로 다시 묻고, 선택이 옮겨가고, 랭킹이 비지 않는다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "Navigator 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/navigator"
+        },
+        "actions": [
+          {
+            "id": "a815",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 2500
+            }
+          },
+          {
+            "id": "a816",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a817",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 1000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "sw30",
+      "type": "custom",
+      "name": "30Days 누르고 조회 보기",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "const asked = []; const on = (r) => { const u = new URL(r.url()); if (u.pathname.includes('/ranking/')) asked.push(u.search); };\npage.on('request', on);\nawait page.locator('button[role=option]').filter({ hasText: /^30Days$/ }).first().click();\nawait page.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => {}); await page.waitForTimeout(3500); page.off('request', on);\nconst hit = (t) => asked.some((s) => s.includes('type=' + t) && s.includes('duration=30'));\nreturn { asked: asked.join(' | ') || '요청 없음', equipment: hit('equipment'), decoration: hit('decoration') };",
+        "outputs": [
+          "asked",
+          "equipment",
+          "decoration"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "st30",
+      "type": "web",
+      "name": "30Days 상태 읽기",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a818",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "기간 «30Days»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "//button[@role=\"option\" and normalize-space(.)=\"30Days\"]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "selected",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a819",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "랭킹 첫 항목",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[contains(@href,\"/navigator/nft/\") or contains(@href,\"/navigator/character/\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "ranked",
+            "strategy": "link",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "swAll",
+      "type": "custom",
+      "name": "All 누르고 조회 보기",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "config": {
+        "code": "const asked = []; const on = (r) => { const u = new URL(r.url()); if (u.pathname.includes('/ranking/')) asked.push(u.search); };\npage.on('request', on);\nawait page.locator('button[role=option]').filter({ hasText: /^All$/ }).first().click();\nawait page.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => {}); await page.waitForTimeout(3500); page.off('request', on);\nconst hit = (t) => asked.some((s) => s.includes('type=' + t) && s.includes('duration=-1'));\nreturn { asked: asked.join(' | ') || '요청 없음', equipment: hit('equipment'), decoration: hit('decoration') };",
+        "outputs": [
+          "asked",
+          "equipment",
+          "decoration"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "stAll",
+      "type": "web",
+      "name": "All 상태 읽기",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "continue"
+        },
+        "actions": [
+          {
+            "id": "a820",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "기간 «All»",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "//button[@role=\"option\" and normalize-space(.)=\"All\"]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "selected",
+            "strategy": "attribute",
+            "attribute": "aria-selected",
+            "transform": null
+          },
+          {
+            "id": "a821",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "랭킹 첫 항목",
+              "locators": [
+                {
+                  "kind": "xpath",
+                  "value": "(//a[contains(@href,\"/navigator/nft/\") or contains(@href,\"/navigator/character/\")])[1]"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "ranked",
+            "strategy": "link",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 1500,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k822",
+            "label": "30Days: equipment 보드를 duration=30 로 조회해야 한다",
+            "actual": "{{ $node.sw30.equipment }}",
+            "op": "isTrue",
+            "expected": null
+          },
+          {
+            "id": "k823",
+            "label": "30Days: decoration 보드를 duration=30 로 조회해야 한다",
+            "actual": "{{ $node.sw30.decoration }}",
+            "op": "isTrue",
+            "expected": null
+          },
+          {
+            "id": "k824",
+            "label": "30Days 선택 상태",
+            "actual": "{{ $node.st30.selected }}",
+            "op": "eq",
+            "expected": "true"
+          },
+          {
+            "id": "k825",
+            "label": "30Days: 랭킹이 비면 안 된다",
+            "actual": "{{ $node.st30.ranked }}",
+            "op": "notEmpty",
+            "expected": null
+          },
+          {
+            "id": "k826",
+            "label": "All: equipment 보드를 duration=-1 로 조회해야 한다",
+            "actual": "{{ $node.swAll.equipment }}",
+            "op": "isTrue",
+            "expected": null
+          },
+          {
+            "id": "k827",
+            "label": "All: decoration 보드를 duration=-1 로 조회해야 한다",
+            "actual": "{{ $node.swAll.decoration }}",
+            "op": "isTrue",
+            "expected": null
+          },
+          {
+            "id": "k828",
+            "label": "All 선택 상태",
+            "actual": "{{ $node.stAll.selected }}",
+            "op": "eq",
+            "expected": "true"
+          },
+          {
+            "id": "k829",
+            "label": "All: 랭킹이 비면 안 된다",
+            "actual": "{{ $node.stAll.ranked }}",
+            "op": "notEmpty",
+            "expected": null
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "sw30"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "sw30",
+        "port": "out"
+      },
+      "to": {
+        "node": "st30"
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "node": "st30",
+        "port": "out"
+      },
+      "to": {
+        "node": "swAll"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "node": "swAll",
+        "port": "out"
+      },
+      "to": {
+        "node": "stAll"
+      }
+    },
+    {
+      "id": "e5",
+      "from": {
+        "node": "stAll",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}

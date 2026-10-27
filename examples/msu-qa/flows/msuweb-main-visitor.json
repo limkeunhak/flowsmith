@@ -26,7 +26,7 @@
         },
         "actions": [
           {
-            "id": "a1",
+            "id": "a331",
             "kind": "wait",
             "risk": "safe",
             "timeoutMs": null,
@@ -37,7 +37,7 @@
             }
           },
           {
-            "id": "a2",
+            "id": "a332",
             "kind": "click",
             "risk": "safe",
             "timeoutMs": null,
@@ -57,7 +57,7 @@
             "popup": false
           },
           {
-            "id": "a3",
+            "id": "a333",
             "kind": "read",
             "risk": "safe",
             "timeoutMs": null,
@@ -80,7 +80,7 @@
             "transform": null
           },
           {
-            "id": "a4",
+            "id": "a334",
             "kind": "read",
             "risk": "safe",
             "timeoutMs": null,
@@ -103,7 +103,7 @@
             "transform": null
           },
           {
-            "id": "a5",
+            "id": "a335",
             "kind": "read",
             "risk": "safe",
             "timeoutMs": null,
@@ -126,7 +126,7 @@
             "transform": null
           },
           {
-            "id": "a6",
+            "id": "a336",
             "kind": "read",
             "risk": "safe",
             "timeoutMs": null,
@@ -149,7 +149,7 @@
             "transform": null
           },
           {
-            "id": "a7",
+            "id": "a337",
             "kind": "read",
             "risk": "safe",
             "timeoutMs": null,
@@ -204,84 +204,84 @@
       "config": {
         "items": [
           {
-            "id": "k8",
+            "id": "k338",
             "label": "헤더가 있다",
             "actual": "{{ $node.open.header }}",
             "op": "notEmpty",
             "expected": null
           },
           {
-            "id": "k9",
+            "id": "k339",
             "label": "푸터가 있다",
             "actual": "{{ $node.open.footer }}",
             "op": "notEmpty",
             "expected": null
           },
           {
-            "id": "k10",
+            "id": "k340",
             "label": "비회원에게 Connect가 보인다",
             "actual": "{{ $node.open.connect }}",
             "op": "contains",
             "expected": "Connect"
           },
           {
-            "id": "k11",
+            "id": "k341",
             "label": "서비스 전환 메뉴가 있다",
             "actual": "{{ $node.open.synergy }}",
             "op": "notEmpty",
             "expected": null
           },
           {
-            "id": "k12",
+            "id": "k342",
             "label": "«TypeError»가 노출되지 않는다",
             "actual": "{{ $node.open.body }}",
             "op": "notContains",
             "expected": "TypeError"
           },
           {
-            "id": "k13",
+            "id": "k343",
             "label": "«ReferenceError»가 노출되지 않는다",
             "actual": "{{ $node.open.body }}",
             "op": "notContains",
             "expected": "ReferenceError"
           },
           {
-            "id": "k14",
+            "id": "k344",
             "label": "«at Object.»가 노출되지 않는다",
             "actual": "{{ $node.open.body }}",
             "op": "notContains",
             "expected": "at Object."
           },
           {
-            "id": "k15",
+            "id": "k345",
             "label": "«ECONNREFUSED»가 노출되지 않는다",
             "actual": "{{ $node.open.body }}",
             "op": "notContains",
             "expected": "ECONNREFUSED"
           },
           {
-            "id": "k16",
+            "id": "k346",
             "label": "«ETIMEDOUT»가 노출되지 않는다",
             "actual": "{{ $node.open.body }}",
             "op": "notContains",
             "expected": "ETIMEDOUT"
           },
           {
-            "id": "k17",
+            "id": "k347",
             "label": "«Internal Server»가 노출되지 않는다",
             "actual": "{{ $node.open.body }}",
             "op": "notContains",
             "expected": "Internal Server"
           },
           {
-            "id": "k18",
+            "id": "k348",
             "label": "«stacktrace»가 노출되지 않는다",
             "actual": "{{ $node.open.body }}",
             "op": "notContains",
             "expected": "stacktrace"
           },
           {
-            "id": "k19",
+            "id": "k349",
             "label": "«Traceback»가 노출되지 않는다",
             "actual": "{{ $node.open.body }}",
             "op": "notContains",

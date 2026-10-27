@@ -49,6 +49,216 @@
       "label": "[01-landing] 새로고침 · 뒤로가기",
       "params": {},
       "enabled": true
+    },
+    {
+      "id": "w02a",
+      "flowId": "msuweb-02-gnb-links",
+      "label": "[02-navigation-links] GNB 는 지정된 메뉴를 지정된 경로로 연결한다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "w02b",
+      "flowId": "msuweb-02-gnb-click",
+      "label": "[02-navigation-links] GNB 메뉴를 클릭하면 해당 페이지로 이동한다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "w02c",
+      "flowId": "msuweb-02-new-badge",
+      "label": "[02-navigation-links] MSU Space 메뉴에 NEW 배지가 붙어 있다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "w02d",
+      "flowId": "msuweb-02-footer-links",
+      "label": "[02-navigation-links] 푸터는 정책 · 가이드 · 외부 채널 링크를 모두 제공한다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "w02e",
+      "flowId": "msuweb-02-space-menu",
+      "label": "[02-navigation-links] MSU Space 메뉴에서 Resource Search 와 Forum 으로 갈 수 있다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "w03a",
+      "flowId": "msuweb-03-viewport",
+      "label": "[03-responsive] 데스크톱 1920 에서 가로 스크롤 없이 헤더와 푸터가 노출된다",
+      "params": {
+        "width": "1920",
+        "height": "1080"
+      },
+      "enabled": true
+    },
+    {
+      "id": "w03b",
+      "flowId": "msuweb-03-viewport",
+      "label": "[03-responsive] 데스크톱 1440 에서 가로 스크롤 없이 헤더와 푸터가 노출된다",
+      "params": {
+        "width": "1440",
+        "height": "900"
+      },
+      "enabled": true
+    },
+    {
+      "id": "w03c",
+      "flowId": "msuweb-03-viewport",
+      "label": "[03-responsive] 태블릿 768 에서 가로 스크롤 없이 헤더와 푸터가 노출된다",
+      "params": {
+        "width": "768",
+        "height": "1024"
+      },
+      "enabled": true
+    },
+    {
+      "id": "w03d",
+      "flowId": "msuweb-03-viewport",
+      "label": "[03-responsive] 모바일 390 에서 가로 스크롤 없이 헤더와 푸터가 노출된다",
+      "params": {
+        "width": "390",
+        "height": "844"
+      },
+      "enabled": true
+    },
+    {
+      "id": "w03e",
+      "flowId": "msuweb-03-desktop-nav",
+      "label": "[03-responsive] 데스크톱에서는 GNB 메뉴가 그대로 펼쳐져 있다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "w03f",
+      "flowId": "msuweb-03-mobile-nav",
+      "label": "[03-responsive] 모바일에서는 GNB 가 접혀 있고 햄버거로 열 수 있다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "w04a",
+      "flowId": "msuweb-04-notice-list",
+      "label": "[04-notices] 공지 목록에 글이 노출된다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "w04b",
+      "flowId": "msuweb-04-notice-open",
+      "label": "[04-notices] 목록에서 공지를 열면 같은 글의 상세가 열리고 목록으로 돌아올 수 있다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "w04c",
+      "flowId": "msuweb-04-notice-search-empty",
+      "label": "[04-notices] 검색 결과가 없으면 빈 상태를 안내한다",
+      "params": {
+        "keyword": "zzqqxx-없는-공지-zzqqxx"
+      },
+      "enabled": true
+    },
+    {
+      "id": "w04d",
+      "flowId": "msuweb-04-notice-404",
+      "label": "[04-notices] 없는 공지 번호는 404 로 처리된다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "w09a",
+      "flowId": "msuweb-09-keyboard-gnb",
+      "label": "[09-accessibility] Tab 으로 GNB 에 닿고 Enter 로 이동할 수 있다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "w09b",
+      "flowId": "msuweb-09-img-alt",
+      "label": "[09-accessibility] 화면에 보이는 이미지에는 대체 텍스트가 있다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "w05a",
+      "flowId": "msuweb-05-rsc-failure",
+      "label": "[05-content-failure] 상세 이동용 요청이 실패해도 공지 상세는 열린다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "w05b",
+      "flowId": "msuweb-05-images-blocked",
+      "label": "[05-content-failure] 이미지가 하나도 로드되지 않아도 목록과 헤더는 그대로다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "w05c",
+      "flowId": "msuweb-05-analytics-blocked",
+      "label": "[05-content-failure] 분석 · 추적 스크립트가 모두 차단돼도 페이지는 동작한다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "w05d",
+      "flowId": "msuweb-05-reload-recovers",
+      "label": "[05-content-failure] 일시적으로 실패한 뒤 새로고침하면 정상으로 돌아온다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "w06a",
+      "flowId": "msuweb-06-visitor-connect",
+      "label": "[06-profile-layer] 비회원에게는 프로필 영역 대신 Connect 가 보인다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "w08a",
+      "flowId": "msuweb-08-banner-first-visit",
+      "label": "[08-cookie-consent] 처음 방문하면 쿠키 배너가 노출된다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "w08b",
+      "flowId": "msuweb-08-accept-all",
+      "label": "[08-cookie-consent] 전체 동의하면 모든 항목이 동의로 기록되고 같은 세션에서 다시 묻지 않는다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "w08c",
+      "flowId": "msuweb-08-reject-all",
+      "label": "[08-cookie-consent] 전체 거부하면 필수 항목만 남고 나머지는 거부로 기록된다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "w08d",
+      "flowId": "msuweb-08-accept-selected",
+      "label": "[08-cookie-consent] 설정에서 고른 항목만 동의로 기록된다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "w08e",
+      "flowId": "msuweb-08-close-only",
+      "label": "[08-cookie-consent] 배너를 닫기만 하면 기록되지 않고 다음 방문에 다시 묻는다",
+      "params": {},
+      "enabled": true
+    },
+    {
+      "id": "w08f",
+      "flowId": "msuweb-08-new-session",
+      "label": "[08-cookie-consent] 새 세션에서는 쿠키 배너를 다시 노출한다",
+      "params": {},
+      "enabled": true
     }
   ]
 }

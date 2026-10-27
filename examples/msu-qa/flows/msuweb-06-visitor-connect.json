@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "id": "msuweb-06-visitor-connect",
+  "name": "MSU 웹 · 비회원은 프로필 대신 Connect",
+  "description": "06-profile-layer: 비회원 메인 — Connect가 보이고 프로필 버튼 · Buy NXPC는 DOM에 없어야 한다",
+  "params": [],
+  "vars": {},
+  "secrets": [],
+  "settings": {
+    "defaultTimeoutMs": 20000,
+    "forbiddenLabels": []
+  },
+  "nodes": [
+    {
+      "id": "open",
+      "type": "web",
+      "name": "메인 열기",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "start": {
+          "kind": "url",
+          "url": "https://qa.msu.io/"
+        },
+        "actions": [
+          {
+            "id": "a263",
+            "kind": "wait",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": false,
+            "wait": {
+              "kind": "fixed",
+              "ms": 4000
+            }
+          },
+          {
+            "id": "a264",
+            "kind": "click",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "쿠키 «Accept All Cookies»",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "button:has-text(\"Accept All Cookies\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "popup": false
+          },
+          {
+            "id": "a265",
+            "kind": "read",
+            "risk": "safe",
+            "timeoutMs": null,
+            "optional": true,
+            "target": {
+              "label": "헤더의 Connect",
+              "locators": [
+                {
+                  "kind": "css",
+                  "value": "header button:has-text(\"Connect\")"
+                }
+              ],
+              "fingerprint": null,
+              "frames": [],
+              "verifiedAt": null
+            },
+            "output": "connect",
+            "strategy": "innerText",
+            "attribute": null,
+            "transform": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "count",
+      "type": "custom",
+      "name": "프로필 · Buy NXPC 개수",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "config": {
+        "code": "const profile = await page.locator('#USER_PROFILE_BUTTON_ID').count();\nconst buyNxpc = await page.locator('[aria-label=\"Buy NXPC\"]').count();\nreturn { profile, buyNxpc };",
+        "outputs": [
+          "profile",
+          "buyNxpc"
+        ],
+        "usesPage": true,
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "id": "judge",
+      "type": "check",
+      "name": "판정",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "config": {
+        "items": [
+          {
+            "id": "k266",
+            "label": "Connect 가 보여야 한다",
+            "actual": "{{ $node.open.connect }}",
+            "op": "contains",
+            "expected": "Connect"
+          },
+          {
+            "id": "k267",
+            "label": "프로필 버튼은 없어야 한다",
+            "actual": "{{ $input.profile }}",
+            "op": "eq",
+            "expected": "0"
+          },
+          {
+            "id": "k268",
+            "label": "비회원에게 Buy NXPC 는 없어야 한다",
+            "actual": "{{ $input.buyNxpc }}",
+            "op": "eq",
+            "expected": "0"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "node": "open",
+        "port": "out"
+      },
+      "to": {
+        "node": "count"
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "node": "count",
+        "port": "out"
+      },
+      "to": {
+        "node": "judge"
+      }
+    }
+  ]
+}
