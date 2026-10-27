@@ -34,8 +34,12 @@ export interface FlowSummary {
   team: { id: string; name: string } | null;
   /** 어디서 도나 — null 서버 · 「worker:<id>」 · 「label:<라벨>」 */
   runOn: string | null;
-  /** 묶음 — 목록을 정돈하는 이름표(null이면 묶음 없음). 초안 밖에 있다 */
+  /** 직접 지정한 화면 — 자동(area)이 틀릴 때만(null이면 자동). 초안 밖에 있다 */
   group: string | null;
+  /** 어느 화면 — 화면 규칙(주소 앞부분)으로 자동(storage/areas.ts). 규칙에 없으면 호스트 · 주소가 없으면 null */
+  area: string | null;
+  /** area를 그렇게 본 주소(«qa.msu.io/navigator») — 화면 규칙 제안 · 툴팁 */
+  site: string | null;
 }
 
 export interface ProbeRow {

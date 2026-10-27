@@ -158,4 +158,26 @@ describe("워크플로우 목록", () => {
     await call("PUT", "/api/flow-group", { ids: ["quick", "caller"], group: "" });
     expect(((await call("GET", "/api/flows")).body as any[]).filter((f) => f.group !== null)).toEqual([]);
   });
+
+  it("★화면 규칙 — 통째로 바꾸고 · 목록의 area가 따라 바뀐다(초안을 고치지 않아도) · 틀린 규칙은 아무것도 안 바꾼다", async () => {
+    const draft = { schemaVersion: 1, id: "area-a", name: "화면 보기", nodes: [{ id: "w", type: "web", name: "열기", position: pos, config: { start: { kind: "url", url: "https://shop.example/orders/1" }, actions: [] } }], edges: [] };
+    await call("POST", "/api/flows", { draft });
+    const areaOfA = async () => ((await call("GET", "/api/flows")).body as any[]).find((f) => f.id === "area-a");
+    expect(await areaOfA()).toMatchObject({ area: "shop.example", site: "shop.example/orders/1", group: null });
+    expect((await call("GET", "/api/areas")).body).toEqual([]);
+
+    const put = await call("PUT", "/api/areas", { areas: [{ prefix: "https://Shop.example/", name: " 가게 " }, { prefix: "shop.example/orders", name: "주문" }] });
+    expect(put).toMatchObject({ status: 200, body: [{ prefix: "shop.example", name: "가게" }, { prefix: "shop.example/orders", name: "주문" }] });
+    expect((await areaOfA()).area).toBe("주문");
+    // 직접 지정이 이긴다 — area는 그대로 · group이 따로
+    await call("PUT", "/api/flow-group", { ids: ["area-a"], group: "따로" });
+    expect(await areaOfA()).toMatchObject({ area: "주문", group: "따로" });
+
+    expect((await call("PUT", "/api/areas", { areas: [{ prefix: "shop.example", name: "a" }, { prefix: "https://shop.example", name: "b" }] })).status).toBe(400);
+    expect((await call("PUT", "/api/areas", { areas: [{ prefix: "", name: "a" }] })).status).toBe(400);
+    expect((await call("PUT", "/api/areas", { areas: [{ prefix: "x.example", name: "" }] })).status).toBe(400);
+    expect((await call("GET", "/api/areas")).body).toHaveLength(2);
+    await call("PUT", "/api/areas", { areas: [] });
+    await call("DELETE", "/api/flows/area-a");
+  });
 });

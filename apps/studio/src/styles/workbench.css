@@ -248,18 +248,27 @@ button:where(:not(.swagger-ui *)), input:where(:not(.swagger-ui *)), select:wher
 .flow-group-head.static .flow-group-slot { color: var(--bad); }
 .flow-group-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 2px 0; border: none; background: none; box-shadow: none; font: inherit; color: inherit; cursor: pointer; }
 .flow-group-toggle:hover { background: none !important; color: var(--text); }
-.flow-group-edit { opacity: 0; transition: opacity .12s; color: var(--muted); font-weight: 500; }
-.flow-group-head:hover .flow-group-edit, .flow-group-edit:focus-visible { opacity: 1; }
-@media (hover: none) { .flow-group-edit { opacity: 1; } }
-.flow-group-rename { display: flex; align-items: center; gap: 6px; }
-.flow-group-rename input { height: 28px; width: 220px; font-size: var(--fs-13); }
 /* 끌어 놓을 묶음 — 머리와 카드를 같이 달군다 */
-.flow-group.drop .flow-group-head { color: var(--accent); }
-.flow-group.drop .flow-rows { outline: 2px dashed var(--accent); outline-offset: 2px; }
-.flow-group.drop:has(.fold.shut) .flow-group-head { outline: 2px dashed var(--accent); outline-offset: 2px; border-radius: var(--radius); }
 .flow-group-head .fold { transition: transform .12s; }
 .flow-group-head .fold.shut { transform: rotate(-90deg); }
 .flow-group-head .pill { margin-left: 4px; }
+.flow-group-site { margin-left: 6px; padding: 0; border: none; background: none; box-shadow: none; font-weight: 400; color: var(--faint); font-family: var(--mono); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flow-pinned { color: var(--muted); }
+button.flow-group-site { cursor: pointer; }
+button.flow-group-site:hover { background: none !important; color: var(--text); text-decoration: underline; }
+/* «새 워크플로우» 메뉴 — 단추 오른쪽 끝에 맞춘다 */
+.new-flow-menu { min-width: 280px; }
+.new-flow-menu .menu-item { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; color: var(--text); text-decoration: none; }
+.new-flow-menu .menu-item:hover { background: var(--sunken); }
+.menu-item-title { font-weight: 600; }
+.flow-sort .icon-btn.on { color: var(--accent); }
+/* 화면 규칙 — 주소 앞부분 · 이름 · 맞는 수 · 빼기 */
+.area-rules { padding: 16px; margin-bottom: 16px; max-width: 760px; }
+.area-rule-rows { display: grid; gap: 6px; }
+.area-rule-row { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 48px 32px; gap: 8px; align-items: center; }
+.area-rule-row.head { font-weight: 600; }
+.area-rule-row input { height: 32px; min-width: 0; }
+.area-rule-row:not(.head) input:first-child { font-family: var(--mono); font-size: var(--fs-13); }
 .flow-group-count { font-weight: 500; color: var(--faint); font-variant-numeric: tabular-nums; }
 .flow-group.attention .flow-group-head { color: var(--bad); }
 .flow-group.attention .flow-rows { border-color: color-mix(in srgb, var(--bad) 35%, var(--border)); }
@@ -283,6 +292,12 @@ body:has(.flow-bulk) .ai-fab { bottom: 84px; }
 @media (max-width: 640px) {
   .flow-list { --flow-cols: 18px minmax(0, 1fr) auto; }
   .flow-suggest { flex-wrap: wrap; }
+  /* 좁으면 주소 앞부분이 한 줄 — 이름 · 맞는 수 · 빼기는 그 아래 */
+  .area-rule-rows { gap: 12px; }
+  .area-rule-row { grid-template-columns: minmax(0, 1fr) 44px 32px; gap: 6px; }
+  .area-rule-row.head { display: none; }
+  .area-rule-row:not(.head) input:first-child { grid-column: 1 / -1; }
+  .flow-group-site { display: none; }
   .flow-cols { display: none; }
   .flow-cell-run { display: none; }
   /* 좁은 창에서 마우스로는 줄을 눌러 열면 된다 — 단추 줄이 빈자리만 차지한다. 터치(올릴 수 없다)에서만 아래 줄에 */

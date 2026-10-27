@@ -10,6 +10,7 @@ export type {
   WorkerInfo, WorkerRow, TeamRow, UserRole, UserRow, ApiTokenRow,
 } from "./storage/types.ts";
 export type { Dashboard } from "./run/stats.ts";
+export type { AreaRule } from "./storage/areas.ts";
 export type { Suite, SuiteItem, SuiteRun, SuiteRunItem, SuiteSchedule, SuiteNotifyRule, SuiteRunStatus } from "./storage/suites.ts";
 
 /** 워커 화면이 보는 지금 상태(run/worker-hub.ts) */

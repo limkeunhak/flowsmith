@@ -188,6 +188,9 @@ export const api = {
   setFlowTeam: (id: string, team: string | null) => call<FlowDetail>("PUT", `/flows/${encodeURIComponent(id)}/team`, { team }),
   /** 여럿을 한 묶음으로(null이면 묶음 없음) */
   setFlowGroup: (ids: string[], group: string | null) => call<{ ids: string[]; group: string | null }>("PUT", "/flow-group", { ids, group }),
+  // 화면 규칙 — 주소 앞부분 → 화면 이름(목록이 이 이름으로 묶는다)
+  listAreas: () => call<Server.AreaRule[]>("GET", "/areas"),
+  setAreas: (areas: Server.AreaRule[]) => call<Server.AreaRule[]>("PUT", "/areas", { areas }),
   setup: (b: { token: string; email: string; name: string; password: string }) => call<{ user: User }>("POST", "/auth/setup", b),
   login: (email: string, password: string) => call<{ user: User }>("POST", "/auth/login", { email, password }),
   logout: () => call<null>("POST", "/auth/logout"),
