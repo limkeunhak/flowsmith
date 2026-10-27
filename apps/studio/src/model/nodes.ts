@@ -86,6 +86,17 @@ export function newNode(choice: NodeChoice, flow: Flow, position: { x: number; y
   }
 }
 
+/** 동작의 빈 칸을 기본값으로 — API · 손으로 넣은 초안(캡처의 가릴 요소 · HTML 범위가 빠진 것)을 열어도 화면이 죽지 않게 */
+export function withActionDefaults(a: WebAction): WebAction {
+  if (a.kind !== "save") return a;
+  if (a.source === "screenshot") {
+    const c = a.capture;
+    return { ...a, capture: { area: c?.area ?? "full", target: c?.target ?? null, format: c?.format ?? "png", quality: c?.quality ?? null, mask: c?.mask ?? [] } };
+  }
+  if (a.source === "html") return { ...a, html: { area: a.html?.area ?? "page", target: a.html?.target ?? null } };
+  return a;
+}
+
 export function newAction(kind: WebAction["kind"], taken: Iterable<string>): WebAction {
   const base = { id: nextId("a", taken), risk: "safe" as const, timeoutMs: null, optional: false };
   switch (kind) {
@@ -123,7 +134,7 @@ export function normalize(draft: unknown): Flow {
     // 실행 입력 — 빠진 칸(종류 · 보기 · 기본값 · 설명)은 검문소와 같은 기본값으로
     params: (d.params ?? []).map((p) => newParam(p)),
     // 옛 이름 «store»(저장 노드)는 파일 쓰기로
-    nodes: (d.nodes ?? []).map((n0) => ({ ...n0, type: (n0.type as string) === "store" ? "fileWrite" : n0.type }) as FlowNode).map((n) => ({ ...n, position: n.position ?? { x: 0, y: 0 }, ...(n.type === "fileWrite" ? { config: withStoreDefaults(n.config) } : n.type === "fileRead" ? { config: withFileReadDefaults(n.config) } : n.type === "flowCall" ? { config: withFlowCallDefaults(n.config) } : n.type === "http" ? { config: withHttpDefaults(n.config) } : n.type === "transform" ? { config: withTransformDefaults(n.config) } : {}) }) as FlowNode),
+    nodes: (d.nodes ?? []).map((n0) => ({ ...n0, type: (n0.type as string) === "store" ? "fileWrite" : n0.type }) as FlowNode).map((n) => ({ ...n, position: n.position ?? { x: 0, y: 0 }, ...(n.type === "fileWrite" ? { config: withStoreDefaults(n.config) } : n.type === "fileRead" ? { config: withFileReadDefaults(n.config) } : n.type === "flowCall" ? { config: withFlowCallDefaults(n.config) } : n.type === "http" ? { config: withHttpDefaults(n.config) } : n.type === "transform" ? { config: withTransformDefaults(n.config) } : n.type === "web" ? { config: { ...n.config, actions: (n.config.actions ?? []).map(withActionDefaults) } } : {}) }) as FlowNode),
     edges: d.edges ?? [],
     notes: d.notes ?? [],
     vars: d.vars ?? {},
