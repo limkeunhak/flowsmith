@@ -51,7 +51,22 @@ export function flowRoutes({ store, secrets, extensions, auth, plugins }: ApiDep
       store.setFlowTeam(p["id"]!, team);
       return store.getFlow(p["id"]!);
     }),
-    route("GET", "/api/flows/:id", (_q, _r, p) => store.getFlow(p["id"]!)),
+    // 복제 — 초안만 새 워크플로우로(id «원래id-copy» · 겹치면 -copy2 …). 버전 · 게시 · 실행 기록 · 시크릿 값은 가져오지 않는다(시크릿은 정의만)
+    route("POST", "/api/flows/:id/duplicate", async (req, res, p, body) => {
+      const b = await body();
+      const src = store.getFlow(p["id"]!);
+      const team = b["team"] === undefined ? src.team?.id ?? null : teamOf(b["team"]);
+      mayPlace(req, team);
+      const name = typeof b["name"] === "string" && b["name"].trim() !== "" ? b["name"].trim() : `${src.name} (사본)`;
+      const taken = new Set(store.listFlows(null).map((f) => f.id));
+      const base = `${src.id}-copy`;
+      let id = base;
+      for (let n = 2; taken.has(id); n++) id = `${base}${n}`;
+      const draft = { ...(src.draft as Record<string, unknown>), id, name };
+      res.statusCode = 201;
+      return store.createFlow(draft, team);
+    }),
+    route("GET", "/api/flows/:id",(_q, _r, p) => store.getFlow(p["id"]!)),
     route("PUT", "/api/flows/:id/draft", async (req, _r, p, body) => store.saveDraft(p["id"]!, (await body())["draft"], byOf(req))),
     route("DELETE", "/api/flows/:id", (_q, res, p) => { store.deleteFlow(p["id"]!); res.statusCode = 204; return null; }),
 
