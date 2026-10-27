@@ -107,6 +107,8 @@ export interface NodeEnv {
   onPage?(page: Page, opened: boolean): void;
   /** 그 창을 연 창(아직 열린 것) — 앞 노드가 연 팝업이 이 노드에서 닫혔을 때 돌아갈 곳 */
   openerOf?(page: Page): Page | null;
+  /** 동작 사이 쉬기 — 플로우 설정. 동작을 마칠 때마다 minMs~maxMs 사이에서 무작위로 */
+  actionPause?: { minMs: number; maxMs: number };
   scope: Scope;
   defaultTimeoutMs: number;
   step(s: StepLog): void;
@@ -498,6 +500,9 @@ export async function runWebNode(node: WebNode, env: NodeEnv): Promise<Output> {
     before = baseline;
     prevSkipped = false;
     env.step({ index, id: a.id, kind: a.kind, label, ms: Date.now() - started, note });
+    // 동작 사이 쉬기(사람이 하는 빠르기) — 멈추기를 누르면 바로 깬다
+    const p = env.actionPause;
+    if (p && p.maxMs > 0) await pause(p.minMs + Math.floor(Math.random() * (p.maxMs - p.minMs + 1)), env.signal);
   }
   return out;
 }

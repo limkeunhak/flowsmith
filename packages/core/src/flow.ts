@@ -151,6 +151,11 @@ export interface FlowSettings {
   retries: number;
   /** 다시 해 보기 전에 쉬는 시간 */
   retryDelayMs: number;
+  /**
+   * **동작 사이 쉬기** — 웹페이지 동작 하나를 마칠 때마다 minMs~maxMs 사이에서 무작위로 쉰다(사람이 하는 빠르기 · 사이트에 무리를 주지 않게).
+   * 둘 다 0이면 쉬지 않는다. 건너뛴 동작(조건 · 있을 때만) 뒤와 점검 실행은 쉬지 않는다
+   */
+  actionPause: { minMs: number; maxMs: number };
   /** 실행 전체 시간 제한(분) — 넘으면 멈춘다. null이면 없음 */
   runTimeoutMin: number | null;
   /** 알림 — 언제 · 어디로 (notify.ts). ★게시된 버전의 실행만 */

@@ -308,7 +308,7 @@ export async function runFlow(flow: Flow, opts: RunOptions = {}): Promise<RunRes
             const output = await runWebNode(node, {
               prim: primFor(page), primFor, onPage: (p, opened) => session.follow(p, opened), openerOf: (p) => session.openerOf(p), scope, defaultTimeoutMs: flow.settings.defaultTimeoutMs,
               signal: stop.signal, retry: { count: flow.settings.retries, delayMs: flow.settings.retryDelayMs },
-              ...(opts.probe ? { probe: { report: (f) => { findings.push(f); } } } : {}),
+              ...(opts.probe ? { probe: { report: (f) => { findings.push(f); } } } : { actionPause: flow.settings.actionPause }),
               step: (s) => { rec.steps.push(s); emit({ kind: "step", nodeId: node.id, step: s }); },
               ...(walletHook ? { wallet: walletHook } : {}),
               ...(humanOk ? { human: {

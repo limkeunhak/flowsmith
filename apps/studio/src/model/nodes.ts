@@ -117,7 +117,7 @@ export function normalize(draft: unknown): Flow {
     vars: d.vars ?? {},
     secrets: (d.secrets ?? []).map((s) => ({ ...s, shared: s.shared ?? false })),
     sharedVars: d.sharedVars ?? [],
-    settings: { forbiddenLabels: [], defaultTimeoutMs: 15000, monitorIntervalMin: null, probeParams: {}, browser: "launch", schedules: [], retries: 0, retryDelayMs: 2000, runTimeoutMin: 60, locks: [], after: [], fileTriggers: [], ...(d.settings ?? {}), wallet: d.settings?.wallet ?? null,
+    settings: { forbiddenLabels: [], defaultTimeoutMs: 15000, monitorIntervalMin: null, probeParams: {}, browser: "launch", schedules: [], retries: 0, retryDelayMs: 2000, actionPause: { minMs: 0, maxMs: 0 }, runTimeoutMin: 60, locks: [], after: [], fileTriggers: [], ...(d.settings ?? {}), wallet: d.settings?.wallet ?? null,
       // 알림 규칙 — 빠진 칸은 검문소와 같은 기본값(켬 · 처음만)
       notify: (d.settings?.notify ?? []).map((r) => ({ ...r, on: r.on ?? [], url: r.url ?? "", channel: r.channel ?? "slack", attach: r.attach ?? false, firstOnly: r.firstOnly ?? true, enabled: r.enabled ?? true })) },
   };
