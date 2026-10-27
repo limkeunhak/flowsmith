@@ -97,8 +97,8 @@ async function serveStatic(dir: string, pathname: string, res: ServerResponse): 
     const body = await readFile(file);
     res.writeHead(200, {
       "content-type": MIME[extname(file)] ?? "application/octet-stream",
-      // 빌드 결과물은 이름에 해시가 붙는다 — index.html만 매번 새로
-      "cache-control": rel === "index.html" ? "no-cache" : "public, max-age=31536000, immutable",
+      // 해시가 붙는 건 assets/의 빌드 결과물뿐 — 그 밖(index.html · favicon.svg 같은 public/ 파일)은 이름이 그대로라 매번 확인한다
+      "cache-control": rel.startsWith("assets/") ? "public, max-age=31536000, immutable" : "no-cache",
     });
     res.end(body);
     return true;

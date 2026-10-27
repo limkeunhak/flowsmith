@@ -1,68 +1,72 @@
 /*
- * ── 디자인 토큰 — Flowsmith 파랑 (2026-10-17) ─────────────────────────────
+ * ── 디자인 토큰 — Flowsmith 대장간 (2026-10-27) ──────────────────────────
  * 틀은 n8n을 따르고(왼쪽 사이드바 · 점 캔버스 · 네모 타일 · 아래 가운데 실행 단추 · 오른쪽 서랍),
- * 색은 **파랑을 중심**으로 — 브랜드는 blue-600, 바탕은 푸른 기가 도는 회색, 사이드바는 짙은 남색.
- * 노드 종류 색은 차가운 쪽(파랑 · 남보라 · 청록 · 하늘)에서 고르고, 상태색(성공 · 경고 · 실패)만 따뜻하다.
+ * 색은 **아이콘(숯빛 타일 + 달군 쇳빛 주황)** 에서 온다 — 사이드바는 숯빛, 바탕은 따뜻한 종이색, 강조는 주황.
+ *   ★브랜드 주황(ember-500 #ff6b2c)은 마크 · 숯빛 위에만 — 흰 바탕의 글자 · 단추는 ember-700(4.5:1을 넘는다).
+ * 노드 종류 색은 차가운 쪽(파랑 · 남보라 · 청록 · 하늘)에 그대로 둔다 — 따뜻한 화면 위에서 오히려 잘 갈린다.
+ * 상태색: 성공 초록 · 실패 빨강 · 경고 황토 · 막힘 장미 — 주황은 강조(· 실행 중)만 쓰므로 경고 · 막힘을 주황에서 옮겼다.
  *
  * ★색은 여기서만 정한다 — 컴포넌트 CSS는 이 이름만 쓴다.
  * 밝게/어둡게: 시스템을 따르고(prefers-color-scheme), html[data-theme]이 있으면 그것을 따른다.
  */
 
-/* 파랑 눈금 — 이름이 아니라 쓰임(아래 의미 토큰)으로 쓴다 */
+/* 눈금 — 이름이 아니라 쓰임(아래 의미 토큰)으로 쓴다 */
 :root {
-  --blue-50: #eff5ff;
-  --blue-100: #dbe8fe;
-  --blue-200: #bfd5fe;
-  --blue-300: #93b8fd;
-  --blue-400: #6097fa;
-  --blue-500: #3b78f6;
-  --blue-600: #2563eb;
-  --blue-700: #1d4fd8;
-  --blue-800: #1e40af;
-  --blue-900: #1e3a8a;
-  --navy-700: #16264a;
-  --navy-800: #101d3a;
-  --navy-900: #0b152b;
+  --ember-50: #fff6f0;
+  --ember-100: #ffe8da;
+  --ember-200: #ffcdb0;
+  --ember-300: #ffa577;
+  --ember-400: #ff8a50;
+  --ember-500: #ff6b2c;
+  --ember-600: #e5531a;
+  --ember-700: #c2410c;
+  --ember-800: #9a3412;
+  --ember-900: #7c2d12;
+  --char-600: #3a3029;
+  --char-700: #261f19;
+  --char-800: #17130f;
+  --char-900: #0e0b09;
+  --cream: #f3e9dc;
 }
 
 /* ── 밝게 ── */
 :root {
-  --bg: #f3f6fb;
-  --canvas: #eef2f8;
+  --bg: #f7f4f0;
+  --canvas: #f2eee8;
   /* 캔버스 메모 — 옅은 종이색 */
-  --note-yellow: #fff6cf; --note-blue: #e3edff; --note-green: #e1f5e8; --note-pink: #fde7ef; --note-gray: #eef0f3; --note-border: rgb(15 23 42 / .10);
-  --dots: #c3ccdb;
+  --note-yellow: #fff4c7; --note-blue: #e6eefc; --note-green: #e1f5e8; --note-pink: #fde7ef; --note-gray: #efebe6; --note-border: rgb(28 25 21 / .10);
+  --dots: #d6cec4;
   --panel: #ffffff;
-  --sunken: #f1f4f9;
-  --hover: #e8eef7;
-  --border: #dce3ee;
-  --border-strong: #c3cddc;
-  --text: #0f1b2d;
-  --muted: #55647a;
-  --faint: #8a97ab;
+  --sunken: #f4f0eb;
+  --hover: #efe9e2;
+  --border: #e6e0d8;
+  --border-strong: #d2c9be;
+  --text: #1c1915;
+  --muted: #5f574e;
+  --faint: #8f857a;
 
-  --accent: var(--blue-600);
-  --accent-hover: var(--blue-700);
-  --accent-soft: var(--blue-50);
-  --accent-line: var(--blue-200);
+  --accent: var(--ember-700);
+  --accent-hover: var(--ember-800);
+  --accent-soft: var(--ember-50);
+  --accent-line: var(--ember-200);
   --on-accent: #ffffff;
   /* 칠한 바탕(상태 점 · 배지 · 스피너) 위 글자 — 밝게 · 어둡게 모두 흰색 */
   --on-solid: #ffffff;
   /* 엑셀 내려받기 */
   --xlsx: #1d6f42;
   /* 가이드의 코드 칸 — 늘 어두운 칸 */
-  --code-block-bg: var(--navy-900);
-  --code-block-fg: #dbe6ff;
+  --code-block-bg: var(--char-800);
+  --code-block-fg: #f1e7da;
   /* Swagger UI(API 화면)는 밝은 색만 있다 — 어둡게일 때 통째로 뒤집는다(코드 칸은 다시 뒤집어 그대로) */
   --swagger-filter: none;
 
   --ok: #15803d;
   --ok-soft: #e4f6ea;
-  --warn: #b45309;
-  --warn-soft: #fdf1df;
-  --blocked: #c2410c;
-  --blocked-soft: #ffedd5;
-  --bad: #dc2626;
+  --warn: #8a5a00;
+  --warn-soft: #fbf3d6;
+  --blocked: #be185d;
+  --blocked-soft: #fce7f1;
+  --bad: #c81e1e;
   --bad-soft: #fdecec;
 
   /* 노드 종류 */
@@ -77,23 +81,23 @@
 
   /* 캔버스 */
   --node-bg: #ffffff;
-  --node-border: #c9d2e0;
-  --node-border-hover: #95a3b9;
-  --edge: #9aa7bb;
+  --node-border: #d6cdc2;
+  --node-border-hover: #a4988a;
+  --edge: #aca194;
 
-  /* 사이드바 — 짙은 남색 */
-  --side-bg: var(--navy-800);
-  --side-border: #1c2b4d;
-  --side-text: #c9d5ec;
-  --side-muted: #7f90b2;
-  --side-hover: #18284a;
-  --side-active: #1e3566;
-  --side-active-text: #ffffff;
-  --side-accent: var(--blue-400);
+  /* 사이드바 — 숯빛(아이콘 타일과 같은 색) */
+  --side-bg: var(--char-800);
+  --side-border: #2a231d;
+  --side-text: #e4d9cb;
+  --side-muted: #a39888;
+  --side-hover: #231d17;
+  --side-active: #30271f;
+  --side-active-text: #fff8ef;
+  --side-accent: var(--ember-500);
 
-  --shadow-sm: 0 1px 2px rgb(15 27 45 / .06);
-  --shadow: 0 4px 16px rgb(15 27 45 / .08), 0 1px 3px rgb(15 27 45 / .06);
-  --shadow-lg: 0 14px 36px rgb(15 27 45 / .16);
+  --shadow-sm: 0 1px 2px rgb(28 25 21 / .06);
+  --shadow: 0 4px 16px rgb(28 25 21 / .08), 0 1px 3px rgb(28 25 21 / .06);
+  --shadow-lg: 0 14px 36px rgb(28 25 21 / .16);
   --radius: 8px;
   --mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
   /* 글꼴 — Pretendard(앱에 함께 묶는다 · 사내망에서도) */
@@ -106,27 +110,27 @@
 /* ── 어둡게 — 시스템이 어두우면(사람이 밝게를 고르지 않았으면) · 사람이 어둡게를 골랐으면 ── */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0b1220;
+    --bg: #12100d;
     --swagger-filter: invert(.9) hue-rotate(180deg);
-    --canvas: #0e1626;
-    --note-yellow: #3a3418; --note-blue: #1b2a4a; --note-green: #183428; --note-pink: #3d1f2c; --note-gray: #232b38; --note-border: rgb(255 255 255 / .10);
-    --dots: #26334a;
-    --panel: #121b2c;
-    --sunken: #0f1726;
-    --hover: #1a2539;
-    --border: #233049;
-    --border-strong: #31415f;
-    --text: #e4eaf5;
-    --muted: #93a3be;
-    --faint: #66768f;
-    --accent: var(--blue-400);
-    --accent-hover: var(--blue-300);
-    --accent-soft: #15254a;
-    --accent-line: #24427f;
-    --on-accent: #06102a;
+    --canvas: #15120f;
+    --note-yellow: #3a3216; --note-blue: #1c2a42; --note-green: #193226; --note-pink: #3d1f2a; --note-gray: #2a2520; --note-border: rgb(255 255 255 / .10);
+    --dots: #332c25;
+    --panel: #1d1915;
+    --sunken: #171410;
+    --hover: #29231d;
+    --border: #322b24;
+    --border-strong: #463d33;
+    --text: #f1ebe3;
+    --muted: #a89e92;
+    --faint: #7a7066;
+    --accent: var(--ember-400);
+    --accent-hover: var(--ember-300);
+    --accent-soft: #3a2114;
+    --accent-line: #6b3518;
+    --on-accent: #1a0c04;
     --xlsx: #6fcf97;
     --ok: #4ade80;  --ok-soft: #10301e;
-    --warn: #fbbf24; --warn-soft: #33260b; --blocked: #fb923c; --blocked-soft: #3b1d0a;
+    --warn: #facc15; --warn-soft: #332a0b; --blocked: #f472b6; --blocked-soft: #3d1328;
     --bad: #f87171; --bad-soft: #3a1616;
     --web: #6b9bfa;       --web-soft: #142449;
     --condition: #34d399; --condition-soft: #0d2e24;
@@ -136,14 +140,14 @@
     --call: #a78bfa;      --call-soft: #241a45;
     --custom: #94a3b8;    --custom-soft: #1c2534;
     --extension: #e879f9; --extension-soft: #34143a;
-    --node-bg: #141f33;
-    --node-border: #2c3b58;
-    --node-border-hover: #4a5d82;
-    --edge: #4b5b78;
-    --side-bg: #070d1a;
-    --side-border: #142039;
-    --side-hover: #111d36;
-    --side-active: #17284f;
+    --node-bg: #211c17;
+    --node-border: #3d342b;
+    --node-border-hover: #64574a;
+    --edge: #615548;
+    --side-bg: var(--char-900);
+    --side-border: #221c17;
+    --side-hover: #1d1813;
+    --side-active: #2a221b;
     --shadow-sm: 0 1px 2px rgb(0 0 0 / .4);
     --shadow: 0 4px 16px rgb(0 0 0 / .45);
     --shadow-lg: 0 14px 36px rgb(0 0 0 / .55);
@@ -151,27 +155,27 @@
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0b1220;
+  --bg: #12100d;
   --swagger-filter: invert(.9) hue-rotate(180deg);
-  --canvas: #0e1626;
-  --note-yellow: #3a3418; --note-blue: #1b2a4a; --note-green: #183428; --note-pink: #3d1f2c; --note-gray: #232b38; --note-border: rgb(255 255 255 / .10);
-  --dots: #26334a;
-  --panel: #121b2c;
-  --sunken: #0f1726;
-  --hover: #1a2539;
-  --border: #233049;
-  --border-strong: #31415f;
-  --text: #e4eaf5;
-  --muted: #93a3be;
-  --faint: #66768f;
-  --accent: var(--blue-400);
-  --accent-hover: var(--blue-300);
-  --accent-soft: #15254a;
-  --accent-line: #24427f;
-  --on-accent: #06102a;
+  --canvas: #15120f;
+  --note-yellow: #3a3216; --note-blue: #1c2a42; --note-green: #193226; --note-pink: #3d1f2a; --note-gray: #2a2520; --note-border: rgb(255 255 255 / .10);
+  --dots: #332c25;
+  --panel: #1d1915;
+  --sunken: #171410;
+  --hover: #29231d;
+  --border: #322b24;
+  --border-strong: #463d33;
+  --text: #f1ebe3;
+  --muted: #a89e92;
+  --faint: #7a7066;
+  --accent: var(--ember-400);
+  --accent-hover: var(--ember-300);
+  --accent-soft: #3a2114;
+  --accent-line: #6b3518;
+  --on-accent: #1a0c04;
     --xlsx: #6fcf97;
   --ok: #4ade80;  --ok-soft: #10301e;
-  --warn: #fbbf24; --warn-soft: #33260b; --blocked: #fb923c; --blocked-soft: #3b1d0a;
+  --warn: #facc15; --warn-soft: #332a0b; --blocked: #f472b6; --blocked-soft: #3d1328;
   --bad: #f87171; --bad-soft: #3a1616;
   --web: #6b9bfa;       --web-soft: #142449;
   --condition: #34d399; --condition-soft: #0d2e24;
@@ -181,14 +185,14 @@
   --call: #a78bfa;      --call-soft: #241a45;
   --custom: #94a3b8;    --custom-soft: #1c2534;
   --extension: #e879f9; --extension-soft: #34143a;
-  --node-bg: #141f33;
-  --node-border: #2c3b58;
-  --node-border-hover: #4a5d82;
-  --edge: #4b5b78;
-  --side-bg: #070d1a;
-  --side-border: #142039;
-  --side-hover: #111d36;
-  --side-active: #17284f;
+  --node-bg: #211c17;
+  --node-border: #3d342b;
+  --node-border-hover: #64574a;
+  --edge: #615548;
+  --side-bg: var(--char-900);
+  --side-border: #221c17;
+  --side-hover: #1d1813;
+  --side-active: #2a221b;
   --shadow-sm: 0 1px 2px rgb(0 0 0 / .4);
   --shadow: 0 4px 16px rgb(0 0 0 / .45);
   --shadow-lg: 0 14px 36px rgb(0 0 0 / .55);

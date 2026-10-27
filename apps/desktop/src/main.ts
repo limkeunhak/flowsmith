@@ -54,10 +54,10 @@ const log = (text: string) => { try { mkdirSync(logDir, { recursive: true }); ap
 // ─── 시작 화면 ─────────────────────────────────────────────────────
 
 const SPLASH = `<!doctype html><meta charset="utf-8"><title>Flowsmith</title>
-<style>body{margin:0;height:100vh;display:grid;place-items:center;font-family:"Segoe UI","Malgun Gothic",sans-serif;background:#f6f7fb;color:#1f2430}
-.box{width:520px}h1{font-size:22px;margin:0 0 6px}#s{color:#5b6475;font-size:14px;min-height:20px}
-#l{margin-top:14px;font:12px/1.5 Consolas,monospace;color:#7a8394;white-space:pre-wrap;max-height:180px;overflow:hidden}
-.err #s{color:#c0392b}</style>
+<style>body{margin:0;height:100vh;display:grid;place-items:center;font-family:"Segoe UI","Malgun Gothic",sans-serif;background:#f7f4f0;color:#1c1915}
+.box{width:520px}h1{font-size:22px;margin:0 0 6px}#s{color:#5f574e;font-size:14px;min-height:20px}
+#l{margin-top:14px;font:12px/1.5 Consolas,monospace;color:#8f857a;white-space:pre-wrap;max-height:180px;overflow:hidden}
+.err #s{color:#c81e1e}</style>
 <div class="box"><h1>Flowsmith</h1><div id="s">켜는 중…</div><div id="l"></div></div>
 <script>window.status_=(s,err)=>{document.getElementById("s").textContent=s;document.body.className=err?"err":""};
 window.line_=(t)=>{const l=document.getElementById("l");l.textContent=(l.textContent+"\\n"+t).split("\\n").slice(-10).join("\\n")}</script>`;
@@ -205,7 +205,7 @@ let mode: Mode | null = null;
 
 function createWindow(): BrowserWindow {
   const w = new BrowserWindow({
-    width: 1440, height: 920, minWidth: 960, minHeight: 600, title: "Flowsmith", show: false, backgroundColor: "#f6f7fb",
+    width: 1440, height: 920, minWidth: 960, minHeight: 600, title: "Flowsmith", show: false, backgroundColor: "#f7f4f0",
     // preload — 데스크톱 앱이라는 것 · 녹화 뷰를 놓는 길 · 연결 정보 · 처음 화면의 답만(preload.cjs)
     webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, preload: fileURLToPath(new URL("./preload.cjs", import.meta.url)) },
   });

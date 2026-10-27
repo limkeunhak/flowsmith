@@ -4,7 +4,7 @@
  * ★색은 짙은 남색(styles/tokens.css의 --side-*) — 파랑을 중심에 둔 Flowsmith의 얼굴.
  */
 import { useState } from "react";
-import { IconTestTube, IconBook, IconChart, IconCode, IconFolder, IconGear, IconGrid, IconHome, IconKey, IconMonitor, IconMoon, IconPuzzle, IconRocket, IconSidebar, IconSun, IconX } from "../icons.tsx";
+import { BrandMark, IconTestTube, IconBook, IconChart, IconCode, IconFolder, IconGear, IconGrid, IconHome, IconKey, IconMonitor, IconMoon, IconPuzzle, IconSidebar, IconSun, IconX } from "../icons.tsx";
 import { applyTheme, readTheme, type Theme } from "./theme.ts";
 import { ROLE_LABEL, type Me } from "./me.ts";
 import { ChangePassword } from "./AuthGate.tsx";
@@ -33,7 +33,7 @@ export function Sidebar({ page, editing, me, onLogout }: { page: "home" | "templ
   return (
     <nav className={`side${folded ? " folded" : ""}`} aria-label="Flowsmith">
       <a href="#/" className="side-brand" title="Flowsmith">
-        <span className="side-mark"><IconRocket size={16} /></span>
+        <span className="side-mark"><BrandMark size={32} /></span>
         <span className="side-label">Flowsmith</span>
       </a>
       <div className="side-nav">
