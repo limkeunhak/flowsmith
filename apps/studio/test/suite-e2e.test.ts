@@ -70,7 +70,13 @@ describe("테스트 화면", () => {
   }, 60_000);
 
   it("★★Suite — 만들고 · 시나리오 셋 · 저장 · 전체 실행 → 통과 · 불통과(화면) · 오류 · 단건", async () => {
+    // 앞 시험이 검사를 고치다 저장하지 않고 끝났다 — «떠날까요?»에 떠난다고 답한다
+    // 확인 창은 주소가 바뀐 뒤에 뜬다 — 테스트 화면에 닿을 때까지 답한다
+    const leave = (d: import("playwright").Dialog) => void d.accept();
+    page.on("dialog", leave);
     await page.goto(`${app.url}/#/tests`);
+    await page.getByLabel("Suite 이름").waitFor();
+    page.off("dialog", leave);
     await page.getByLabel("Suite 이름").fill("주문 회귀");
     await page.getByRole("button", { name: /Suite 만들기/ }).click();
     await page.locator(".suite-page").waitFor();

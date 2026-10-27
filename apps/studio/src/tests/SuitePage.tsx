@@ -11,6 +11,8 @@ import { describeCron, NOTIFY_CHANNELS, type ParamDef } from "@flowsmith/core";
 import { api, ApiError, type FlowSummary, type SuiteDetail, type SuiteRunView, type SuiteView } from "../api.ts";
 import { normalize, nextId } from "../model/index.ts";
 import { useMe } from "../shell/me.ts";
+import { useLeaveGuard } from "../shell/nav.ts";
+import { useTitle } from "../shell/title.ts";
 import { IconPlay, IconPlus, IconX } from "../icons.tsx";
 import { dateTimeDay } from "../format.ts";
 import { durationText } from "@flowsmith/core";
@@ -82,6 +84,16 @@ export function SuitePage({ id, runId }: { id: string; runId: string | null }) {
     const t = window.setInterval(() => { void load(); if (show) void api.getSuiteRun(show).then(setRun, () => undefined); }, 1500);
     return () => clearInterval(t);
   }, [running, show]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  useTitle(detail ? `${detail.suite.name} — 테스트` : "테스트");
+  // 떠날 때 — 이 Suite 안(실행 고르기)은 상관없다 · 저장하지 않은 고침이 있으면 묻는다(창을 닫을 때도)
+  const unsaved = () => edit !== null && JSON.stringify(edit) !== saved.current;
+  useLeaveGuard((_from, to) => (to.startsWith(`#/tests/${encodeURIComponent(id)}`) || !unsaved() ? null : { ask: "저장하지 않은 고침이 있습니다. 떠날까요?" }));
+  useEffect(() => {
+    const on = (e: BeforeUnloadEvent) => { if (unsaved()) e.preventDefault(); };
+    addEventListener("beforeunload", on);
+    return () => removeEventListener("beforeunload", on);
+  });
 
   if (!detail || !edit) return <div className="page muted">{error ? error.join(" · ") : "불러오는 중…"}</div>;
   const dirty = JSON.stringify(edit) !== saved.current;

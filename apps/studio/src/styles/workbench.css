@@ -115,8 +115,12 @@ button:where(:not(.swagger-ui *)), input:where(:not(.swagger-ui *)), select:wher
 @media (max-width: 760px) {
   .appbar { gap: 14px; padding: 0 10px; }
   .appbar-brand > span:last-child, .appbar-me-name, .appbar-side > a:not(.appbar-icon) { display: none; }
-  .appbar-nav { overflow-x: auto; scrollbar-width: none; gap: 16px; }
+  /* 좁으면 길이 가로로 흐른다 — 오른쪽 끝을 흐리게 해 더 있다는 것을 보이고, 끝까지 밀면 마지막 길이 흐림 밖으로 나온다 */
+  .appbar-nav { overflow-x: auto; scrollbar-width: none; gap: 16px; padding-right: 28px; mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
 }
+/* API · 가이드 — 넓으면 오른쪽(.appbar-side), 좁으면 오른쪽이 감춰지므로 길 끝에 */
+.appbar-nav .narrow-only { display: none; }
+@media (max-width: 760px) { .appbar-nav .narrow-only { display: flex; } }
 
 /* ── 공정 바(editor/run/RunLauncher.tsx) — 아래 가운데 떠 있던 실행 단추 대신 캔버스 아래에 붙은 막대 ── */
 .launcher { left: 0; right: 0; bottom: 0; transform: none; flex-direction: row; align-items: center; gap: 16px; height: 56px; padding: 0 16px; background: var(--panel); border-top: 1px solid var(--border); }

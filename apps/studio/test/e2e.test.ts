@@ -279,7 +279,8 @@ describe("편집 화면", () => {
     await page.goto(`${app.url}/#/flows/login-and-read`);
     // 다시 열면 토큰은 안 보인다
     await page.getByRole("button", { name: "편집기" }).click();
-    await page.locator(".trig-btn:not(.notify-btn)").click();   // 링크로 다시 열어 서랍은 닫혀 있다 — 한 번 눌러 연다
+    // 탭을 오가도 편집 화면은 그대로라 서랍이 열려 있을 수 있다 — 닫혀 있으면 연다(실행 기록에 다녀오며 서랍 안은 새로 그려졌다)
+    if ((await page.locator(".drawer").count()) === 0) await page.locator(".trig-btn:not(.notify-btn)").click();
     expect(await page.locator(".drawer").innerText()).not.toContain(token);
   }, 60_000);
 
@@ -331,8 +332,12 @@ describe("편집 화면", () => {
 
 describe("첫 화면 — 템플릿", () => {
   it("★«무엇을 자동화할까요?»에서 고르고 몇 가지만 답하면 뼈대가 짜이고, «다음 할 일»이 녹화부터 이끈다", async () => {
-    // 앞 시험이 만든 워크플로우가 있다 — 그때 템플릿은 템플릿 화면에만
+    // 앞 시험이 만든 워크플로우가 있다 — 그때 템플릿은 템플릿 화면에만. 앞 시험이 고침을 남겼으면 «떠날까요?»에 떠난다고 답한다
+    const leave = (d: import("playwright").Dialog) => void d.accept();
+    page.on("dialog", leave);
     await page.goto(`${app.url}/#/templates`);
+    await page.locator(".tpl-card").first().waitFor();
+    page.off("dialog", leave);
     await page.locator(".tpl-card", { hasText: "사이트에서 값 읽어 엑셀로 쌓기" }).click();
     const form = page.locator(".tpl-form");
     await form.getByPlaceholder("https://…").fill("example.com");
