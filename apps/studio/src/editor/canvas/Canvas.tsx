@@ -142,10 +142,14 @@ function RelayNode({ data, selected }: NodeProps<FNode>) {
         {ports.map((p, i) => (
           <div key={p.id} className="port" style={{ top: topOf(i) }}>
             {p.end === null && <Handle type="source" position={Position.Right} id={p.id} style={{ top: 0 }} />}
-            {/* 갈래 이름은 짧게 — 카드 사이(64)를 넘으면 옆 카드 밑으로 겹친다. 끝나는 갈래는 작은 도장으로, 전체 문구는 툴팁에 */}
+            {/* 갈래 이름은 짧게 — 카드 사이(64)를 넘으면 옆 카드 밑으로 겹친다. 전체 문구는 툴팁에 */}
             {node.type === "condition" && (
-              <span className={`port-label${p.end ? " end" : ""}`} title={p.end ? `${p.label} → ${p.end}` : p.label}>
-                {p.label}{p.end && <span className="port-end">{p.end.endsWith("실패") ? "✕ 끝" : "✓ 끝"}</span>}
+              <span className={`port-label${p.end ? " end" : ""}`} title={p.end ? `${p.label} → ${p.end}` : p.label}>{p.label}</span>
+            )}
+            {/* 끝나는 갈래 — 선 끝에 종료 원(◉). 노드가 아니라 카드에 붙은 그림이라 끌면 같이 움직인다 */}
+            {p.end && (
+              <span className={`port-terminal${p.end.endsWith("실패") ? " fail" : ""}`} title={p.end}>
+                <span className="stub" /><span className="terminal-dot" />
               </span>
             )}
             {node.type !== "condition" && p.id === BLOCKED_PORT && (

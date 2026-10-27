@@ -53,7 +53,13 @@ button:where(:not(.swagger-ui *)), input:where(:not(.swagger-ui *)), select:wher
 .port-add button { border-radius: 3px; }
 /* 갈래 이름 — 카드 사이를 넘지 않게 폭 상한 · 끝나는 갈래는 도장 */
 .port-label:not(.blocked) { max-width: 92px; overflow: hidden; text-overflow: ellipsis; font-size: var(--fs-11); pointer-events: auto; }
-.port-end { margin-left: 4px; font-size: 10px; font-weight: 600; padding: 0 3px; border: 1px solid currentColor; border-radius: 2px; }
+/* 끝나는 갈래의 종료 원 — 짧은 선 + 검은 과녁(◉). 실패는 바깥 고리만 빨강. 선은 12로 짧게 — 카드 사이(64)의 가운데(32)에서 옆 갈래 선이 꺾인다 */
+.port-terminal { position: absolute; left: 0; top: -8px; display: flex; align-items: center; pointer-events: auto; }
+.port-terminal .stub { width: 12px; height: 2px; background: var(--edge); }
+.terminal-dot { position: relative; width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--text); background: var(--canvas); flex: none; }
+.terminal-dot::after { content: ""; position: absolute; inset: 2px; border-radius: 50%; background: var(--text); }
+.port-terminal.fail .terminal-dot { border-color: var(--bad); }
+
 
 /* 결과 도장 — 카드 안 오른쪽 위 */
 .tile-badge { top: 7px; right: 7px; width: 16px; height: 16px; border-radius: 3px; border: 0; }
