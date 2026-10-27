@@ -23,7 +23,8 @@ export const IconX = (p: P) => <Svg {...p}><path d="M6 6l12 12M18 6 6 18" /></Sv
 export const IconCheck = (p: P) => <Svg {...p}><path d="m5 12.5 4.5 4.5L19 7.5" /></Svg>;
 export const IconAlert = (p: P) => <Svg {...p}><path d="M12 4 2.8 19.5h18.4L12 4Z" /><path d="M12 10v4.5M12 17.2v.1" /></Svg>;
 export const IconTrash = (p: P) => <Svg {...p}><path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13" /></Svg>;
-export const IconGear = (p: P) => <Svg {...p}><circle cx="12" cy="12" r="3" /><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" /></Svg>;
+/** 톱니바퀴 — 톱니 여덟 개(예전 것은 햇살 모양이라 해로 보였다) */
+export const IconGear = (p: P) => <Svg {...p}><path d="M10.2 4.9 L10.8 2.5 L13.2 2.5 L13.8 4.9 L15.8 5.7 L17.9 4.4 L19.6 6.1 L18.3 8.2 L19.1 10.2 L21.5 10.8 L21.5 13.2 L19.1 13.8 L18.3 15.8 L19.6 17.9 L17.9 19.6 L15.8 18.3 L13.8 19.1 L13.2 21.5 L10.8 21.5 L10.2 19.1 L8.2 18.3 L6.1 19.6 L4.4 17.9 L5.7 15.8 L4.9 13.8 L2.5 13.2 L2.5 10.8 L4.9 10.2 L5.7 8.2 L4.4 6.1 L6.1 4.4 L8.2 5.7 Z" /><circle cx="12" cy="12" r="3" /></Svg>;
 export const IconChevronDown = (p: P) => <Svg {...p}><path d="m6 9 6 6 6-6" /></Svg>;
 export const IconChevronUp = (p: P) => <Svg {...p}><path d="m6 15 6-6 6 6" /></Svg>;
 export const IconArrowLeft = (p: P) => <Svg {...p}><path d="M19 12H5M11 6l-6 6 6 6" /></Svg>;
