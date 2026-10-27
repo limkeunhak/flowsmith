@@ -119,8 +119,8 @@ export function TemplateInput({ value, onChange, flow, nodeId, secrets = false, 
             })())}
           </div>
         )}
-        <button type="button" className="small" title="넣을 수 있는 값" onClick={() => setOpen(!open)}>＋</button>
-        <button type="button" className={`small ghost tpl-raw${raw ? " on" : ""}`} title={raw ? "칩으로 보기" : "고급 보기 — 표현식 그대로"} onClick={() => setRaw(!raw)}>{"{ }"}</button>
+        <button type="button" className="small" title="넣을 수 있는 값" aria-expanded={open} onClick={() => setOpen(!open)}>＋ 값</button>
+        <button type="button" className={`small ghost tpl-raw${raw ? " on" : ""}`} title={raw ? "칩으로 보기" : "고급 보기 — 표현식 그대로"} aria-pressed={raw} onClick={() => setRaw(!raw)}>{"{ }"} 고급</button>
       </div>
       {slots === null && <span className="small" style={{ color: "var(--bad)" }}>{"{{ }}"} 짝이 맞지 않습니다 — 고치면 칩으로 돌아갑니다</span>}
       {open && (

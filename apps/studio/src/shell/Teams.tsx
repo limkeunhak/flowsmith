@@ -4,7 +4,8 @@
  */
 import { useEffect, useState } from "react";
 import { api, ApiError, type TeamRow } from "../api.ts";
-import { IconPlus, IconTrash, IconX } from "../icons.tsx";
+import { IconFolder, IconPlus, IconTrash, IconX } from "../icons.tsx";
+import { EmptyState } from "../EmptyState.tsx";
 import { ROLE_LABEL, useMe, type User } from "./me.ts";
 import { SharedValues } from "./SharedValues.tsx";
 
@@ -29,7 +30,7 @@ export function Teams() {
         <input placeholder="새 팀 이름 — 예: 주문팀" value={name} onChange={(e) => setName(e.target.value)} />
         <button className="primary" disabled={!name.trim()}><IconPlus size={15} /> 팀 만들기</button>
       </form>
-      {teams === null ? <div className="empty">불러오는 중…</div> : teams.length === 0 ? <div className="card empty-state"><b>팀이 없습니다</b><span>팀이 없으면 모든 워크플로우가 공용입니다.</span></div> : (
+      {teams === null ? <div className="empty">불러오는 중…</div> : teams.length === 0 ? <EmptyState icon={<IconFolder size={22} />} title="팀이 없습니다">팀이 없으면 모든 워크플로우가 공용입니다.</EmptyState> : (
         <div className="team-grid">
           {teams.map((t) => {
             const outside = users.filter((u) => !t.members.includes(u.id) && u.role !== "admin" && !u.disabled);

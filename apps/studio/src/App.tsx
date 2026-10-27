@@ -2,12 +2,12 @@
  * 주소(해시)로 화면을 고른다 — #/ 플로우(첫 화면) · #/templates 템플릿 · #/users 사람 · #/teams 팀(관리자) · #/workers 워커 · #/dashboard 대시보드 · #/docs/:문서 가이드 · #/api(/tokens) API · #/run/:id 실행 폼 · #/flows/:id 편집 ·
  * #/flows/:id/runs/:runId 그 실행 기록 · #/flows/:id/monitor 변경 감시(알림의 링크) · #/tests 테스트(Suite) · #/tests/:id(/runs/:runId) Suite 하나 · #/plugins 확장(플러그인) · #/me 내 설정(AI 키).
  * 해시를 쓰는 이유: 서버가 /api 밖의 모든 주소를 index.html로 돌려줄 필요가 없다.
- * 틀은 n8n처럼 — 왼쪽 사이드바 + 본문(shell/Sidebar.tsx). 로그인을 켠 서버면 먼저 들어가는 문(shell/AuthGate.tsx).
+ * 틀은 작업대 — 위 앱 막대 + 본문(shell/AppBar.tsx). 로그인을 켠 서버면 먼저 들어가는 문(shell/AuthGate.tsx).
  */
 import { useEffect, useState } from "react";
 import { FlowList } from "./FlowList.tsx";
 import { FlowEditor } from "./editor/FlowEditor.tsx";
-import { Sidebar } from "./shell/Sidebar.tsx";
+import { AppBar } from "./shell/AppBar.tsx";
 import { AuthGate } from "./shell/AuthGate.tsx";
 import { Users } from "./shell/Users.tsx";
 import { Teams } from "./shell/Teams.tsx";
@@ -47,7 +47,7 @@ export function App() {
     <AuthGate>
       {(me, logout) => (
         <div className="app">
-          <Sidebar page={page} editing={page === "flow"} me={me} onLogout={logout} />
+          <AppBar page={page} me={me} onLogout={logout} />
           <div className="app-main">
             {m ? <FlowEditor key={`${m[1]}/${m[2] ?? m[3] ?? ""}`} id={decodeURIComponent(m[1]!)} {...(m[2] ? { runId: decodeURIComponent(m[2]) } : {})} {...(m[3] ? { panel: "monitor" as const } : {})} />
               : page === "users" ? <Users />

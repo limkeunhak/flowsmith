@@ -1,5 +1,5 @@
 /**
- * 캔버스 아래 가운데의 실행 버튼 (n8n의 「Test workflow」 자리).
+ * 공정 바 — 캔버스 아래에 붙은 막대(작업대 · 2026-10-27). 실행 단추(불씨) · 단계 트랙(01-02-03 … 지금 실행의 상태) · 지난 실행 · 모든 실행(실행 기록 탭으로).
  * 실행 입력이 있으면 위로 작은 창이 열려 받는다. 지난번 입력은 이 브라우저에 기억한다(편의).
  * **«내 PC에서 실행하기»**(PLAN §44 · 4단계) — 내 개인 워커에서 돌려 눈으로 본다. 끄면 워크플로우 설정대로(공용 워커 · 서버).
  *  데스크톱 앱(회사 서버 모드)이면 이 앱 — 앱 안 · 지갑 브라우저 워크플로우는 화면이 있어야 해서 늘 켜짐.
@@ -8,7 +8,8 @@
 import { useEffect, useRef, useState } from "react";
 import { paramProblem, type Flow } from "@flowsmith/core";
 import { ParamInput } from "../widgets.tsx";
-import type { FlowDetail } from "../../api.ts";
+import type { FlowDetail, NodeStatus, RunRow } from "../../api.ts";
+import { ago } from "../../format.ts";
 import { placeLabel, useWorkers } from "../../shell/workers.ts";
 import { IconChevronUp, IconPlay } from "../../icons.tsx";
 import type { RunTarget } from "./useRun.ts";
@@ -21,8 +22,18 @@ const writeMine = (on: boolean) => { try { localStorage.setItem(MINE_KEY, on ? "
 
 
 /** onlyPublished — 실행자(편집자 아래): 초안은 못 돌린다 · 게시된 버전만 */
-export function RunLauncher({ flow, detail, running, error, onRun, onlyPublished = false }: {
+/** 공정 트랙의 한 칸 — no는 캔버스 카드의 번호와 같다 */
+export interface TrackStep { id: string; no: number; name: string; status: NodeStatus | null }
+
+const RUN_LABEL: Record<RunRow["status"], string> = { running: "도는 중", success: "성공", failure: "실패", cancelled: "멈춤", blocked: "막힘" };
+
+export function RunLauncher({ flow, detail, running, error, onRun, onlyPublished = false, steps, last, onHistory }: {
   flow: Flow; detail: FlowDetail; running: boolean; error: string[] | null;
+  /** 단계 트랙 — 번호 순서 · 지금(또는 막 끝난) 실행의 상태 */
+  steps: TrackStep[];
+  /** 지난 실행 한 줄 — 없으면 «아직 돌리지 않았습니다» */
+  last: RunRow | null;
+  onHistory: () => void;
   /** on — 이번만 어디서(없으면 플로우 설정대로) · resetWallet — 지갑을 다시 준비하고 돈다(지갑 브라우저) */
   onRun: (target: RunTarget, params: Record<string, string>, opts?: { on?: string; resetWallet?: boolean }) => Promise<boolean>;
   onlyPublished?: boolean;
@@ -123,6 +134,22 @@ export function RunLauncher({ flow, detail, running, error, onRun, onlyPublished
         </button>
         <button className="run-more" title="실행 입력 · 버전 고르기" onClick={() => setOpen(!open)}><IconChevronUp size={16} /></button>
       </div>
+      {steps.length > 0 && (
+        <ol className="launcher-track" aria-label="단계 트랙">
+          {steps.map((st) => (
+            <li key={st.id} className={`track-step${st.status ? ` st-${st.status}` : ""}`} title={`${String(st.no).padStart(2, "0")} ${st.name}${st.status ? ` — ${TRACK_LABEL[st.status]}` : ""}`}>
+              {String(st.no).padStart(2, "0")}
+            </li>
+          ))}
+        </ol>
+      )}
+      <span className="launcher-last">
+        {last ? <>지난 실행 · {ago(last.startedAt)} · <b className={`st-${last.status}`}>{RUN_LABEL[last.status]}</b>{last.ms !== null ? ` · ${(last.ms / 1000).toFixed(1)}초` : ""}</> : "아직 돌리지 않았습니다"}
+      </span>
+      <span className="grow" />
+      <button type="button" className="ghost launcher-history" onClick={onHistory}>모든 실행 보기 →</button>
     </div>
   );
 }
+
+const TRACK_LABEL: Record<NodeStatus, string> = { pending: "기다림", running: "도는 중", succeeded: "성공", failed: "실패", skipped: "건너뜀", cancelled: "멈춤", blocked: "막힘" };

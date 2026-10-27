@@ -44,7 +44,7 @@ describe("노드 끼우기", () => {
 
   it("출력 점 뒤에 붙이면 오른쪽에 놓고 잇는다", () => {
     const f = base();
-    expect(f.nodes.map((n) => [n.id, n.position.x])).toEqual([["web1", 0], ["custom1", 220]]);
+    expect(f.nodes.map((n) => [n.id, n.position.x])).toEqual([["web1", 0], ["custom1", 260]]);
     expect(f.edges).toEqual([{ id: "e1", from: { node: "web1", port: "out" }, to: { node: "custom1" } }]);
   });
 
@@ -52,14 +52,14 @@ describe("노드 끼우기", () => {
     const r = insertNode(base(), "condition", { kind: "between", edge: "e1" });
     expect(r.nodeId).toBe("cond1");
     expect(r.flow.edges.map((e) => `${e.from.node}→${e.to.node}`).sort()).toEqual(["cond1→custom1", "web1→cond1"]);
-    expect(r.flow.nodes.find((n) => n.id === "custom1")!.position.x).toBe(440);
+    expect(r.flow.nodes.find((n) => n.id === "custom1")!.position.x).toBe(520);
   });
 
   it("겹치면 아래로 비킨다", () => {
     const f = base();
     const r = insertNode(f, "custom", { kind: "after", node: "web1", port: "out" });
     const n = r.flow.nodes.find((x) => x.id === r.nodeId)!;
-    expect(n.position).toEqual({ x: 220, y: 140 });
+    expect(n.position).toEqual({ x: 260, y: 140 });
   });
 
   it("조건 노드의 갈래 뒤에 붙이면 갈래 포트로 잇는다", () => {

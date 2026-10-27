@@ -54,10 +54,9 @@ export const IconMonitor = (p: P) => <Svg {...p}><rect x="3" y="4.5" width="18" 
 export const IconChart = (p: P) => <Svg {...p}><path d="M4 20V10M10 20V4M16 20v-7M21 20H3" /></Svg>;
 export const IconBook = (p: P) => <Svg {...p}><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5v-15Z" /><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v3H6.5A2.5 2.5 0 0 1 4 20.5Z" /></Svg>;
 export const IconNote = (p: P) => <Svg {...p}><path d="M5 4h14v11l-5 5H5z" /><path d="M14 20v-5h5" /><path d="M8.5 9h7M8.5 12.5h4" /></Svg>;
-export const IconSidebar = (p: P) => <Svg {...p}><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><path d="M9.5 4.5v15" /></Svg>;
 
 /** 브랜드 마크 — 이어진 세 단계(Flow) 중 가운데를 망치(Smith)가 내리친다. 맞은 단계만 달군 주황.
- *  색이 정해진 그림이라 Svg · currentColor를 쓰지 않는다 — 바탕(숯빛 타일)은 감싸는 쪽(.side-mark)이 깐다. public/favicon.svg와 같은 그림.
+ *  색이 정해진 그림이라 Svg · currentColor를 쓰지 않는다 — 바탕(숯빛 타일)은 감싸는 쪽(.brand-tile)이 깐다. public/favicon.svg와 같은 그림.
  *  sparks — 맞은 자리의 불꽃. 24px 밑에서는 뭉개지니 끈다 */
 export const BrandMark = ({ size = 32, sparks = size >= 24, ...rest }: P & { sparks?: boolean }) => (
   <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true" {...rest}>

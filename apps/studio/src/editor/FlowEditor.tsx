@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { checkFlow, type Flow, type FlowNode, type Target, type WebAction, explainProblems, problemLine, type ProblemView, PROBE_STATUS_LABEL } from "@flowsmith/core";
 import { api, ApiError, listExtensions, type ExtensionMeta } from "../api.ts";
-import { addRecorded, applyTarget, hasAction, insertNode, promoteCandidate, splitStages, splitWebNode, targetLabel, type AddRequest, type Fix, type NodeChoice } from "../model/index.ts";
+import { addRecorded, applyTarget, hasAction, insertNode, promoteCandidate, splitStages, splitWebNode, targetLabel, type AddRequest, type Fix, type NodeChoice, stepNumbers } from "../model/index.ts";
 import { IconAlert, IconArrowLeft, IconCheck, IconClock, IconChevronDown, IconChevronUp, IconGear, IconBell, IconRocket, IconX } from "../icons.tsx";
 import { Canvas } from "./canvas/Canvas.tsx";
 import { Executions } from "./run/Executions.tsx";
@@ -211,7 +211,7 @@ export function FlowEditor({ id, runId, panel }: { id: string; runId?: string; p
     // Tab · ＋버튼은 위치를 모른다 — 고른 노드 뒤, 없으면 맨 끝 노드 오른쪽
     if (req.kind === "at" && req.position.x === 0 && req.position.y === 0 && draft.nodes.length > 0) {
       const last = draft.nodes.reduce((a, b) => (b.position.x > a.position.x ? b : a));
-      req = { kind: "at", position: { x: last.position.x + 220, y: last.position.y } };
+      req = { kind: "at", position: { x: last.position.x + 260, y: last.position.y } };
     }
     const r = insertNode(draft, type, req);
     update(() => r.flow);
@@ -393,7 +393,9 @@ export function FlowEditor({ id, runId, panel }: { id: string; runId?: string; p
                 <button className="small primary" onClick={() => applyAi(aiPreview)}>적용</button>
               </div>
             )}
-            <RunLauncher flow={draft} detail={detail} running={run.view?.status === "running"} error={run.error} onRun={startRun} {...(canEdit ? {} : { onlyPublished: true })} />
+            <RunLauncher flow={draft} detail={detail} running={run.view?.status === "running"} error={run.error} onRun={startRun} {...(canEdit ? {} : { onlyPublished: true })}
+              steps={[...stepNumbers(draft)].sort((a, b) => a[1] - b[1]).map(([nid, no]) => ({ id: nid, no, name: draft.nodes.find((x) => x.id === nid)?.name ?? nid, status: run.statuses[nid] ?? null }))}
+              last={run.history[0] ?? null} onHistory={() => setViewTab("executions")} />
             {!canEdit && <div className="readonly-banner">보기 전용 — {me.user ? `${me.user.name}님은 «${({ runner: "실행자", viewer: "보는 사람" } as Record<string, string>)[me.user.role] ?? me.user.role}»입니다. ` : ""}{me.can("runner") ? "게시된 버전을 돌리고 기록을 볼 수 있습니다." : "고치거나 돌리려면 관리자에게 역할을 부탁하세요."}</div>}
             <Guide flowId={draft.id} items={guideItems(draft, problems, run.history, { version: detail.activeVersion, upToDate: !dirty && !detail.draftChanged && detail.activeVersion === (detail.versions[0]?.version ?? null) }, {
               openNode: (nid) => setDrawer({ kind: "node", id: nid }),
@@ -402,10 +404,10 @@ export function FlowEditor({ id, runId, panel }: { id: string; runId?: string; p
               openPublish: () => setMenu("publish"),
             })} />
           </Canvas>
-          {/* 노드 창 — n8n처럼 캔버스 위에 세 칸(입력 | 설정 | 출력) */}
+          {/* 단계 작업 시트 — 작업 자리를 덮는다(공정표 · 설정 · 값 대장) */}
           {drawer?.kind === "node" && node && (
             <NodeView key={node.id} flow={draft} node={node} run={nodeRun} sample={sample} issues={issues.get(node.id) ?? []}
-              update={updateNode(node.id)} remove={() => removeNodes([node.id])} onClose={() => setDrawer(null)} onRecord={setRecording}
+              update={updateNode(node.id)} remove={() => removeNodes([node.id])} onClose={() => setDrawer(null)} onGo={(nid) => setDrawer({ kind: "node", id: nid })} onRecord={setRecording}
               findings={monitor.findingsFor(node.id)} onRepick={(actionId) => repick(node.id, actionId)}
               onRunPart={(part) => void runPart(node.id, part)} running={run.view?.status === "running"} runError={run.error} onFix={onFix}
               pinned={detail.pins?.[node.id] ?? null}

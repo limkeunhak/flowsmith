@@ -41,10 +41,10 @@ describe("로그인 화면", () => {
     await field("한 번 더").fill("longpassword1");
     await page.getByRole("button", { name: "만들고 들어가기" }).click();
     await page.getByRole("heading", { name: "워크플로우", exact: true }).waitFor();
-    expect(await page.locator(".side").innerText()).toContain("김관리");
+    expect(await page.locator(".appbar").innerText()).toContain("김관리");
 
     // 사람 들이기 — 임시 비밀번호는 한 번만
-    await page.locator(".side").getByRole("link", { name: "사람" }).click();
+    await page.locator(".appbar").getByRole("link", { name: "사람" }).click();
     await page.getByRole("button", { name: /사람 들이기/ }).click();
     await page.locator("form .field", { hasText: "메일" }).locator("input").fill("see@x.com");
     await page.locator("form .field", { hasText: "이름" }).locator("input").fill("이보기");
@@ -54,7 +54,7 @@ describe("로그인 화면", () => {
     await expect.poll(() => page.locator(".user-row").count()).toBe(2);
 
     // 팀 — 이보기는 넣지 않은 «영업팀»을 만들고, 그 팀 플로우는 이보기에게 보이지 않는다
-    await page.locator(".side").getByRole("link", { name: "팀" }).click();
+    await page.locator(".appbar").getByRole("link", { name: "팀" }).click();
     await page.getByPlaceholder("새 팀 이름 — 예: 주문팀").fill("영업팀");
     await page.getByRole("button", { name: /팀 만들기/ }).click();
     await page.locator(".team-card").waitFor();
@@ -66,7 +66,7 @@ describe("로그인 화면", () => {
     await page.evaluate(() => fetch("/api/flows", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ draft: { schemaVersion: 1, id: "f1", name: "보기만 할 워크플로우", nodes: [], edges: [] } }) }));
 
     // 로그아웃
-    await page.locator(".side-me").click();
+    await page.locator(".appbar-me").click();
     await page.getByRole("button", { name: "로그아웃" }).click();
     await page.getByRole("heading", { name: "로그인", exact: true }).waitFor();
 
@@ -83,7 +83,7 @@ describe("로그인 화면", () => {
     await field("한 번 더").fill("seepassword9");
     await page.getByRole("button", { name: "바꾸기", exact: true }).click();
     await page.getByRole("heading", { name: "워크플로우", exact: true }).waitFor();
-    expect(await page.locator(".side").getByRole("link", { name: "사람" }).count()).toBe(0);    // 관리자가 아니다
+    expect(await page.locator(".appbar").getByRole("link", { name: "사람" }).count()).toBe(0);    // 관리자가 아니다
 
     // 팀 — 공용은 보이고 남의 팀 것은 없다
     await page.locator(".flow-row").first().waitFor();
