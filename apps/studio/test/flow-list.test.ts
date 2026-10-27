@@ -2,12 +2,12 @@
  * 워크플로우 목록 정돈(model/flowList.ts) — 이름 앞말로 묶기 · 정렬 · 찾기 · 살펴볼 것.
  */
 import { describe, expect, it } from "vitest";
-import { groupFlows, matchesQuery, needsAttention, sortFlows, splitName } from "../src/model/index.ts";
+import { groupFlows, groupNames, labelIn, matchesQuery, needsAttention, sortFlows, splitName, suggestGroups } from "../src/model/index.ts";
 import type { FlowSummary } from "@flowsmith/server/api-types";
 
 const flow = (id: string, name: string, more: Partial<FlowSummary> = {}): FlowSummary => ({
   id, name, description: "", activeVersion: 1, latestVersion: 1, problems: 0, updatedAt: "2026-10-27T00:00:00Z",
-  monitor: null, nodeTypes: [], schedules: [], lastRun: null, team: null, runOn: null, ...more,
+  monitor: null, nodeTypes: [], schedules: [], lastRun: null, team: null, runOn: null, group: null, ...more,
 });
 
 describe("splitName", () => {
@@ -23,19 +23,34 @@ describe("splitName", () => {
 });
 
 describe("groupFlows", () => {
-  it("★같은 앞말이 둘 이상이면 묶음 · 이름 차례 · 묶음 없음은 맨 뒤 · 안에서는 앞말을 뗀다", () => {
+  it("★묶음은 이름표대로 · 이름 차례 · 묶음 없음은 맨 뒤 · 이름이 «묶음 · …»이면 앞말을 뗀다", () => {
     const g = groupFlows([
-      flow("a", "Navigator · 검색"), flow("b", "주문 · 조회"), flow("c", "MSU 웹 · 공지"),
-      flow("d", "Navigator · 랭킹"), flow("e", "MSU 웹 · 푸터"), flow("f", "그냥 이름"),
+      flow("a", "Navigator · 검색", { group: "Navigator" }), flow("b", "주문 · 조회"), flow("c", "공지", { group: "MSU 웹" }),
+      flow("d", "Navigator · 랭킹", { group: "Navigator" }), flow("e", "Navigator · 이름표 없음"),
     ]);
     expect(g.map((x) => x.name)).toEqual(["MSU 웹", "Navigator", null]);
     expect(g[1]!.flows.map((x) => x.label)).toEqual(["검색", "랭킹"]);
-    // 앞말이 하나뿐인 «주문 · 조회»는 이름 그대로
-    expect(g[2]!.flows.map((x) => x.label)).toEqual(["주문 · 조회", "그냥 이름"]);
+    // 이름표가 없으면 앞말이 같아도 묶지 않는다(제안만)
+    expect(g[2]!.flows.map((x) => x.label)).toEqual(["주문 · 조회", "Navigator · 이름표 없음"]);
   });
   it("묶음마다 살펴볼 것을 센다", () => {
-    const g = groupFlows([flow("a", "N · 1", { problems: 2 }), flow("b", "N · 2", { lastRun: { status: "failure", at: "x" } }), flow("c", "N · 3")]);
+    const g = groupFlows([flow("a", "1", { group: "N", problems: 2 }), flow("b", "2", { group: "N", lastRun: { status: "failure", at: "x" } }), flow("c", "3", { group: "N" })]);
     expect(g[0]!.attention).toBe(2);
+  });
+  it("labelIn — 다른 묶음의 앞말은 떼지 않는다", () => {
+    expect(labelIn("주문", "주문 · 조회")).toBe("조회");
+    expect(labelIn("결제", "주문 · 조회")).toBe("주문 · 조회");
+    expect(labelIn(null, "주문 · 조회")).toBe("주문 · 조회");
+  });
+});
+
+describe("묶음 제안 · 이름들", () => {
+  it("★묶음 없는 것 중 같은 앞말이 둘 이상 — 많은 차례 · 이미 묶인 것은 빼고", () => {
+    const fs = [flow("a", "N · 1"), flow("b", "N · 2"), flow("c", "N · 3", { group: "N" }), flow("d", "M · 1"), flow("e", "M · 2"), flow("f", "M · 3"), flow("g", "혼자 · 1")];
+    expect(suggestGroups(fs)).toEqual([{ group: "M", ids: ["d", "e", "f"] }, { group: "N", ids: ["a", "b"] }]);
+  });
+  it("있는 묶음 이름 — 겹치지 않게 · 이름 차례", () => {
+    expect(groupNames([flow("a", "1", { group: "나" }), flow("b", "2", { group: "가" }), flow("c", "3", { group: "나" }), flow("d", "4")])).toEqual(["가", "나"]);
   });
 });
 

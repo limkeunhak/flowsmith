@@ -16,7 +16,7 @@ let app: App;
 let browser: Browser;
 let page: Page;
 let dir: string;
-const flows = () => fetch(`${app.url}/api/flows`).then((r) => r.json() as Promise<{ id: string; name: string }[]>);
+const flows = () => fetch(`${app.url}/api/flows`).then((r) => r.json() as Promise<{ id: string; name: string; group: string | null }[]>);
 
 beforeAll(async () => {
   dir = mkdtempSync(join(tmpdir(), "flowsmith-blank-ui-"));
@@ -84,5 +84,35 @@ describe("복제 — 목록의 복제 단추", () => {
     const list = await flows();
     expect(list).toHaveLength(before + 1);
     expect(list.map((f) => f.name)).toEqual(expect.arrayContaining(["주문 상태 확인", "주문 상태 확인 (사본)"]));
+  });
+});
+
+describe("목록 정돈 — 묶음", () => {
+  it("★이름 앞말이 같은 것을 묶음으로 정리하자고 하고 · 골라서 새 묶음으로 옮긴다(초안은 그대로)", async () => {
+    const draft = (id: string, name: string) => ({ schemaVersion: 1, id, name, nodes: [], edges: [] });
+    for (const [id, name] of [["g-a", "주문 · 조회"], ["g-b", "주문 · 취소"], ["g-c", "주문 · 환불"]] as const) {
+      await fetch(`${app.url}/api/flows`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ draft: draft(id, name) }) });
+    }
+    await page.goto(`${app.url}/#/`);
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.locator(".flow-suggest", { hasText: "주문 3" }).waitFor();
+    await page.getByRole("button", { name: "묶음으로 정리" }).click();
+    const group = page.locator(".flow-group", { has: page.locator(".flow-group-toggle", { hasText: "주문" }) });
+    await group.waitFor();
+    // 묶음 안에서는 앞말을 뗀다
+    expect(await group.locator(".flow-label").allInnerTexts()).toEqual(expect.arrayContaining(["조회", "취소", "환불"]));
+    expect(await page.locator(".flow-suggest").count()).toBe(0);
+
+    await group.locator(".flow-row", { hasText: "환불" }).getByRole("checkbox").check();
+    await page.getByRole("button", { name: "묶음 옮기기" }).click();
+    await page.getByLabel("새 묶음 이름").fill("돈");
+    await page.getByRole("button", { name: "옮기기", exact: true }).click();
+    await expect.poll(async () => (await flows()).filter((f) => f.id.startsWith("g-")).map((f) => `${f.id}:${f.group}`).sort())
+      .toEqual(["g-a:주문", "g-b:주문", "g-c:돈"]);
+    await page.locator(".flow-group-toggle", { hasText: "돈" }).waitFor();
+    // 묶음은 초안 밖 — 초안에는 group이 없다
+    const d = await fetch(`${app.url}/api/flows/g-c`).then((r) => r.json() as Promise<{ draft: Record<string, unknown> }>);
+    expect("group" in d.draft).toBe(false);
   });
 });

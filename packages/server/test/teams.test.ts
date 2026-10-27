@@ -109,6 +109,10 @@ describe("만들기 · 옮기기 · 팀 관리", () => {
     expect(await ids("bob")).toContain("a1");
     expect((await call("PUT", "/api/flows/a1/team", { team: team["A"] }, c["admin"])).body.team).toMatchObject({ name: "주문팀" });
     expect(await ids("bob")).not.toContain("a1");
+    // 묶음 옮기기 — 남의 팀 것은 없는 것처럼(하나라도 섞이면 아무것도) · 보는 사람은 못 한다
+    expect((await call("PUT", "/api/flow-group", { ids: ["a1"], group: "남의 것" }, c["bob"])).status).toBe(404);
+    expect((await call("PUT", "/api/flow-group", { ids: ["a1"], group: "주문" }, c["carol"])).status).toBe(403);
+    expect((await call("PUT", "/api/flow-group", { ids: ["a1"], group: "주문" }, c["alice"])).body.group).toBe("주문");
   });
 
   it("팀 관리는 관리자만 · 워크플로우가 남은 팀은 지우지 않는다 · 이름 겹침", async () => {

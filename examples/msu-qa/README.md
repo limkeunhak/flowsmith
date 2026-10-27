@@ -20,7 +20,7 @@ node examples/msu-qa/import.ts --server http://127.0.0.1:4400 navigator    # 그
 FLOWSMITH_TOKEN=fsa_… node examples/msu-qa/import.ts --server https://studio.사내   # 로그인이 켜진 서버
 ```
 
-워크플로우를 만들거나(있으면 초안을 바꿔) 버전으로 굳혀 게시하고, 같은 이름의 Suite가 있으면 시나리오를 바꾸고 없으면 만든다. 편집 화면의 **테스트**에서 Suite를 열어 돌려도 된다.
+워크플로우를 만들거나(있으면 초안을 바꿔) 서비스 묶음(이름 앞말 — Navigator · MSU 웹 …)에 넣고 버전으로 굳혀 게시하고, 같은 이름의 Suite가 있으면 시나리오를 바꾸고 없으면 만든다. 편집 화면의 **테스트**에서 Suite를 열어 돌려도 된다.
 
 ## 고치기
 

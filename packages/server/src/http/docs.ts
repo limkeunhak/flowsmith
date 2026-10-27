@@ -46,10 +46,11 @@ export const DOCS: Record<string, RouteDoc> = {
   // ── 플로우
   "GET /api/extensions": { tag: "워크플로우", summary: "설치된 확장 노드 목록" },
   "GET /api/flows": { tag: "워크플로우", summary: "워크플로우 목록", description: "내가 볼 수 있는 워크플로우만(내 팀 · 공용). 마지막 실행 · 감시 · 문제 수 · 일정이 함께 온다." },
-  "POST /api/flows": { tag: "워크플로우", summary: "새 워크플로우", body: { "*draft": "워크플로우 초안(JSON)", team: "둘 팀 id — 없으면 공용" }, example: { draft: FLOW_EXAMPLE, team: null }, ok: 201 },
+  "POST /api/flows": { tag: "워크플로우", summary: "새 워크플로우", body: { "*draft": "워크플로우 초안(JSON)", team: "둘 팀 id — 없으면 공용", group: "묶음 이름 — 없으면 묶음 없음" }, example: { draft: FLOW_EXAMPLE, team: null }, ok: 201 },
   "GET /api/flows/:id": { tag: "워크플로우", summary: "워크플로우 하나 — 초안 · 문제 · 버전들 · 게시된 버전" },
   "PUT /api/flows/:id/draft": { tag: "워크플로우", summary: "초안 저장", description: "틀려 있어도 저장된다(편집 중). 실행 · 게시는 문제가 없어야 한다.", body: { "*draft": "워크플로우 초안(JSON)" }, example: { draft: FLOW_EXAMPLE } },
   "DELETE /api/flows/:id": { tag: "워크플로우", summary: "워크플로우 지우기", ok: 204 },
+  "PUT /api/flow-group": { tag: "워크플로우", summary: "묶음 옮기기", description: "여러 워크플로우를 한 묶음으로 — 하나라도 없으면 아무것도 옮기지 않는다. 묶음은 초안 밖의 이름표라 «저장 안 됨» · 새 버전 · 고친 때가 생기지 않는다. 묶음 이름은 한 줄 · 40자까지(빈 것은 묶음 없음).", body: { "*ids": "워크플로우 id 목록", "*group": "묶음 이름 — 묶음 없음이면 null" }, example: { ids: ["login-and-read"], group: "주문" } },
   "PUT /api/flows/:id/team": { tag: "워크플로우", summary: "팀 옮기기", body: { "*team": "팀 id — 공용이면 null" }, example: { team: null } },
   "POST /api/flows/:id/duplicate": { tag: "워크플로우", summary: "워크플로우 복제", description: "초안만 새 워크플로우로 — id는 «원래id-copy»(겹치면 -copy2 …) · 이름은 «원래 이름 (사본)» · 팀은 원래 것. 버전 · 게시 · 실행 기록 · 고정 출력 · 시크릿 값은 가져오지 않는다(시크릿은 정의만 — 값은 새로 넣는다).", body: { name: "새 이름(없으면 «… (사본)»)", team: "둘 팀 id(없으면 원래 팀 · 공용은 null)" }, example: {}, ok: 201 },
   "POST /api/flows/:id/versions": { tag: "워크플로우", summary: "초안을 버전으로 굳힌다", description: "검문소를 통과해야 한다. 마지막 버전과 같으면 만들지 않는다.", body: { note: "메모" }, example: { note: "" }, ok: 201 },

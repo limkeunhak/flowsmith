@@ -1,8 +1,8 @@
 /**
  * **워크플로우 목록 정돈** — 묶기 · 정렬 · 찾기 · 살펴볼 것(FlowList가 쓴다).
  *
- * 묶음은 이름에서 읽는다 — «Navigator · 이름 검색»처럼 «묶음 · 이름»으로 지은 것을 같은 묶음으로 본다.
- * 데이터에 묶음 칸을 두기 전의 1단계다(이름을 바꾸면 묶음도 바뀐다). 같은 앞말이 둘 이상일 때만 묶음이다 —
+ * 묶음은 워크플로우의 이름표(FlowSummary.group — 서버가 초안 밖에 둔다)다. 이름 앞말(«Navigator · 이름 검색»)은
+ * **제안**으로만 쓴다 — 묶음 없는 것 중 같은 앞말이 둘 이상이면 «묶음으로 정리할까요?»(suggestGroups).
  * 하나뿐이면 «주문 · 조회» 같은 그냥 이름일 수 있다.
  */
 // 서버의 모양을 바로 — api.ts는 브라우저 것(fetch · 이벤트)까지 끌고 와서 모델 시험이 무거워진다
@@ -58,21 +58,38 @@ export interface FlowGroup {
   attention: number;
 }
 
-/**
- * 묶는다 — 묶음은 이름 차례, 묶음 없음은 맨 뒤. 묶음 안의 차례는 받은 차례(정렬한 대로).
- * 묶음 안에서는 이름의 앞말을 떼어 보인다(머리에 이미 있다).
- */
+/** 묶음 안에서 보일 이름 — 이름이 «묶음 · …»으로 시작하면 앞말을 뗀다(머리에 이미 있다) */
+export function labelIn(group: string | null, name: string): string {
+  if (group === null) return name;
+  const s = splitName(name);
+  return s && s.group === group ? s.rest : name;
+}
+
+/** 묶는다 — 묶음은 이름 차례, 묶음 없음은 맨 뒤. 묶음 안의 차례는 받은 차례(정렬한 대로) */
 export function groupFlows(flows: readonly FlowSummary[]): FlowGroup[] {
-  const count = new Map<string, number>();
-  for (const f of flows) { const s = splitName(f.name); if (s) count.set(s.group, (count.get(s.group) ?? 0) + 1); }
   const groups = new Map<string | null, FlowGroup>();
   for (const f of flows) {
-    const s = splitName(f.name);
-    const key = s && (count.get(s.group) ?? 0) >= 2 ? s.group : null;
+    const key = f.group ?? null;
     let g = groups.get(key);
     if (!g) groups.set(key, (g = { name: key, flows: [], attention: 0 }));
-    g.flows.push({ flow: f, label: key === null ? f.name : s!.rest });
+    g.flows.push({ flow: f, label: labelIn(key, f.name) });
     if (needsAttention(f)) g.attention++;
   }
   return [...groups.values()].sort((a, b) => (a.name === null ? 1 : b.name === null ? -1 : byName(a.name, b.name)));
+}
+
+/** 있는 묶음 이름들(이름 차례) — 옮기기 메뉴 */
+export function groupNames(flows: readonly FlowSummary[]): string[] {
+  return [...new Set(flows.flatMap((f) => (f.group ? [f.group] : [])))].sort(byName);
+}
+
+/** 묶음 제안 — 묶음 없는 것 중 이름 앞말이 같은 것이 둘 이상이면(이미 있는 묶음과 이름이 같아도 된다 — 그리로 들어간다) */
+export function suggestGroups(flows: readonly FlowSummary[]): { group: string; ids: string[] }[] {
+  const by = new Map<string, string[]>();
+  for (const f of flows) {
+    if (f.group) continue;
+    const s = splitName(f.name);
+    if (s) by.set(s.group, [...(by.get(s.group) ?? []), f.id]);
+  }
+  return [...by].filter(([, ids]) => ids.length >= 2).map(([group, ids]) => ({ group, ids })).sort((a, b) => b.ids.length - a.ids.length || byName(a.group, b.group));
 }
