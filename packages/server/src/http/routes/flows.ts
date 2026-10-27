@@ -8,6 +8,7 @@
  *   PUT    /api/flows/:id/draft                    { draft } 초안 저장 (틀려 있어도 저장된다)
  *   DELETE /api/flows/:id
  *   PUT    /api/flows/:id/team                     { team: id | null } 팀 옮기기(공용은 null) — 옮길 팀에 내가 속해 있어야(관리자는 어디든)
+ *   PUT    /api/flow-group                         { ids: [...], group: 이름 | null } 여럿을 한 묶음으로(묶음 없음은 null) — 내게 보이는 것만
  *   POST   /api/flows/:id/versions                 { note } 초안을 버전으로 굳힌다 (검문소 통과 필수)
  *   GET    /api/flows/:id/versions/:v              그 버전의 매니페스트
  *   GET    /api/flows/:id/published                게시된 버전 한 번에 { version · 누가 · 언제 · manifest } — ETag/304 · 없으면 404 reason: not-deployed
@@ -43,7 +44,20 @@ export function flowRoutes({ store, secrets, extensions, auth, plugins }: ApiDep
       const team = teamOf(b["team"]);
       mayPlace(req, team);
       res.statusCode = 201;
-      return store.createFlow(b["draft"], team);
+      return store.createFlow(b["draft"], team, typeof b["group"] === "string" ? b["group"] : null);
+    }),
+    // 묶음 옮기기 — 여럿을 한 번에. ★내게 안 보이는 것(남의 팀)은 없는 것과 같다(있는지도 알리지 않는다)
+    route("PUT", "/api/flow-group", async (req, _r, _p, body) => {
+      const b = await body();
+      const ids = b["ids"];
+      if (!Array.isArray(ids) || ids.length === 0 || !ids.every((x) => typeof x === "string")) throw new HttpError(400, "ids는 워크플로우 id 목록입니다");
+      const mine = auth.teamsFor(userOf(req));
+      for (const id of ids as string[]) {
+        const t = store.flowTeam(id);
+        if (t === undefined || (mine !== null && t !== null && !mine.has(t))) throw new HttpError(404, `워크플로우 "${id}"가 없습니다`);
+      }
+      store.setFlowGroup(ids as string[], (b["group"] ?? null) as string | null);
+      return { ids, group: store.getFlow((ids as string[])[0]!).group };
     }),
     route("PUT", "/api/flows/:id/team", async (req, _r, p, body) => {
       const team = teamOf((await body())["team"]);
@@ -64,7 +78,8 @@ export function flowRoutes({ store, secrets, extensions, auth, plugins }: ApiDep
       for (let n = 2; taken.has(id); n++) id = `${base}${n}`;
       const draft = { ...(src.draft as Record<string, unknown>), id, name };
       res.statusCode = 201;
-      return store.createFlow(draft, team);
+      // 묶음은 원래 것 — 사본은 원래 것 옆에
+      return store.createFlow(draft, team, src.group);
     }),
     route("GET", "/api/flows/:id",(_q, _r, p) => store.getFlow(p["id"]!)),
     route("PUT", "/api/flows/:id/draft", async (req, _r, p, body) => store.saveDraft(p["id"]!, (await body())["draft"], byOf(req))),

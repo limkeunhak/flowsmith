@@ -186,6 +186,8 @@ export const api = {
   deleteWorker: (id: string) => call<null>("DELETE", `/workers/${encodeURIComponent(id)}`),
   setRunOn: (id: string, on: string | null) => call<{ runOn: string | null }>("PUT", `/flows/${encodeURIComponent(id)}/run-on`, { on }),
   setFlowTeam: (id: string, team: string | null) => call<FlowDetail>("PUT", `/flows/${encodeURIComponent(id)}/team`, { team }),
+  /** 여럿을 한 묶음으로(null이면 묶음 없음) */
+  setFlowGroup: (ids: string[], group: string | null) => call<{ ids: string[]; group: string | null }>("PUT", "/flow-group", { ids, group }),
   setup: (b: { token: string; email: string; name: string; password: string }) => call<{ user: User }>("POST", "/auth/setup", b),
   login: (email: string, password: string) => call<{ user: User }>("POST", "/auth/login", { email, password }),
   logout: () => call<null>("POST", "/auth/logout"),
