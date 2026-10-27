@@ -1,17 +1,18 @@
 /**
  * 첫 화면 — «무엇을 자동화할까요?»(템플릿) · 내 플로우 목록.
+ * 목록은 이름 앞말(«Navigator · …»)로 묶어 접고 펴며, 살펴볼 것(문제 · 실패 · 사이트 바뀜)을 맨 위에 모은다(model/flowList.ts).
+ * 템플릿은 워크플로우가 없을 때만 이 화면에 — 있으면 «템플릿» 화면으로.
  * ★비개발자가 빈 캔버스에서 막히지 않게 — 템플릿을 고르고 몇 가지만 답하면 뼈대가 짜인다(model/templates.ts).
  *  id는 사람이 짓지 않는다(자동). 빈 플로우는 누르면 바로 만들어 캔버스로 가고 거기서 이름을 묻는다(editor/NameModal.tsx).
  */
-import { useEffect, useState } from "react";
-import { describeCron, EMAIL_RE, recipientsOf, type Flow, type NodeType, explainProblems, problemLine } from "@flowsmith/core";
-import { NODE_META } from "./editor/nodeMeta.tsx";
+import { useEffect, useMemo, useState } from "react";
+import { describeCron, EMAIL_RE, recipientsOf, type Flow, explainProblems, problemLine } from "@flowsmith/core";
 import { NEW_FLOW_KEY } from "./editor/NameModal.tsx";
 import { aiBridge } from "./ai/bridge.ts";
 import { useMe } from "./shell/me.ts";
 import { api, ApiError, type FlowSummary } from "./api.ts";
-import { blankFlow, newFlowId, SCHEDULE_CHOICES, TEMPLATES, type FlowChoice, type Template } from "./model/index.ts";
-import { IconAlert, IconBranch, IconCheck, IconCopy, IconPlay, IconPlus, IconSearch, IconTrash, IconX } from "./icons.tsx";
+import { blankFlow, groupFlows, matchesQuery, needsAttention, newFlowId, SCHEDULE_CHOICES, sortFlows, SORT_LABEL, TEMPLATES, type FlowChoice, type FlowSort, type Template } from "./model/index.ts";
+import { IconAlert, IconBranch, IconCheck, IconChevronDown, IconCopy, IconPlay, IconPlus, IconSearch, IconTrash, IconX } from "./icons.tsx";
 import { EmptyState } from "./EmptyState.tsx";
 import { ago } from "./format.ts";
 
@@ -85,6 +86,17 @@ function TemplateForm({ t, flows, onCancel, onCreate }: { t: Template; flows: Fl
   );
 }
 
+const SORT_KEY = "flowsmith.flowList.sort";
+const FOLD_KEY = "flowsmith.flowList.folded";
+const FOLD_OVER = 20;
+/** 이 브라우저의 보기 설정(정렬 · 접은 묶음) — 저장소가 막혀도 목록은 뜬다 */
+function readPref<T>(key: string, fallback: T): T {
+  try { const v = localStorage.getItem(key); return v === null ? fallback : (JSON.parse(v) as T); } catch { return fallback; }
+}
+function writePref(key: string, v: unknown): void {
+  try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* 기억 못 해도 된다 */ }
+}
+
 /** only — "templates"면 템플릿만(사이드바의 «템플릿») */
 export function FlowList({ only = null }: { only?: "templates" | null }) {
   const me = useMe();
@@ -138,23 +150,34 @@ export function FlowList({ only = null }: { only?: "templates" | null }) {
     }
   }
 
-  const [only2, setOnly2] = useState<"all" | "published" | "todo" | "failed">("all");
+  const [only2, setOnly2] = useState<"all" | "draft" | "todo" | "failed">("all");
+  const [sort, setSort] = useState<FlowSort>(() => readPref<FlowSort>(SORT_KEY, "updated"));
+  // 묶음마다 접었나 — 사람이 고른 것만 기억한다. 고른 적 없으면 많을 때(20개 넘게) 접어 묶음 머리만 보인다
+  const [folded, setFolded] = useState<Record<string, boolean>>(() => readPref<Record<string, boolean>>(FOLD_KEY, {}));
+  const all = flows ?? [];
+  const isFailed = (f: FlowSummary) => f.lastRun?.status === "failure" || (f.monitor !== null && (f.monitor.status === "broken" || f.monitor.status === "changed"));
   const counts = {
-    all: (flows ?? []).length,
-    published: (flows ?? []).filter((f) => f.activeVersion !== null).length,
-    todo: (flows ?? []).filter((f) => f.problems > 0).length,
-    failed: (flows ?? []).filter((f) => f.lastRun?.status === "failure" || (f.monitor && (f.monitor.status === "broken" || f.monitor.status === "changed"))).length,
+    all: all.length,
+    draft: all.filter((f) => f.activeVersion === null).length,
+    todo: all.filter((f) => f.problems > 0).length,
+    failed: all.filter(isFailed).length,
   };
-  const shown = (flows ?? [])
-    .filter((f) => q.trim() === "" || `${f.name} ${f.id}`.toLowerCase().includes(q.trim().toLowerCase()))
-    .filter((f) => only2 === "all" || (only2 === "published" ? f.activeVersion !== null : only2 === "todo" ? f.problems > 0
-      : f.lastRun?.status === "failure" || (f.monitor !== null && (f.monitor.status === "broken" || f.monitor.status === "changed"))));
+  const shown = useMemo(() => sortFlows(all
+    .filter((f) => matchesQuery(f, q))
+    .filter((f) => only2 === "all" || (only2 === "draft" ? f.activeVersion === null : only2 === "todo" ? f.problems > 0 : isFailed(f))), sort),
+  [flows, q, only2, sort]);
+  const groups = useMemo(() => groupFlows(shown), [shown]);
+  const searching = q.trim() !== "";
+  // 살펴볼 것 — 많을 때(묶음을 접어 둘 때) · 거르지도 찾지도 않을 때만 맨 위에(묶음 안에도 그대로 있다). 적으면 한눈에 보인다
+  const attention = all.length > FOLD_OVER && only2 === "all" && !searching ? shown.filter(needsAttention) : [];
+  const shutOf = (g: string) => folded[g] ?? all.length > FOLD_OVER;
+  const toggleFold = (g: string) => setFolded((v) => { const next = { ...v, [g]: !(v[g] ?? all.length > FOLD_OVER) }; writePref(FOLD_KEY, next); return next; });
   const open = (m: typeof mode) => { setPicked(null); setMode(mode === m ? "none" : m); };
 
   const hasFlows = flows !== null && flows.length > 0;
   const templates = (
     <>
-      <h2 className="section-title">{hasFlows && only !== "templates" ? "템플릿으로 시작하기" : "무엇을 자동화할까요?"}</h2>
+      <h2 className="section-title">무엇을 자동화할까요?</h2>
       {picked ? (
         <TemplateForm t={picked} flows={flows ?? []} onCancel={() => setPicked(null)} onCreate={(d) => create(d)} />
       ) : (
@@ -173,6 +196,40 @@ export function FlowList({ only = null }: { only?: "templates" | null }) {
         </div>
       )}
     </>
+  );
+
+  const row = (f: FlowSummary, label: string) => (
+    <div key={f.id} className="flow-row" role="link" tabIndex={0}
+      onClick={() => { location.hash = `#/flows/${encodeURIComponent(f.id)}`; }}
+      onKeyDown={(e) => { if (e.key === "Enter") location.hash = `#/flows/${encodeURIComponent(f.id)}`; }}>
+      <div className="flow-cell-name">
+        <div className="name" title={f.name}><span className="flow-label">{label}</span>{me.auth && <span className={`pill team-pill${f.team ? "" : " shared"}`}>{f.team?.name ?? "공용"}</span>}</div>
+        {f.description && <div className="desc" title={f.description}>{f.description}</div>}
+      </div>
+      <div className="flow-cell-state">
+        {f.problems > 0 && <span className="pill bad"><IconAlert size={12} /> 할 일 {f.problems}</span>}
+        {f.monitor && f.monitor.status !== "ok" && f.monitor.status !== "running" && (
+          <span className={`pill ${f.monitor.status === "changed" ? "warn" : "bad"}`} title={`변경 감시 · ${new Date(f.monitor.at).toLocaleString("ko-KR")}`}>
+            <IconAlert size={12} /> {f.monitor.status === "changed" ? "사이트 바뀜" : f.monitor.status === "broken" ? "사이트 깨짐" : "감시 못 함"}
+          </span>
+        )}
+        {f.activeVersion === null ? <span className="pill">게시 안 됨</span> : <span className="pill ok" title={`게시된 버전 v${f.activeVersion}`}><IconCheck size={12} strokeWidth={2.6} /> v{f.activeVersion}</span>}
+      </div>
+      <div className="flow-cell-run">
+        {f.lastRun ? <><span className={`last-run st-${f.lastRun.status}`}>{f.lastRun.status === "success" ? "성공" : f.lastRun.status === "failure" ? "실패" : f.lastRun.status === "blocked" ? "막힘" : "멈춤"}</span> <span className="faint">{ago(f.lastRun.at)}</span></> : <span className="faint">—</span>}
+      </div>
+      <div className="flow-cell-when" title={(f.schedules ?? []).join("\n") || undefined}>
+        {(f.schedules ?? []).length > 0 ? <>{(() => { try { return describeCron(f.schedules![0]!); } catch { return "일정"; } })()}{f.schedules!.length > 1 ? ` 외 ${f.schedules!.length - 1}` : ""}</> : <span className="faint">—</span>}
+      </div>
+      <div className="flow-cell-updated faint">{ago(f.updatedAt)}</div>
+      <div className="flow-cell-tools">
+        {f.activeVersion !== null && me.can("runner") && (
+          <a className="icon-btn" href={`#/run/${encodeURIComponent(f.id)}`} title="실행 폼 — 입력만 넣고 게시된 버전을 돌립니다(이 주소를 실행자에게 주세요)" onClick={(e) => e.stopPropagation()}><IconPlay size={16} /></a>
+        )}
+        {me.can("editor") && <button className="icon-btn" title="복제 — 초안만 «이름 (사본)»으로 만듭니다(버전 · 실행 기록 · 시크릿 값은 안 가져갑니다)" onClick={(e) => { e.stopPropagation(); void duplicate(f); }}><IconCopy /></button>}
+        <button className="icon-btn" title="지우기" onClick={(e) => { e.stopPropagation(); void remove(f); }}><IconTrash /></button>
+      </div>
+    </div>
   );
 
   return (
@@ -208,62 +265,60 @@ export function FlowList({ only = null }: { only?: "templates" | null }) {
         </div>
       )}
 
-      {/* 템플릿 — 처음 온 사람에게는 위에, 워크플로우가 있는 사람에게는 「내 워크플로우」 아래에(불러오는 동안은 두지 않는다 · 자리가 튀지 않게) */}
+      {/* 템플릿 — 워크플로우가 없을 때만 이 화면에(불러오는 동안은 두지 않는다 · 자리가 튀지 않게). 있으면 «템플릿» 화면으로 */}
       {(only === "templates" || (flows !== null && !hasFlows)) && templates}
       {only !== "templates" && <>
       <h2 className="section-title">내 워크플로우</h2>
-      {flows !== null && flows.length > 0 && (
+      {hasFlows && (
         <div className="list-tools">
-          <label className="search"><IconSearch /><input placeholder="워크플로우 찾기" value={q} onChange={(e) => setQ(e.target.value)} /></label>
+          <label className="search"><IconSearch /><input placeholder="이름 · 설명으로 찾기" value={q} onChange={(e) => setQ(e.target.value)} /></label>
+          {/* 0개인 거르기는 감춘다 — 고를 것이 없다 */}
           <div className="seg-tabs small">
-            {([["all", "전체"], ["published", "게시됨"], ["todo", "할 일 있음"], ["failed", "실패 · 바뀜"]] as const).map(([k, label]) => (
+            {([["all", "전체"], ["todo", "할 일 있음"], ["failed", "실패 · 바뀜"], ["draft", "게시 안 됨"]] as const).filter(([k]) => k === "all" || counts[k] > 0 || only2 === k).map(([k, label]) => (
               <button key={k} className={only2 === k ? "on" : ""} onClick={() => setOnly2(k)}>{label} <span className="muted">{counts[k]}</span></button>
             ))}
           </div>
+          <span className="grow" />
+          <label className="flow-sort small muted">정렬
+            <select value={sort} onChange={(e) => { const v = e.target.value as FlowSort; setSort(v); writePref(SORT_KEY, v); }}>
+              {(Object.keys(SORT_LABEL) as FlowSort[]).map((k) => <option key={k} value={k}>{SORT_LABEL[k]}</option>)}
+            </select>
+          </label>
         </div>
       )}
 
-      <div className="card">
-        {flows === null ? <div className="empty">불러오는 중…</div>
-          : flows.length === 0 ? <EmptyState bare icon={<IconBranch size={22} />} title="아직 워크플로우가 없습니다">위에서 하고 싶은 일을 고르거나 빈 워크플로우로 시작하세요.</EmptyState>
-          : shown.length === 0 ? <div className="empty">맞는 워크플로우가 없습니다</div>
-          : (
-            <div className="flow-rows">
-              {shown.map((f) => (
-                <div key={f.id} className="flow-row" role="link" tabIndex={0}
-                  onClick={() => { location.hash = `#/flows/${encodeURIComponent(f.id)}`; }}
-                  onKeyDown={(e) => { if (e.key === "Enter") location.hash = `#/flows/${encodeURIComponent(f.id)}`; }}>
-                  <div className="flow-icons" aria-hidden="true">
-                    {(f.nodeTypes ?? []).filter((t): t is NodeType => t in NODE_META).slice(0, 4).map((t) => { const Icon = NODE_META[t].icon; return <span key={t} className={`mini-tile t-${t}`} title={NODE_META[t].title}><Icon size={16} /></span>; })}
-                    {(f.nodeTypes ?? []).length === 0 && <span className="mini-tile empty" title="노드 없음" />}
-                  </div>
-                  <div className="grow">
-                    <div className="name">{f.name}{me.auth && <span className={`pill team-pill${f.team ? "" : " shared"}`}>{f.team?.name ?? "공용"}</span>}</div>
-                    <div className="meta">
-                      {ago(f.updatedAt)} 고침
-                      {(f.schedules ?? []).length > 0 && <> · {(() => { try { return describeCron(f.schedules![0]!); } catch { return "일정"; } })()}{f.schedules!.length > 1 ? ` 외 ${f.schedules!.length - 1}` : ""}</>}
-                      {f.lastRun && <> · 마지막 실행 <span className={`last-run st-${f.lastRun.status}`}>{f.lastRun.status === "success" ? "성공" : f.lastRun.status === "failure" ? "실패" : f.lastRun.status === "blocked" ? "막힘" : "멈춤"}</span> {ago(f.lastRun.at)}</>}
-                    </div>
-                  </div>
-                  {f.problems > 0 && <span className="pill bad"><IconAlert size={12} /> 할 일 {f.problems}</span>}
-                  {f.monitor && f.monitor.status !== "ok" && f.monitor.status !== "running" && (
-                    <span className={`pill ${f.monitor.status === "changed" ? "warn" : "bad"}`} title={`변경 감시 · ${new Date(f.monitor.at).toLocaleString("ko-KR")}`}>
-                      <IconAlert size={12} /> {f.monitor.status === "changed" ? "사이트 바뀜" : f.monitor.status === "broken" ? "사이트 깨짐" : "감시 못 함"}
-                    </span>
-                  )}
-                  {f.activeVersion === null ? <span className="pill">게시 안 됨</span> : <span className="pill ok"><IconCheck size={12} strokeWidth={2.6} /> 게시됨 v{f.activeVersion}</span>}
-                  {f.activeVersion !== null && me.can("runner") && (
-                    <a className="icon-btn" href={`#/run/${encodeURIComponent(f.id)}`} title="실행 폼 — 입력만 넣고 게시된 버전을 돌립니다(이 주소를 실행자에게 주세요)" onClick={(e) => e.stopPropagation()}><IconPlay size={16} /></a>
-                  )}
-                  {me.can("editor") && <button className="icon-btn" title="복제 — 초안만 «이름 (사본)»으로 만듭니다(버전 · 실행 기록 · 시크릿 값은 안 가져갑니다)" onClick={(e) => { e.stopPropagation(); void duplicate(f); }}><IconCopy /></button>}
-                  <button className="icon-btn" title="지우기" onClick={(e) => { e.stopPropagation(); void remove(f); }}><IconTrash /></button>
-                </div>
-              ))}
-            </div>
-          )}
-      </div>
+      {flows === null ? <div className="card"><div className="empty">불러오는 중…</div></div>
+        : !hasFlows ? <div className="card"><EmptyState bare icon={<IconBranch size={22} />} title="아직 워크플로우가 없습니다">위에서 하고 싶은 일을 고르거나 빈 워크플로우로 시작하세요.</EmptyState></div>
+        : shown.length === 0 ? <div className="card"><div className="empty">맞는 워크플로우가 없습니다</div></div>
+        : (
+          <div className="flow-list">
+            <div className="flow-cols" aria-hidden="true"><span>이름</span><span>상태</span><span>마지막 실행</span><span>일정</span><span>고침</span><span /></div>
+            {attention.length > 0 && (
+              <section className="flow-group attention">
+                <div className="flow-group-head static"><IconAlert size={14} /> 살펴볼 것 <span className="flow-group-count">{attention.length}</span></div>
+                <div className="card flow-rows">{attention.map((f) => row(f, f.name))}</div>
+              </section>
+            )}
+            {groups.map((g) => {
+              // 묶음이 하나도 없으면 머리 없이 한 장으로
+              if (g.name === null && groups.length === 1) return <div key="all" className="card flow-rows">{g.flows.map((x) => row(x.flow, x.label))}</div>;
+              const key = g.name ?? "";
+              const shut = !searching && shutOf(key);
+              return (
+                <section key={key} className="flow-group">
+                  <button type="button" className="flow-group-head" aria-expanded={!shut} onClick={() => toggleFold(key)}>
+                    <IconChevronDown size={14} className={shut ? "fold shut" : "fold"} />
+                    {g.name ?? "묶음 없음"} <span className="flow-group-count">{g.flows.length}</span>
+                    {g.attention > 0 && <span className="pill bad"><IconAlert size={12} /> {g.attention}</span>}
+                  </button>
+                  {!shut && <div className="card flow-rows">{g.flows.map((x) => row(x.flow, x.label))}</div>}
+                </section>
+              );
+            })}
+          </div>
+        )}
+      {hasFlows && <p className="flow-list-foot small muted">«묶음 · 이름»으로 지으면 같은 묶음끼리 모입니다 · <a href="#/templates">템플릿으로 새로 시작하기 →</a></p>}
       </>}
-      {only !== "templates" && hasFlows && templates}
     </div>
   );
 }

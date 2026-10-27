@@ -5,6 +5,8 @@
 /* 열은 minmax(0, 1fr) — 비워 두면 안쪽 내용의 최소 폭만큼 늘어나 좁은 화면에서 가로로 밀린다 */
 .app { display: grid; grid-template-rows: auto minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); height: 100%; }
 .app-main { min-width: 0; min-height: 0; overflow: auto; }
+/* 페이지만 — 묶음을 펴고 접어 스크롤바가 생겼다 없어져도 본문이 옆으로 튀지 않게(편집 화면은 스크롤하지 않는다 · 빈 띠가 생긴다) */
+.app-main:has(> .page) { scrollbar-gutter: stable; }
 .app-main > .editor { height: 100%; grid-template-columns: minmax(0, 1fr); }
 
 /* 첫 화면 */
@@ -59,10 +61,6 @@
 /* ── 첫 화면 목록 — n8n처럼 (2026-10-17) ── */
 .list-tools { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
 .list-tools .search { width: 300px; max-width: 100%; }
-/* 노드 아이콘은 겹쳐 쌓는다 — 넷을 나란히 두면 칸이 넓어 이름까지 빈칸이 떴다. 폭은 고정이라 줄마다 이름 자리가 같다 */
-.flow-icons { display: flex; width: 88px; flex: none; }
-.flow-icons .mini-tile { width: 28px; height: 28px; border-radius: 7px; box-shadow: 0 0 0 2px var(--panel); }
-.flow-icons .mini-tile + .mini-tile { margin-left: -8px; }
 .mini-tile.empty { border: 1.5px dashed var(--border-strong); }
 .mini-tile.t-transform { color: var(--tf); background: var(--tf-soft); }
 .mini-tile.t-fileRead, .mini-tile.t-fileWrite { color: var(--file); background: var(--file-soft); }
@@ -106,8 +104,6 @@
 }
 @media (max-width: 640px) {
   .page-head h1.grow { flex: 1 1 100%; }
-  .flow-row { flex-wrap: wrap; gap: 8px; }
-  .flow-icons { display: none; }   /* 이름이 세 줄로 꺾이지 않게 — 좁은 화면에서는 이름 · 상태가 먼저 */
   .tpl-grid { grid-template-columns: minmax(0, 1fr); }
   .topbar .monitor-btn, .topbar .issue-btn { display: none; }
   .guide { width: calc(100% - 32px); }

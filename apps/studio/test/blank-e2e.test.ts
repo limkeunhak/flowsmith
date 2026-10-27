@@ -53,7 +53,8 @@ describe("빈 워크플로우 — 바로 캔버스로 · 이름은 창에서", (
   });
 
   it("그만두기 · Esc — 빈 워크플로우를 지우고 목록으로", async () => {
-    await page.goto(`${app.url}/#/`);
+    // 워크플로우가 있으면 템플릿(«빈 워크플로우에서» 칸)은 템플릿 화면에만
+    await page.goto(`${app.url}/#/templates`);
     await page.getByRole("button", { name: /빈 워크플로우에서/ }).click();
     const dialog = page.getByRole("dialog", { name: "새 워크플로우 이름" });
     await dialog.waitFor();

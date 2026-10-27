@@ -19,6 +19,8 @@ export interface FlowSummary {
   activeVersion: number | null;
   latestVersion: number | null;
   problems: number;
+  /** 초안 설명의 첫 줄(200자까지) — 목록이 이름 밑에 보인다 */
+  description: string;
   updatedAt: string;
   /** 마지막 변경 감시 — 없으면 null */
   monitor: { status: ProbeRow["status"]; at: string; source: ProbeRow["source"] } | null;
