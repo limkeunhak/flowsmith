@@ -91,7 +91,7 @@ export function WebInspector({ flow, node, update, findings, onRepick, onSplitAt
 }
 
 function ActionForm({ flow, nodeId, action: a, onChange }: { flow: Flow; nodeId: string; action: WebAction; onChange: (a: WebAction) => void }) {
-  const canBeOptional = a.kind !== "goto" && a.kind !== "wait" && a.kind !== "closeWindow" && a.kind !== "recheck" && a.kind !== "readTable" && a.kind !== "pickRow" && a.kind !== "human" && a.kind !== "walletApprove";
+  const canBeOptional = a.kind !== "goto" && a.kind !== "wait" && a.kind !== "closeWindow" && a.kind !== "switchWindow" && a.kind !== "recheck" && a.kind !== "readTable" && a.kind !== "pickRow" && a.kind !== "human" && a.kind !== "walletApprove";
   const setWhen = (when: Rule | null) => { const { when: _drop, ...rest } = a; onChange((when ? { ...rest, when } : rest) as WebAction); };
   const common = (
     <>
@@ -161,6 +161,9 @@ function ActionForm({ flow, nodeId, action: a, onChange }: { flow: Flow; nodeId:
       break;
     case "closeWindow":
       body = <span className="small muted">팝업 창을 닫고 그 창을 연 창으로 돌아갑니다. 창 안의 «닫기» 단추를 눌렀다면 이 동작은 필요 없습니다.</span>;
+      break;
+    case "switchWindow":
+      body = <span className="small muted">앞 동작들 끝에 열린 새 창으로 옮겨 가서 뒤 동작을 합니다 — 확인창에 답한 뒤 열리는 창처럼, 누르기와 바로 이어지지 않는 창에 씁니다(누르면 곧바로 열리는 창은 누르기의 «새 창을 엽니다»로). 창이 열릴 때까지 시간 제한만큼 기다리고, 창이 닫히면 연 창으로 돌아옵니다.</span>;
       break;
     case "recheck":
       body = <span className="small muted">이 노드에서 지금 창에 넣고 · 고르고 · 켠 칸을 다시 읽습니다. 지워졌거나 바뀐 칸은 한 번 다시 넣고, 그래도 안 맞으면 멈춥니다. 늦게 온 조회 결과가 넣은 칸을 지우는 화면에서 제출 · 계산 단추 바로 앞에 둡니다.</span>;

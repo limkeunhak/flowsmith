@@ -157,6 +157,7 @@ function action(c: Checker, v: unknown, where: string): WebAction {
     case "readTable": return { ...base, kind, table: table(c, o["table"], `${where}.table`), output: c.name(o, "output", where) };
     case "closeWindow": return { ...base, kind };
     case "recheck": return { ...base, kind };
+    case "switchWindow": return { ...base, kind };
     case "pickRow": return { ...base, kind, pick: rowPick(c, o["pick"], `${where}.pick`) };
     case "assert": return { ...base, kind, target: tgt(), strategy: c.oneOf(READ_STRATEGIES, o, "strategy", where, "auto"), equals: c.text(o, "equals", where) };
     case "human": {

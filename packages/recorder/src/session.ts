@@ -285,7 +285,17 @@ export class RecorderSession {
     this.#stack.push(this.#page);
     this.#watch(p);
     void this.#switchTo(p, "새 창이 열려 그 창으로 옮겼습니다 — 창을 닫으면 연 창으로 돌아옵니다");
+    // 누르기가 곧바로 연 창이 아니면(늦게 열림 · 확인창에 답한 뒤) «새 창으로 옮기기»로 남긴다 — 안 남기면 실행은 연 창에 머물러
+    //  뒤 동작이 엉뚱한 창에서 실패한다. 누르기 처리가 끝난 뒤에 본다(줄을 선다) — 그 누르기가 이 창을 가져갔으면 남기지 않는다
+    this.#queue = this.#queue.then(async () => {
+      await new Promise((r) => setTimeout(r, POPUP_GRACE_MS + 100));
+      if (this.#closed || this.#claimed.has(p) || this.#mode !== "record" || p.isClosed()) return;
+      this.#claimed.add(p);
+      this.#record({ ...BASE, kind: "switchWindow" }, null, [], null, undefined, { hints: ["누르기와 바로 이어지지 않고 열린 창이라 «새 창으로 옮기기»로 남겼습니다 — 실행할 때도 창이 열릴 때까지 기다렸다 옮겨 갑니다"] });
+    });
   }
+  /** 누르기가 «새 창을 엽니다»로 가져간 창 */
+  readonly #claimed = new WeakSet<Page>();
 
   #watch(page: Page): void {
     page.on("framenavigated", (f) => { if (page === this.#page && f === page.mainFrame()) void this.#sendPage(); });
@@ -623,6 +633,9 @@ export class RecorderSession {
         }, (h) => this.#clickFor(h));
         for (let t = 0; !this.#popupSeen && !opener.isClosed() && t < POPUP_GRACE_MS; t += 50) await new Promise((r) => setTimeout(r, 50));
         const dialog = await this.#dialogAnswer();
+        // 확인창에 답한 뒤에 열리는 창도 이 누르기의 것이다 — 답한 뒤 한 번 더 본다
+        if (dialog) for (let t = 0; !this.#popupSeen && !opener.isClosed() && t < POPUP_GRACE_MS; t += 50) await new Promise((r) => setTimeout(r, 50));
+        if (this.#popupSeen) this.#claimed.add(this.#popupSeen);
         const popup = this.#popupSeen !== null;
         const hints: string[] = [];
         if (popup) hints.push("새 창을 여는 단추입니다 — 실행할 때도 그 창으로 옮겨 갑니다");

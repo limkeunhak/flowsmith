@@ -160,6 +160,8 @@ export async function runWebNode(node: WebNode, env: NodeEnv): Promise<Output> {
   let prim = env.prim;
   /** 연 창들 — 팝업으로 옮겨 가면 쌓고, 닫히면 꺼낸다 */
   const stack: Primitives[] = [];
+  /** 이 노드에서 이미 머문 창 — «새 창으로 옮기기»는 이것 말고 지금 창이 연 창을 찾는다 */
+  const visited = new Set<Page>([prim.page]);
   const goBack = (): boolean => {
     // 이 노드가 연 창이 없으면 — 앞 노드가 연 팝업에서 시작했는데 그 창이 닫혔다. 그 창을 연 창으로
     const opener = stack.length === 0 && prim.page.isClosed() ? env.openerOf?.(prim.page) ?? null : null;
@@ -277,6 +279,7 @@ export async function runWebNode(node: WebNode, env: NodeEnv): Promise<Output> {
               // 팝업 — 누르는 것과 새 창을 같이 기다린다(누른 뒤에 기다리면 이미 열린 창을 놓친다)
               const [popup, r] = await Promise.all([prim.page.waitForEvent("popup", { timeout }), prim.click(a.target, timeout)]);
               await popup.waitForLoadState("domcontentloaded", { timeout }).catch(() => undefined);
+              visited.add(popup);
               stack.push(prim);
               prim = env.primFor(popup);
               env.onPage?.(popup, true);
@@ -351,6 +354,31 @@ export async function runWebNode(node: WebNode, env: NodeEnv): Promise<Output> {
           const r = await prim.readTable(a.table, timeout);
           out[a.output] = r.rows;
           note = `${label} → ${a.output} (${r.rows.length}행)${r.note ? ` — ${r.note}` : ""}`;
+          break;
+        }
+        case "switchWindow": {
+          // 지금 창이 연 창 중 아직 머물지 않은 것 — 가장 최근 것. 열릴 때까지 시간 제한만큼 기다린다
+          label = "새 창";
+          const opener = prim.page;
+          const until = Date.now() + timeout;
+          let found: Page | null = null;
+          for (;;) {
+            for (const p of opener.context().pages()) {
+              if (p === opener || p.isClosed() || visited.has(p)) continue;
+              if ((await p.opener().catch(() => null)) === opener) found = p;
+            }
+            if (found || Date.now() > until) break;
+            await pause(100, env.signal);
+          }
+          if (!found) {
+            throw new StepError({ problem: "timeout", message: `새 창이 열리지 않았습니다(${durationText(timeout)} 기다림) — 앞 동작이 창을 여는지 확인하세요`, label: "새 창", locator: null, candidates: [] });
+          }
+          await found.waitForLoadState("domcontentloaded", { timeout }).catch(() => undefined);
+          visited.add(found);
+          stack.push(prim);
+          prim = env.primFor(found);
+          env.onPage?.(found, true);
+          note = `새로 열린 창으로 옮겼습니다(${found.url()})`;
           break;
         }
         case "closeWindow": {

@@ -67,6 +67,7 @@ function describeBare(a: WebAction, h: H): string {
     case "read": return `${josa(q(a.target.label), "을를")} ${a.transform === "number" ? "숫자로 " : ""}읽어 ${josa(`「${q(a.output)}」`, "으로")} 내보냅니다`;
     case "readTable": return `${q(a.table.label)} 표를 ${a.table.scroll ? "스크롤하며 " : ""}읽어 ${josa(`「${q(a.output)}」`, "으로")} 내보냅니다`;
     case "closeWindow": return "이 창을 닫고 연 창으로 돌아갑니다";
+    case "switchWindow": return "새로 열린 창으로 옮겨 갑니다";
     case "recheck": return "이 창에 넣은 칸이 그대로인지 다시 보고, 바뀐 칸은 한 번 다시 넣습니다";
     case "pickRow": {
       const p = a.pick;

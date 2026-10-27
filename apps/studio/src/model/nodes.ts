@@ -90,6 +90,7 @@ export function newAction(kind: WebAction["kind"], taken: Iterable<string>): Web
     case "readTable": return { ...base, kind, output: "", table: { label: "", rows: emptyTarget(), columns: [{ name: "", selector: "", strategy: "auto" }], maxRows: 100 } };
     case "closeWindow": return { ...base, kind };
     case "recheck": return { ...base, kind };
+    case "switchWindow": return { ...base, kind };
     case "pickRow": return { ...base, kind, pick: { label: "", rows: emptyTarget(), keyColumn: "", keyLabel: "", value: "", click: "", refuse: null } };
     case "assert": return { ...base, kind, target: emptyTarget(), strategy: "auto", equals: "" };
     // 사람 기다리기 — 끝났다는 표시는 녹화로 고르는 것이 쉽다(로그인 화면이 사라지면). 손으로 넣으면 주소부터
