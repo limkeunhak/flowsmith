@@ -252,8 +252,16 @@ button:where(:not(.swagger-ui *)), input:where(:not(.swagger-ui *)), select:wher
 .flow-group-head .fold { transition: transform .12s; }
 .flow-group-head .fold.shut { transform: rotate(-90deg); }
 .flow-group-head .pill { margin-left: 4px; }
-.flow-group-site { margin-left: 6px; font-weight: 400; color: var(--faint); font-family: var(--mono); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flow-group-site { margin-left: 6px; padding: 0; border: none; background: none; box-shadow: none; font-weight: 400; color: var(--faint); font-family: var(--mono); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .flow-pinned { color: var(--muted); }
+button.flow-group-site { cursor: pointer; }
+button.flow-group-site:hover { background: none !important; color: var(--text); text-decoration: underline; }
+/* «새 워크플로우» 메뉴 — 단추 오른쪽 끝에 맞춘다 */
+.new-flow-menu { min-width: 280px; }
+.new-flow-menu .menu-item { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; color: var(--text); text-decoration: none; }
+.new-flow-menu .menu-item:hover { background: var(--sunken); }
+.menu-item-title { font-weight: 600; }
+.flow-sort .icon-btn.on { color: var(--accent); }
 /* 화면 규칙 — 주소 앞부분 · 이름 · 맞는 수 · 빼기 */
 .area-rules { padding: 16px; margin-bottom: 16px; max-width: 760px; }
 .area-rule-rows { display: grid; gap: 6px; }
