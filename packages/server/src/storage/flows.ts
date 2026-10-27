@@ -18,7 +18,7 @@ export class FlowRepo {
   /** 읽은 버전(검문소를 거친 Flow) — 「uid\0버전」 */
   readonly #versions = new Map<string, Flow>();
   /** 초안에서 목록이 읽는 것 — 「flow id → (초안 글자, 것)」 */
-  readonly #facts = new Map<string, { json: string; facts: { problems: number; nodeTypes: string[]; schedules: string[] } }>();
+  readonly #facts = new Map<string, { json: string; facts: { problems: number; nodeTypes: string[]; schedules: string[]; description: string } }>();
 
   constructor(db: DatabaseSync, store: Store) {
     this.#db = db;
@@ -51,6 +51,7 @@ export class FlowRepo {
         activeVersion: (r["active_version"] as number | null) ?? null,
         latestVersion: (r["latest"] as number | null) ?? null,
         problems: d.problems,
+        description: d.description,
         updatedAt: String(r["updated_at"]),
         monitor: p ? { status: p["status"] as ProbeRow["status"], at: String(p["at"]), source: p["source"] as ProbeRow["source"] } : null,
         // 목록이 그림을 그리는 데 쓴다 — 쓰인 노드 종류(나온 차례) · 켜 둔 일정 · 마지막 실행
@@ -63,15 +64,17 @@ export class FlowRepo {
     });
   }
 
-  /** 초안에서 목록이 읽는 것(문제 수 · 노드 종류 · 일정) — 초안이 바뀔 때만 다시 센다(글자를 견준다 — 검사보다 훨씬 싸다) */
-  #draftFacts(id: string, json: string): { problems: number; nodeTypes: string[]; schedules: string[] } {
+  /** 초안에서 목록이 읽는 것(문제 수 · 노드 종류 · 일정 · 설명) — 초안이 바뀔 때만 다시 센다(글자를 견준다 — 검사보다 훨씬 싸다) */
+  #draftFacts(id: string, json: string): { problems: number; nodeTypes: string[]; schedules: string[]; description: string } {
     const hit = this.#facts.get(id);
     if (hit && hit.json === json) return hit.facts;
-    const draft = JSON.parse(json) as { nodes?: { type?: unknown }[]; settings?: { schedules?: { cron?: unknown; enabled?: unknown }[] } };
+    const draft = JSON.parse(json) as { description?: unknown; nodes?: { type?: unknown }[]; settings?: { schedules?: { cron?: unknown; enabled?: unknown }[] } };
     const facts = {
       problems: checkFlow(draft).length,
       nodeTypes: [...new Set((Array.isArray(draft.nodes) ? draft.nodes : []).map((n) => String(n?.type ?? "")).filter(Boolean))],
       schedules: (Array.isArray(draft.settings?.schedules) ? draft.settings.schedules : []).filter((s) => s?.enabled !== false && typeof s?.cron === "string").map((s) => String(s.cron)),
+      // 목록은 한 줄만 보인다 — 첫 줄 · 200자까지(긴 설명을 매번 다 실어 보내지 않게)
+      description: typeof draft.description === "string" ? (draft.description.split("\n")[0] ?? "").slice(0, 200) : "",
     };
     this.#facts.set(id, { json, facts });
     return facts;

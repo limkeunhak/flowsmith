@@ -127,10 +127,11 @@ describe("단계 실행", () => {
 });
 
 describe("워크플로우 목록", () => {
-  it("쓰인 노드 종류 · 켜 둔 일정 · 마지막 실행을 함께 준다", async () => {
+  it("쓰인 노드 종류 · 켜 둔 일정 · 마지막 실행 · 설명 첫 줄을 함께 준다", async () => {
     const list = (await call("GET", "/api/flows")).body as any[];
     const quick = list.find((f) => f.id === "quick");
-    expect(quick).toMatchObject({ nodeTypes: ["web"], schedules: [], lastRun: { status: "success" } });
+    expect(quick).toMatchObject({ nodeTypes: ["web"], schedules: [], lastRun: { status: "success" }, description: expect.any(String) });
+    expect(quick.description).not.toContain("\n");
     expect(list.find((f) => f.id === "caller").nodeTypes).toEqual(["flowCall"]);
   });
 });

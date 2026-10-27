@@ -212,3 +212,47 @@ button:where(:not(.swagger-ui *)), input:where(:not(.swagger-ui *)), select:wher
   .sheet-dock { grid-template-columns: minmax(0, 1fr); }
   .sheet-dock .ndv-pane:first-child { display: none; }
 }
+
+/* ── 워크플로우 목록 — 묶음 · 촘촘한 표(2026-10-27). 묶음은 이름 앞말에서(model/flowList.ts) ──
+ * 한 줄 48 — 이름 + 설명 한 줄. 칸은 머리(.flow-cols)와 줄이 같은 grid를 쓴다. 단추는 올렸을 때만(터치는 늘) */
+.flow-list { --flow-cols: minmax(0, 1fr) 132px 112px 128px 72px 104px; display: flex; flex-direction: column; gap: 14px; }
+.flow-cols { display: grid; grid-template-columns: var(--flow-cols); gap: 12px; padding: 0 16px; margin-bottom: -6px; font-size: var(--fs-11); color: var(--faint); font-weight: 600; letter-spacing: .02em; }
+.flow-rows { overflow: hidden; }
+.flow-row { display: grid; grid-template-columns: var(--flow-cols); align-items: center; gap: 12px; padding: 6px 16px; min-height: 48px; }
+.flow-cell-name { min-width: 0; }
+.flow-row .name { display: flex; align-items: center; min-width: 0; font-size: var(--fs-13); font-weight: 600; }
+.flow-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flow-row .desc { margin-top: 1px; font-size: var(--fs-12); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flow-cell-state { display: flex; gap: 4px; flex-wrap: wrap; }
+.flow-cell-run, .flow-cell-when, .flow-cell-updated { font-size: var(--fs-12); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.flow-cell-tools { display: flex; justify-content: flex-end; gap: 2px; opacity: 0; transition: opacity .12s; }
+.flow-row:hover .flow-cell-tools, .flow-row:focus-within .flow-cell-tools { opacity: 1; }
+@media (hover: none) { .flow-cell-tools { opacity: 1; } }
+
+.flow-group-head { display: flex; align-items: center; gap: 6px; width: 100%; padding: 4px 2px 8px; border: none; background: none; box-shadow: none; font-size: var(--fs-13); font-weight: 700; color: var(--text); text-align: left; cursor: pointer; }
+.flow-group-head:hover { background: none !important; color: var(--text); }
+.flow-group-head.static { cursor: default; }
+.flow-group-head .fold { color: var(--faint); transition: transform .12s; }
+.flow-group-head .fold.shut { transform: rotate(-90deg); }
+.flow-group-head .pill { margin-left: 4px; }
+.flow-group-count { font-weight: 500; color: var(--faint); font-variant-numeric: tabular-nums; }
+.flow-group.attention .flow-group-head { color: var(--bad); }
+.flow-group.attention .flow-rows { border-color: color-mix(in srgb, var(--bad) 35%, var(--border)); }
+.flow-sort { display: flex; align-items: center; gap: 6px; }
+.flow-sort select { width: auto; height: 30px; padding: 0 28px 0 10px; font-size: var(--fs-12); }
+.flow-list-foot { margin-top: 16px; }
+
+@media (max-width: 900px) {
+  .flow-list { --flow-cols: minmax(0, 1fr) auto 96px 104px; }
+  .flow-cols span:nth-child(4), .flow-cols span:nth-child(5), .flow-cell-when, .flow-cell-updated { display: none; }
+}
+@media (max-width: 640px) {
+  .flow-list { --flow-cols: minmax(0, 1fr) auto; }
+  .flow-cols { display: none; }
+  .flow-cell-run { display: none; }
+  /* 좁은 창에서 마우스로는 줄을 눌러 열면 된다 — 단추 줄이 빈자리만 차지한다. 터치(올릴 수 없다)에서만 아래 줄에 */
+  .flow-cell-tools { display: none; }
+}
+@media (max-width: 640px) and (hover: none) {
+  .flow-cell-tools { display: flex; grid-column: 1 / -1; justify-content: flex-start; }
+}
