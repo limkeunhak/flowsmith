@@ -35,7 +35,7 @@ export interface WorkerPolicy {
   httpDeny: string[];
 }
 
-export type FileFn = "list" | "read" | "write" | "writeBytes" | "append" | "stat" | "remove";
+export type FileFn = "list" | "read" | "write" | "writeBytes" | "append" | "stat" | "remove" | "zip";
 
 export type ToWorker =
   | { t: "welcome"; worker: { id: string; name: string }; policy: WorkerPolicy }

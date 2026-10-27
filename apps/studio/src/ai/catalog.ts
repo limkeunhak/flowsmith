@@ -81,6 +81,12 @@ export const NODE_DOCS: NodeDoc[] = [
     outputs: "file · written · skipped",
   },
   {
+    type: "zip", title: "압축(zip)",
+    config: { from: { scope: "flow", dir: "pdf", include: ["**/*.pdf"] }, to: { scope: "flow", dir: "", name: "묶음" }, ifExists: "overwrite" },
+    more: "from.dir: 묶을 폴더(비우면 폴더 전체) · include: glob(** · * · ?, 비우면 모두) · to.name: .zip은 붙여 준다 · ifExists: overwrite|fail",
+    outputs: "file · count · bytes",
+  },
+  {
     type: "fileRead", title: "파일 읽기",
     config: { source: { scope: "flow", flowId: null, name: "주문 결과", format: "csv" }, missing: "empty" },
     more: "scope: flow(이 워크플로우) · shared(공유) · otherFlow(다른 워크플로우 — flowId) · missing: fail|empty",

@@ -3,7 +3,7 @@
  * ★초안은 언제나 **불변 값**으로 다룬다. 고칠 때마다 새 객체를 만든다(React가 바뀐 걸 알게).
  */
 import {
-  withHttpDefaults, withStoreDefaults, withTransformDefaults, type FileReadConfig, type FlowCallConfig, type Flow, type FlowNode, type HumanDone, type NodeType, type ParamDef, type Target, type WebAction,
+  withHttpDefaults, withStoreDefaults, withTransformDefaults, withZipDefaults, type FileReadConfig, type FlowCallConfig, type Flow, type FlowNode, type HumanDone, type NodeType, type ParamDef, type Target, type WebAction,
 } from "@flowsmith/core";
 import type { ExtensionMeta } from "../ext-meta.ts";
 
@@ -61,6 +61,8 @@ export function newNode(choice: NodeChoice, flow: Flow, position: { x: number; y
         cases: [{ id: "yes", label: "맞으면", match: "all", rules: [{ left: "", op: "eq", right: "" }], then: { kind: "next" } }],
         else: { then: { kind: "end", status: "success", message: "" } },
       } };
+    case "zip":
+      return { id, name, position, type, config: withZipDefaults(undefined) };
     case "fileWrite":
       return { id, name, position, type, config: {
         data: "",
@@ -134,7 +136,7 @@ export function normalize(draft: unknown): Flow {
     // 실행 입력 — 빠진 칸(종류 · 보기 · 기본값 · 설명)은 검문소와 같은 기본값으로
     params: (d.params ?? []).map((p) => newParam(p)),
     // 옛 이름 «store»(저장 노드)는 파일 쓰기로
-    nodes: (d.nodes ?? []).map((n0) => ({ ...n0, type: (n0.type as string) === "store" ? "fileWrite" : n0.type }) as FlowNode).map((n) => ({ ...n, position: n.position ?? { x: 0, y: 0 }, ...(n.type === "fileWrite" ? { config: withStoreDefaults(n.config) } : n.type === "fileRead" ? { config: withFileReadDefaults(n.config) } : n.type === "flowCall" ? { config: withFlowCallDefaults(n.config) } : n.type === "http" ? { config: withHttpDefaults(n.config) } : n.type === "transform" ? { config: withTransformDefaults(n.config) } : n.type === "web" ? { config: { ...n.config, actions: (n.config.actions ?? []).map(withActionDefaults) } } : {}) }) as FlowNode),
+    nodes: (d.nodes ?? []).map((n0) => ({ ...n0, type: (n0.type as string) === "store" ? "fileWrite" : n0.type }) as FlowNode).map((n) => ({ ...n, position: n.position ?? { x: 0, y: 0 }, ...(n.type === "fileWrite" ? { config: withStoreDefaults(n.config) } : n.type === "fileRead" ? { config: withFileReadDefaults(n.config) } : n.type === "flowCall" ? { config: withFlowCallDefaults(n.config) } : n.type === "http" ? { config: withHttpDefaults(n.config) } : n.type === "transform" ? { config: withTransformDefaults(n.config) } : n.type === "zip" ? { config: withZipDefaults(n.config) } : n.type === "web" ? { config: { ...n.config, actions: (n.config.actions ?? []).map(withActionDefaults) } } : {}) }) as FlowNode),
     edges: d.edges ?? [],
     notes: d.notes ?? [],
     vars: d.vars ?? {},

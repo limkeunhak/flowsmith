@@ -2,7 +2,7 @@
  * 사람 말로 옮기기 — 동작 · 위치 · 노드 한 줄 요약. HTML을 몰라도 읽히게.
  */
 import { humanTemplate } from "./graph.ts";
-import { FORMAT_LABEL, HUMAN_TIMEOUT, WALLET_APPROVE_TIMEOUT, fileNameFor, readFileName, type ConditionOp, type Flow, type FlowNode, type Locator, type TransformStep, type WebAction } from "@flowsmith/core";
+import { FORMAT_LABEL, HUMAN_TIMEOUT, WALLET_APPROVE_TIMEOUT, fileNameFor, readFileName, zipFileName, type ConditionOp, type Flow, type FlowNode, type Locator, type TransformStep, type WebAction } from "@flowsmith/core";
 
 /** 동작의 이름 — core에 하나(문제 문장도 같은 말을 쓴다) */
 export { ACTION_LABEL } from "@flowsmith/core";
@@ -156,6 +156,7 @@ export function subtitleOf(n: FlowNode): string {
       return `${n.config.method} ${host || "(주소 없음)"}`;
     }
     case "fileWrite": return `파일 · ${fileNameFor(n.config.target, new Date())}${n.config.target.mode === "overwrite" ? " · 덮어쓰기" : ""}`;
+    case "zip": return `${n.config.from.dir || "폴더 전체"}${n.config.from.include.length ? ` (${n.config.from.include.join(" · ")})` : ""} → ${zipFileName(n.config.to.name)}`;
   }
 }
 
