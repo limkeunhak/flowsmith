@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * MSU QA를 서버에 올린다 — flows/의 워크플로우를 만들거나(있으면 초안을 바꿔) 버전으로 굳혀 게시하고,
+ * MSU QA를 서버에 올린다 — 화면 규칙(qa.msu.io/… → 서비스 이름)을 더하고, flows/의 워크플로우를 만들거나(있으면 초안을 바꿔) 버전으로 굳혀 게시하고,
  * suites/의 Suite마다 같은 이름이 있으면 시나리오를 바꾸고 없으면 만든다. 여러 번 돌려도 된다.
  *
  *   node examples/msu-qa/import.ts [--server http://127.0.0.1:4400] [--run] [msuweb navigator …]
@@ -31,16 +31,21 @@ async function api(method: string, path: string, body?: unknown): Promise<{ stat
   return { status: res.status, data };
 }
 
+// 화면 규칙 — 목록이 워크플로우를 시작 주소로 묶는다(가장 긴 앞부분이 이긴다). 있는 규칙에 더한다(같은 앞부분은 이 이름으로)
+const AREAS = [
+  { prefix: "qa.msu.io", name: "MSU 웹" },
+  { prefix: "qa.msu.io/navigator", name: "Navigator" },
+  { prefix: "qa.msu.io/marketplace", name: "마켓플레이스" },
+  { prefix: "qa.msu.io/swapnwarp", name: "Swap & Warp" },
+];
+const rules = ((await api("GET", "/areas")).data as { prefix: string; name: string }[]).filter((r) => !AREAS.some((a) => a.prefix === r.prefix));
+await api("PUT", "/areas", { areas: [...rules, ...AREAS] });
+
 // 워크플로우 — 만들기(이미 있으면 409 → 초안 바꾸기) → 버전(같으면 마지막 버전) → 게시
 for (const file of readdirSync(new URL("flows/", dir)).filter((f) => f.endsWith(".json") && picked(f.replace(/\.json$/, ""))).sort()) {
   const draft = JSON.parse(readFileSync(new URL(`flows/${file}`, dir), "utf8"));
-  // 묶음 — 이름 앞말(«Navigator · …» → Navigator). 서비스마다 한 묶음으로 목록에 모인다
-  const group = String(draft.name).split(" · ")[0]!;
-  const made = await api("POST", "/flows", { draft, team: null, group });
-  if (made.status === 409) {
-    await api("PUT", `/flows/${draft.id}/draft`, { draft });
-    await api("PUT", "/flow-group", { ids: [draft.id], group });
-  }
+  const made = await api("POST", "/flows", { draft, team: null });
+  if (made.status === 409) await api("PUT", `/flows/${draft.id}/draft`, { draft });
   const v = await api("POST", `/flows/${draft.id}/versions`, { note: "examples/msu-qa" });
   // 바뀐 것이 없으면 409 — 가장 높은 버전(목록은 최신순이지만 순서에 기대지 않는다)
   const version = v.data?.version ?? Math.max(...(await api("GET", `/flows/${draft.id}`)).data.versions.map((x: { version: number }) => x.version));

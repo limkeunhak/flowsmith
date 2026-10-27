@@ -11,6 +11,7 @@ import { now, tx, type Row } from "./db.ts";
 import { headOf, canonical } from "./rows.ts";
 import { StoreError, type FlowSummary, type FlowDetail, type ProbeRow, type PublishedFlow, type RunRow } from "./types.ts";
 import type { Store } from "./store.ts";
+import { areaOf, groupName, siteFacts, type SiteFacts } from "./areas.ts";
 
 export class FlowRepo {
   readonly #db: DatabaseSync;
@@ -18,7 +19,7 @@ export class FlowRepo {
   /** 읽은 버전(검문소를 거친 Flow) — 「uid\0버전」 */
   readonly #versions = new Map<string, Flow>();
   /** 초안에서 목록이 읽는 것 — 「flow id → (초안 글자, 것)」 */
-  readonly #facts = new Map<string, { json: string; facts: { problems: number; nodeTypes: string[]; schedules: string[]; description: string } }>();
+  readonly #facts = new Map<string, { json: string; facts: { problems: number; nodeTypes: string[]; schedules: string[]; description: string; site: SiteFacts } }>();
 
   constructor(db: DatabaseSync, store: Store) {
     this.#db = db;
@@ -41,6 +42,7 @@ export class FlowRepo {
     const last = new Map((this.#db.prepare("SELECT flow_id, status, MAX(started_at) AS at FROM run WHERE status != 'running' GROUP BY flow_id").all() as Row[]).map((x) => [String(x["flow_id"]), x]));
     const probe = new Map((this.#db.prepare("SELECT flow_id, status, source, MAX(at) AS at FROM probe WHERE status != 'running' GROUP BY flow_id").all() as Row[]).map((x) => [String(x["flow_id"]), x]));
     const teamName = new Map((this.#db.prepare("SELECT id, name FROM team").all() as Row[]).map((t) => [String(t["id"]), String(t["name"])]));
+    const rules = this.#store.listAreas();
     return rows.filter((r) => visibleTo(teams, (r["team_id"] as string | null) ?? null)).map((r) => {
       const d = this.#draftFacts(String(r["id"]), String(r["draft_json"]));
       const lr = last.get(String(r["id"]));
@@ -61,12 +63,13 @@ export class FlowRepo {
         team: r["team_id"] === null ? null : { id: String(r["team_id"]), name: teamName.get(String(r["team_id"])) ?? "(없는 팀)" },
         runOn: (r["run_on"] as string | null) ?? null,
         group: (r["group_name"] as string | null) ?? null,
+        ...areaOf(d.site, rules),
       };
     });
   }
 
   /** 초안에서 목록이 읽는 것(문제 수 · 노드 종류 · 일정 · 설명) — 초안이 바뀔 때만 다시 센다(글자를 견준다 — 검사보다 훨씬 싸다) */
-  #draftFacts(id: string, json: string): { problems: number; nodeTypes: string[]; schedules: string[]; description: string } {
+  #draftFacts(id: string, json: string): { problems: number; nodeTypes: string[]; schedules: string[]; description: string; site: SiteFacts } {
     const hit = this.#facts.get(id);
     if (hit && hit.json === json) return hit.facts;
     const draft = JSON.parse(json) as { description?: unknown; nodes?: { type?: unknown }[]; settings?: { schedules?: { cron?: unknown; enabled?: unknown }[] } };
@@ -76,6 +79,8 @@ export class FlowRepo {
       schedules: (Array.isArray(draft.settings?.schedules) ? draft.settings.schedules : []).filter((s) => s?.enabled !== false && typeof s?.cron === "string").map((s) => String(s.cron)),
       // 목록은 한 줄만 보인다 — 첫 줄 · 200자까지(긴 설명을 매번 다 실어 보내지 않게)
       description: typeof draft.description === "string" ? (draft.description.split("\n")[0] ?? "").slice(0, 200) : "",
+      // 어느 화면 — 규칙은 목록을 줄 때 맞춘다(규칙이 바뀌어도 초안을 다시 읽지 않게)
+      site: siteFacts(draft),
     };
     this.#facts.set(id, { json, facts });
     return facts;
@@ -308,15 +313,4 @@ export class FlowRepo {
   }
 
   flowIdByUid(uid: string): string | null { return ((this.#db.prepare("SELECT id FROM flow WHERE uid = ?").get(uid) as Row | undefined)?.["id"] as string | undefined) ?? null; }
-}
-
-/** 묶음 이름 — 앞뒤 빈칸을 떼고 · 빈 것은 null · 한 줄 · 40자까지 */
-export function groupName(v: unknown): string | null {
-  if (v === null || v === undefined) return null;
-  if (typeof v !== "string") throw new StoreError(400, "묶음은 이름(글자) 또는 null입니다");
-  const g = v.trim();
-  if (g === "") return null;
-  if (/[\r\n]/.test(g)) throw new StoreError(400, "묶음 이름은 한 줄이어야 합니다");
-  if (g.length > 40) throw new StoreError(400, "묶음 이름은 40자까지입니다");
-  return g;
 }

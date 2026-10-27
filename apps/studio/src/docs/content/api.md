@@ -30,8 +30,9 @@ curl -H "Authorization: Bearer fsa_…" https://<서버 주소>/api/flows
 
 | 하는 일 | 부르는 법 |
 |---|---|
-| 워크플로우 목록 | `GET /api/flows` — 묶음(`group`) · 설명 첫 줄(`description`)도 함께 |
-| 묶음 옮기기 | `PUT /api/flow-group` — 본문 `{ "ids": ["…"], "group": "주문" }`(묶음 없음은 `null`) |
+| 워크플로우 목록 | `GET /api/flows` — 화면(`area` — 화면 규칙으로 자동 · `site` 그렇게 본 주소) · 직접 지정한 화면(`group`) · 설명 첫 줄(`description`)도 함께 |
+| 화면 규칙 | `GET /api/areas` · `PUT /api/areas` — 본문 `{ "areas": [{ "prefix": "qa.msu.io/navigator", "name": "Navigator" }] }`(통째로 바꾼다 · 가장 긴 앞부분이 이긴다) |
+| 화면 직접 지정 | `PUT /api/flow-group` — 본문 `{ "ids": ["…"], "group": "주문" }`(주소로 자동이면 `null`) |
 | 게시된 버전 받기 | `GET /api/flows/<id>/published` — 받아 둔 것이 있으면 `If-None-Match`로 보내 안 바뀌었을 때 304 |
 | 게시된 버전 실행 | `POST /api/flows/<id>/runs` — 본문 `{ "params": { … } }` |
 | 실행 결과 | `GET /api/runs/<runId>` |
