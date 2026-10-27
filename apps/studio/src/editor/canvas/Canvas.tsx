@@ -12,18 +12,18 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  applyEdgeChanges, applyNodeChanges, Background, BackgroundVariant, BaseEdge, Controls, EdgeLabelRenderer, getBezierPath, Handle, NodeResizer, Position,
+  applyEdgeChanges, applyNodeChanges, Background, BackgroundVariant, ConnectionLineType, BaseEdge, Controls, EdgeLabelRenderer, getSmoothStepPath, Handle, NodeResizer, Position,
   ReactFlow, ReactFlowProvider, useReactFlow,
   type Connection, type Edge as RFEdge, type EdgeChange, type EdgeProps, type Node as RFNode, type NodeChange, type NodeProps,
 } from "@xyflow/react";
 import { BLOCKED_PORT, NOTE_COLORS, type Flow, type FlowNode, type FlowNote, type NoteColor } from "@flowsmith/core";
 import type { NodeStatus } from "../../api.ts";
-import { canSplitStages, freeSpot, nextId, portsOf, reaches, subtitleOf, type AddRequest } from "../../model/index.ts";
+import { canSplitStages, freeSpot, nextId, portsOf, reaches, stepNumbers, subtitleOf, type AddRequest } from "../../model/index.ts";
 import { IconAlert, IconCheck, IconGear, IconNote, IconPlus, IconSkip, IconTrash, IconX } from "../../icons.tsx";
 import { metaOf } from "../nodeMeta.tsx";
 
 /** start — 들어오는 엣지가 없는 노드(n8n처럼 왼쪽이 둥글다) */
-type Data = { node: FlowNode; status: NodeStatus | null; issues: string[]; connected: string[]; drift: "changed" | "broken" | null; start: boolean; pinned: boolean; ai: "added" | "changed" | null };
+type Data = { node: FlowNode; no: number; status: NodeStatus | null; issues: string[]; connected: string[]; drift: "changed" | "broken" | null; start: boolean; pinned: boolean; ai: "added" | "changed" | null };
 type FNode = RFNode<Data, "relay">;
 type NNode = RFNode<{ note: FlowNote }, "note">;
 type CNode = FNode | NNode;
@@ -105,7 +105,7 @@ function StatusBadge({ status }: { status: NodeStatus | null }) {
 }
 
 function RelayNode({ data, selected }: NodeProps<FNode>) {
-  const { node, status, issues, connected, drift, start, pinned, ai } = data;
+  const { node, no, status, issues, connected, drift, start, pinned, ai } = data;
   const { readOnly, requestAdd, removeNodes, openNode } = useContext(CanvasCtx);
   const meta = metaOf(node);
   const Icon = meta.icon;
@@ -131,7 +131,7 @@ function RelayNode({ data, selected }: NodeProps<FNode>) {
         <Handle type="target" position={Position.Left} id="in" />
         <span className="tile-icon"><Icon size={22} strokeWidth={1.8} /></span>
         <div className="tile-body">
-          <div className="tile-kicker">{start ? "시작 · " : ""}{meta.title}</div>
+          <div className="tile-kicker"><span className="tile-no">{String(no).padStart(2, "0")}</span>{start ? "시작 · " : ""}{meta.title}</div>
           <div className="tile-name" title={node.name}>{node.name}</div>
           <div className="tile-sub">{subtitleOf(node)}</div>
         </div>
@@ -171,7 +171,8 @@ function RelayNode({ data, selected }: NodeProps<FNode>) {
 function RelayEdge(props: EdgeProps<FEdge>) {
   const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, markerEnd, selected, data } = props;
   const { readOnly, requestAdd, removeEdge, hoveredEdge, hoverEdge } = useContext(CanvasCtx);
-  const [path, lx, ly] = getBezierPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition });
+  // 직각 · 둥근 모서리(작업대) — 곡선(베지어)은 n8n의 얼굴이었다. offset은 포트에서 꺾이기 전까지 곧게 나가는 길이
+  const [path, lx, ly] = getSmoothStepPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, borderRadius: 10, offset: 18 });
   const show = !readOnly && (hoveredEdge === id || selected);
   const cls = data?.running ? "running" : data?.done ? "done" : "";
   return (
@@ -237,6 +238,7 @@ function Inner({ flow, selected, statuses, issues, drift, pinned, aiMarks, readO
     const connected = new Map<string, string[]>();
     for (const e of flow.edges) connected.set(e.from.node, [...(connected.get(e.from.node) ?? []), e.from.port]);
     const targets = new Set(flow.edges.map((e) => e.to.node));
+    const nos = stepNumbers(flow);
     setNodes((prev) => {
       const old = new Map(prev.map((n) => [n.id, n]));
       // 메모 — 노드 뒤에 깔린다(zIndex). 고른 것은 캔버스가 기억한다(오른쪽 서랍과 상관없다)
@@ -255,7 +257,7 @@ function Inner({ flow, selected, statuses, issues, drift, pinned, aiMarks, readO
           position: o?.dragging ? o.position : n.position,
           selected: n.id === selected,
           draggable: !readOnly,
-          data: { node: n, status: statuses[n.id] ?? null, issues: issues.get(n.id) ?? [], connected: connected.get(n.id) ?? [], drift: drift?.get(n.id) ?? null, start: !targets.has(n.id), pinned: pinned?.has(n.id) ?? false, ai: aiMarks?.get(n.id) ?? null },
+          data: { node: n, no: nos.get(n.id) ?? 0, status: statuses[n.id] ?? null, issues: issues.get(n.id) ?? [], connected: connected.get(n.id) ?? [], drift: drift?.get(n.id) ?? null, start: !targets.has(n.id), pinned: pinned?.has(n.id) ?? false, ai: aiMarks?.get(n.id) ?? null },
         } as FNode;
       })];
     });
@@ -375,9 +377,10 @@ function Inner({ flow, selected, statuses, issues, drift, pinned, aiMarks, readO
           }}
           nodesConnectable={!readOnly}
           deleteKeyCode={readOnly ? null : ["Delete", "Backspace"]}
-          snapToGrid snapGrid={[20, 20]}
+          snapToGrid snapGrid={[24, 24]}
           minZoom={0.25} maxZoom={2}
           defaultEdgeOptions={{ type: "relay" }}
+          connectionLineType={ConnectionLineType.SmoothStep}
         >
           {/* 모눈 — 작은 칸 24 · 큰 칸 120(점 무늬 대신) */}
           <Background id="minor" variant={BackgroundVariant.Lines} gap={24} lineWidth={1} color="var(--grid-minor)" />

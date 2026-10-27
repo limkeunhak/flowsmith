@@ -459,10 +459,9 @@ body:has(.ndv-backdrop) .ai-fab-label { display: none; }
   body:has(.work.with-drawer) .ai-fab { display: none; }
   body:has(.work.with-drawer) .ai-dock { right: 24px; }
 }
-@media (max-width: 760px) {
-  body:has(.launcher) .ai-fab { bottom: 88px; }
-  body:has(.launcher) .ai-dock { bottom: 156px; }
-}
+/* 편집 화면 — 아래 공정 바(56) 위로 */
+body:has(.launcher) .ai-fab { bottom: 72px; }
+body:has(.launcher) .ai-dock { bottom: 140px; }
 .ai-fab-spark { font-size: 17px; line-height: 1; }
 .ai-fab-label { font-size: var(--fs-11); font-weight: 700; letter-spacing: .02em; }
 .ai-dock { position: fixed; right: 24px; bottom: 92px; z-index: 45; width: 384px; height: min(620px, calc(100vh - 120px)); display: flex; flex-direction: column;

@@ -40,6 +40,7 @@ button:where(:not(.swagger-ui *)), input:where(:not(.swagger-ui *)), select:wher
 .relay-node .tile-icon { width: 46px; height: auto; flex: none; border-radius: 5px 0 0 5px; border-right: 1px solid var(--border); }
 .relay-node .tile-body { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 1px; padding: 8px 12px 8px 11px; }
 .relay-node .tile-kicker { font-size: var(--fs-11); letter-spacing: .01em; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 18px; }
+.relay-node .tile-no { font-family: var(--mono); font-weight: 600; color: var(--muted); margin-right: 6px; }
 .relay-node .tile-name { margin: 0; width: auto; display: block; text-align: left; font-size: var(--fs-14); font-weight: 600; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .relay-node .tile-sub { width: auto; text-align: left; font-size: var(--fs-12); }
 
@@ -79,3 +80,67 @@ button:where(:not(.swagger-ui *)), input:where(:not(.swagger-ui *)), select:wher
 
 /* 캔버스 바탕 — 모눈(Canvas.tsx의 Background 둘)이 그 위에 */
 .canvas .react-flow__background { opacity: 1; }
+
+/* ══ 2단계 — 위 앱 막대 · 공정 바 · 직각 연결선 ══════════════════════════════ */
+
+/* ── 위 앱 막대(shell/AppBar.tsx) — 왼쪽 사이드바 대신 숯빛 한 줄 · 고른 길은 불씨 밑줄 ── */
+.appbar { position: relative; z-index: 20; height: 48px; display: flex; align-items: center; gap: 24px; padding: 0 14px; background: var(--side-bg); color: var(--side-text); border-bottom: 1px solid var(--side-border); }
+.appbar a { color: inherit; }
+.appbar a:hover { text-decoration: none; color: var(--side-active-text); }
+.appbar-brand { flex: none; display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: var(--fs-15); color: var(--side-active-text) !important; }
+.appbar-nav, .appbar-side { display: flex; align-items: stretch; gap: 20px; height: 48px; }
+.appbar-side { align-items: center; gap: 12px; }
+.appbar-nav a, .appbar-side > a:not(.appbar-icon) { display: flex; align-items: center; height: 100%; font-size: var(--fs-14); color: var(--side-muted); white-space: nowrap; }
+.appbar-nav a.on, .appbar-side > a.on:not(.appbar-icon) { color: var(--side-active-text); font-weight: 600; box-shadow: inset 0 -2px 0 var(--side-accent); }
+.appbar-icon { width: 30px; height: 30px; display: grid; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--side-muted); }
+.appbar-icon:hover { background: var(--side-hover) !important; color: var(--side-active-text); }
+.appbar-icon.on { color: var(--side-active-text); border-color: var(--side-border); }
+.appbar-me-anchor { position: relative; }
+.appbar-me { display: flex; align-items: center; gap: 8px; padding: 3px 6px; border: 0; background: transparent; color: var(--side-text); }
+.appbar-me:hover { background: var(--side-hover) !important; }
+.appbar-me-name { font-size: var(--fs-13); max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+.appbar-menu { left: auto; right: 0; top: calc(100% + 6px); bottom: auto; min-width: 220px; color: var(--text); z-index: 70; }
+/* 브랜드 타일 — 숯빛 막대 위에서도 테두리 한 줄로 타일이 보인다(로그인 문에서도 같은 타일) */
+.brand-tile { width: 28px; height: 28px; flex: none; display: grid; place-items: center; overflow: hidden; border-radius: 6px; background: var(--char-800); box-shadow: inset 0 0 0 1px rgb(243 233 220 / .14); }
+.door-brand .brand-tile { width: 32px; height: 32px; border-radius: 7px; }
+/* 나 — 주황 그라데이션 대신 크림 바탕 · 숯 글자 */
+.avatar { background: var(--cream); color: var(--char-800); }
+@media (max-width: 760px) {
+  .appbar { gap: 14px; padding: 0 10px; }
+  .appbar-brand > span:last-child, .appbar-me-name, .appbar-side > a:not(.appbar-icon) { display: none; }
+  .appbar-nav { overflow-x: auto; scrollbar-width: none; gap: 16px; }
+}
+
+/* ── 공정 바(editor/run/RunLauncher.tsx) — 아래 가운데 떠 있던 실행 단추 대신 캔버스 아래에 붙은 막대 ── */
+.launcher { left: 0; right: 0; bottom: 0; transform: none; flex-direction: row; align-items: center; gap: 16px; height: 56px; padding: 0 16px; background: var(--panel); border-top: 1px solid var(--border); }
+.launcher-bar { box-shadow: none; border-radius: 4px; }
+.run-btn, .run-more { height: 38px; }
+.run-btn { padding: 0 18px; }
+.run-mine { height: 38px; border-radius: 4px; }
+.launcher-pop { position: absolute; left: 16px; bottom: calc(100% + 8px); border-radius: var(--radius); }
+.launcher-track { display: flex; align-items: center; min-width: 0; margin: 0; padding: 0; list-style: none; overflow: hidden; }
+.track-step { position: relative; flex: none; width: 30px; height: 20px; display: grid; place-items: center; font: 600 10px/1 var(--mono); color: var(--faint); background: var(--sunken); border: 1px solid var(--border-strong); border-radius: 3px; }
+.track-step + .track-step { margin-left: 10px; }
+.track-step + .track-step::before { content: ""; position: absolute; left: -11px; top: 50%; width: 10px; border-top: 1.5px solid var(--border-strong); }
+.track-step.st-succeeded { color: var(--ok); background: var(--ok-soft); border-color: var(--ok); }
+.track-step.st-running { color: var(--on-run); background: var(--run); border-color: var(--run); }
+.track-step.st-failed { color: var(--bad); background: var(--bad-soft); border-color: var(--bad); }
+.track-step.st-blocked { color: var(--blocked); background: var(--blocked-soft); border-color: var(--blocked); }
+.track-step.st-skipped, .track-step.st-cancelled { border-style: dashed; }
+.launcher-last { font-size: var(--fs-12); color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.launcher-last b { font-weight: 600; }
+.launcher-last .st-success { color: var(--ok); }
+.launcher-last .st-failure { color: var(--bad); }
+.launcher-last .st-blocked { color: var(--blocked); }
+.launcher-last .st-cancelled { color: var(--warn); }
+.launcher-last .st-running { color: var(--accent); }
+.launcher-history { flex: none; font-size: var(--fs-13); font-weight: 600; color: var(--accent); }
+/* 캔버스 아래 패널(확대 · 표시)은 공정 바 위로 */
+.canvas .react-flow__panel.bottom { margin-bottom: 66px; }
+@media (max-width: 760px) {
+  .launcher { gap: 10px; padding: 0 10px; overflow: hidden; }
+  .launcher-track, .launcher-last, .launcher-history { display: none; }
+}
+
+/* ── 연결선 — 직각 · 둥근 모서리(Canvas.tsx getSmoothStepPath) ── */
+.relay-edge { stroke-width: 2 !important; }

@@ -14,7 +14,7 @@ function Door({ title, sub, children }: { title: string; sub: string; children: 
   return (
     <div className="door">
       <div className="door-card card">
-        <div className="door-brand"><span className="side-mark"><BrandMark size={32} /></span><b>Flowsmith</b></div>
+        <div className="door-brand"><span className="brand-tile"><BrandMark size={32} /></span><b>Flowsmith</b></div>
         <h1>{title}</h1>
         <p className="muted small">{sub}</p>
         {children}
