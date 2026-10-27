@@ -9,7 +9,10 @@
  *   GET    /api/runs/:runId                        실행 기록 (결과 포함)
  *   GET    /api/runs/:runId/events                 SSE — 진행을 흘려 준다
  *   POST   /api/runs/:runId/cancel                 멈추기 — 그 실행이 부른 실행도 함께. 돌고 있지 않으면 409
- *   POST   /api/runs/:runId/rerun                  같은 입력 · 같은 버전으로 다시(초안 실행이면 지금 초안) → 202 { runId }
+ *   POST   /api/runs/:runId/rerun                  { version?, from? } 같은 입력으로 다시 → 202 { runId, version }
+ *                                                  version — 없으면 그 실행의 버전(초안 실행이면 지금 초안) · 주면 그 버전으로(«게시된 버전으로»)
+ *                                                  from — 그 단계부터(앞 단계는 그 실행의 출력을 쓴다 · core planResume). 버전은 그 실행 것만
+ *   GET    /api/runs/:runId/resume-plan?from=노드     여기서부터 다시의 미리 보기 { from, reused: [...], again: [{ id, why }] } · 할 수 없으면 { error }
  *   GET    /api/runs/:runId/shot                   검사가 불통과였을 때의 페이지(JPEG) — 없으면 404
  *   GET    /api/runs/:runId/approval               기다리는 승인(없으면 null)
  *   POST   /api/runs/:runId/approval               { approved, comment? } 승인 · 거절 — 노드가 정한 역할 이상
@@ -59,13 +62,27 @@ export function runRoutes({ store, runs, monitor, auth }: ApiDeps): Route[] {
       return store.listRuns(p["id"]!, limit ? positiveInt(limit, "limit") : 50).map(({ result: _, ...r }) => r);
     }),
     route("GET", "/api/runs/:runId", (_q, _r, p) => store.getRun(p["runId"]!)),
-    route("POST", "/api/runs/:runId/rerun", (req, res, p) => {
+    // 다시 — 같은 입력으로. version을 주면 그 버전으로(«게시된 버전으로») · from을 주면 그 단계부터(앞 단계는 그 실행의 출력 · 버전은 그 실행 것)
+    route("POST", "/api/runs/:runId/rerun", async (req, res, p, body) => {
       const row = store.getRun(p["runId"]!);
+      const b = await body();
+      const from = b["from"];
+      if (from !== undefined && typeof from !== "string") throw new HttpError(400, "from은 단계(노드) id입니다");
+      const v = b["version"];
+      if (v !== undefined && v !== "draft" && (typeof v !== "number" || !Number.isInteger(v))) throw new HttpError(400, 'version은 정수 또는 "draft"여야 합니다');
+      if (from !== undefined && v !== undefined && v !== (row.version ?? "draft")) throw new HttpError(400, "여기서부터 다시는 그 실행과 같은 버전으로만 합니다 — 앞 단계의 출력이 그 버전의 것입니다");
+      const version = (v as number | "draft" | undefined) ?? row.version ?? "draft";
       // 초안 실행을 다시 — 초안은 편집자의 일(실행자는 게시된 버전만)
-      if (row.version === null && userOf(req)?.role === "runner") throw new HttpError(403, "실행자는 게시된 버전만 돌립니다 — 초안으로 돈 실행은 편집자 이상이 다시 돌립니다");
-      const runId = runs.start(row.flowId, { version: row.version ?? "draft", params: row.params, trigger: "manual", startedBy: byOf(req) });
+      if (version === "draft" && userOf(req)?.role === "runner") throw new HttpError(403, "실행자는 게시된 버전만 돌립니다 — 초안으로 돈 실행은 편집자 이상이 다시 돌립니다");
+      const runId = runs.start(row.flowId, { version, params: row.params, trigger: "manual", startedBy: byOf(req),
+        ...(from !== undefined ? { resume: { runId: row.id, nodeId: from } } : {}) });
       res.statusCode = 202;
-      return { runId, version: row.version };
+      return { runId, version: version === "draft" ? null : version };
+    }),
+    route("GET", "/api/runs/:runId/resume-plan", (req, _r, p) => {
+      const from = query(req).get("from");
+      if (!from) throw new HttpError(400, "from(단계 id)을 주세요");
+      return runs.previewResume(p["runId"]!, from);
     }),
     route("GET", "/api/runs/:runId/shot", (_q, res, p) => {
       store.getRun(p["runId"]!);

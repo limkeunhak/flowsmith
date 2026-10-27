@@ -94,8 +94,8 @@ export function NodeRunDetail({ n, onFix, runId }: { n: NodeRun; onFix?: (fix: F
 
 /** watchable — «실제 화면 보기» 단추를 여기 둘까(편집기는 로그 머리에 따로 둔다) */
 /** onFix — 실패 카드의 고치는 단추(편집 화면이 받는다) */
-/** onRerun — 끝난 실행을 같은 입력으로 다시(실행 기록이 준다) */
-export function RunLog({ view, focus, onFocusNode, watchable = true, onFix, onRerun }: { view: RunView; focus?: string | null; onFocusNode?: (id: string) => void; watchable?: boolean; onFix?: (fix: Fix) => void; onRerun?: () => void }) {
+/** onResumeFrom — 끝난 실행을 그 단계부터 다시(실행 기록이 준다 · 단계 상세에 단추) */
+export function RunLog({ view, focus, onFocusNode, watchable = true, onFix, onResumeFrom }: { view: RunView; focus?: string | null; onFocusNode?: (id: string) => void; watchable?: boolean; onFix?: (fix: Fix) => void; onResumeFrom?: (nodeId: string) => void }) {
   const failed = view.nodes.find((n) => n.status === "failed")?.id;
   const [picked, setPicked] = useState<string | null>(null);
   // 실패가 있으면 그것을, 아니면 플로우 결과를 먼저 보인다
@@ -121,7 +121,9 @@ export function RunLog({ view, focus, onFocusNode, watchable = true, onFix, onRe
         </button>
         {view.nodes.map((n) => (
           <button key={n.id} className={`runlog-item${current === n.id ? " on" : ""}`} onClick={() => { setPicked(n.id); onFocusNode?.(n.id); }}>
-            <StatusDot status={n.status === "failed" && n.failure?.problem === "refused" ? "blocked" : n.status} /><span className="grow">{n.name}</span><span className="muted small">{n.status === "succeeded" || n.status === "failed" ? durationText(n.ms) : STATUS_TEXT[n.status]}</span>
+            <StatusDot status={n.status === "failed" && n.failure?.problem === "refused" ? "blocked" : n.status} /><span className="grow">{n.name}</span>
+            {n.pinned ? <span className="muted small" title="돌지 않고 고정된 출력을 썼습니다 — 여기서부터 다시면 앞 실행의 출력 · 초안 시험이면 고정해 둔 값">그대로 씀</span>
+              : <span className="muted small">{n.status === "succeeded" || n.status === "failed" ? durationText(n.ms) : STATUS_TEXT[n.status]}</span>}
           </button>
         ))}
       </div>
@@ -129,9 +131,6 @@ export function RunLog({ view, focus, onFocusNode, watchable = true, onFix, onRe
         {current === "__result" || node === null ? (
           <div className="stack">
             {view.message && <div className={`banner ${view.status === "failure" ? "bad" : view.status === "blocked" ? "warn" : "info"}`}>{view.status === "blocked" ? `🚫 막힘 — ${view.message}` : view.message}</div>}
-            {onRerun && view.status !== "running" && (
-              <div className="row"><span className="grow" /><button className="small" title="이 실행의 입력 · 버전 그대로 다시 돌립니다(초안으로 돈 실행이면 지금 초안)" onClick={onRerun}>↻ 같은 입력으로 다시 실행</button></div>
-            )}
             {view.status === "running" ? (
               <div className="row">
                 <span className="muted grow">도는 중…</span>
@@ -145,7 +144,15 @@ export function RunLog({ view, focus, onFocusNode, watchable = true, onFix, onRe
               : failed ? <><RunTimeline view={view} onPick={(id) => { setPicked(id); onFocusNode?.(id); }} /><span className="muted">실패한 노드를 왼쪽에서 고르면 무엇이 · 어디서 · 왜 멈췄는지 보입니다</span></>
               : <span className="muted">노드가 실패한 것이 아니라 «조건» 노드가 워크플로우를 실패로 끝냈습니다 — 위의 메시지가 그 까닭입니다</span>}
           </div>
-        ) : <NodeRunDetail n={node} runId={view.runId} {...(onFix ? { onFix } : {})} />}
+        ) : (
+          <div className="stack">
+            {onResumeFrom && view.status !== "running" && (
+              <div className="row resume-row"><span className="small muted grow">{node.status === "succeeded" ? "이 단계부터 다시 돌릴 수 있습니다" : "고친 뒤 이 단계부터 다시 돌릴 수 있습니다"} — 앞 단계는 이 실행의 출력을 씁니다</span>
+                <button className="small" onClick={() => onResumeFrom(node.id)}>↻ 여기서부터 다시</button></div>
+            )}
+            <NodeRunDetail n={node} runId={view.runId} {...(onFix ? { onFix } : {})} />
+          </div>
+        )}
       </div>
     </div>
   );

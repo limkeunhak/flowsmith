@@ -20,9 +20,9 @@ export class HistoryRepo {
   }
 
   /** startedAt — 보통은 지금. 옮겨 온 기록 · 시험만 따로 준다 */
-  insertRun(r: { id: string; flowId: string; version: number | null; trigger: RunTrigger; params: Record<string, string>; parentRunId?: string | null; startedAt?: string; startedBy?: string | null }): void {
-    this.#db.prepare("INSERT INTO run (id, flow_id, version, trigger, status, params_json, started_at, parent_run_id, started_by) VALUES (?, ?, ?, ?, 'running', ?, ?, ?, ?)")
-      .run(r.id, r.flowId, r.version, r.trigger, JSON.stringify(r.params), r.startedAt ?? now(), r.parentRunId ?? null, r.startedBy ?? null);
+  insertRun(r: { id: string; flowId: string; version: number | null; trigger: RunTrigger; params: Record<string, string>; parentRunId?: string | null; startedAt?: string; startedBy?: string | null; resumedFrom?: RunRow["resumedFrom"] }): void {
+    this.#db.prepare("INSERT INTO run (id, flow_id, version, trigger, status, params_json, started_at, parent_run_id, started_by, resumed_json) VALUES (?, ?, ?, ?, 'running', ?, ?, ?, ?, ?)")
+      .run(r.id, r.flowId, r.version, r.trigger, JSON.stringify(r.params), r.startedAt ?? now(), r.parentRunId ?? null, r.startedBy ?? null, r.resumedFrom ? JSON.stringify(r.resumedFrom) : null);
   }
 
   finishRun(id: string, status: "success" | "failure" | "cancelled" | "blocked", message: string, result: unknown, ms: number): void {

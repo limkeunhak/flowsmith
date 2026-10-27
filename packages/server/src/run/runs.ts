@@ -20,8 +20,8 @@
  *   서버의 동시 한도는 **서버에서 도는 실행만** 센다 — 워커는 워커마다 자리가 따로 있다(run/worker-hub.ts)
  */
 import { randomUUID } from "node:crypto";
-import { withParamDefaults, type Flow } from "@flowsmith/core";
-import { checkRunInputs, type ApprovalAnswer, type AskApproval, type CallFlow, type RunEvent, type RunResult } from "@flowsmith/engine";
+import { planResume, ResumeError, withParamDefaults, type Flow, type Output, type ResumePlan, type ResumeSource } from "@flowsmith/core";
+import { checkRunInputs, PII_MASK, type ApprovalAnswer, type AskApproval, type CallFlow, type RunEvent, type RunResult } from "@flowsmith/engine";
 import { ROLE_LABEL } from "@flowsmith/core";
 import type { Secrets } from "../storage/secrets.ts";
 import { StoreError, type RunTrigger, type Store, type UserRole } from "../storage/store.ts";
@@ -66,6 +66,11 @@ export interface StartRequest {
   on?: string | null;
   /** 부른 실행 — 부모 줄이 이미 잡은 자원(다시 잡지 않는다) */
   heldLocks?: string[];
+  /**
+   * 여기서부터 다시 — 그 실행의 그 단계부터(core planResume). 앞 단계는 그 실행의 출력을 고정된 출력으로 쓴다.
+   * 버전 · 입력은 부르는 쪽이 그 실행 것으로 준다
+   */
+  resume?: { runId: string; nodeId: string };
 }
 
 /** 승인을 기다리는 실행 — 화면 · 승인 목록이 본다 */
@@ -213,6 +218,29 @@ export class Runs {
     return { flow: this.store.getVersion(flowId, v), version: v };
   }
 
+  /** 여기서부터 다시의 계획 — 같은 워크플로우의 끝난 실행이어야 */
+  #resumePlan(flowId: string, flow: Flow, r: { runId: string; nodeId: string }): ResumePlan {
+    const src = this.store.getRun(r.runId);
+    if (src.flowId !== flowId) throw new StoreError(400, "다른 워크플로우의 실행입니다");
+    if (src.status === "running") throw new StoreError(409, "아직 도는 실행입니다 — 끝난 뒤에 그 단계부터 다시 할 수 있습니다");
+    const nodes = ((src.result as { nodes?: ResumeSource[] } | null)?.nodes ?? []);
+    const masked = (o: Output) => JSON.stringify(o).includes(PII_MASK);
+    try { return planResume(flow, nodes, r.nodeId, masked); }
+    catch (e) { if (e instanceof ResumeError) throw new StoreError(409, e.message); throw e; }
+  }
+
+  /** 여기서부터 다시 — 미리 보기(화면이 누르기 전에): 지난 출력을 쓰는 단계 · 다시 도는 앞 단계. 할 수 없으면 까닭 */
+  previewResume(runId: string, nodeId: string): { from: string; reused: string[]; again: ResumePlan["again"] } | { error: string } {
+    const src = this.store.getRun(runId);
+    try {
+      const plan = this.#resumePlan(src.flowId, this.#flowFor(src.flowId, src.version ?? "draft").flow, { runId, nodeId });
+      return { from: plan.from, reused: Object.keys(plan.pins), again: plan.again };
+    } catch (e) {
+      if (e instanceof StoreError) return { error: e.message };
+      throw e;
+    }
+  }
+
   start(flowId: string, req: StartRequest = {}): string {
     const found = this.#flowFor(flowId, req.version);
     const version = found.version;
@@ -231,8 +259,12 @@ export class Runs {
     // 이번만 어디서 — 개인 워커(내 PC)는 그 주인이 돌린 실행만(storage/workers.ts)
     const on = req.on !== undefined ? this.store.checkRunOn(flowId, req.on, { by: req.startedBy ?? null }) : this.store.flowRunOn(flowId);
 
+    // 여기서부터 다시 — 계획이 서지 않으면(앞 단계가 끝나지 않음 · 단계가 없어짐) 시작하지 않는다
+    const resumed = req.resume ? this.#resumePlan(flowId, flow, req.resume) : null;
+
     const runId = randomUUID();
-    this.store.insertRun({ id: runId, flowId, version, trigger: req.trigger ?? "manual", params, parentRunId: req.parentRunId ?? null, startedBy: req.startedBy ?? null });
+    this.store.insertRun({ id: runId, flowId, version, trigger: req.trigger ?? "manual", params, parentRunId: req.parentRunId ?? null, startedBy: req.startedBy ?? null,
+      resumedFrom: resumed ? { runId: req.resume!.runId, nodeId: resumed.from, nodeName: flow.nodes.find((n) => n.id === resumed.from)!.name } : null });
     const abort = new AbortController();
     this.#abort.set(runId, abort);
     if (req.parentRunId) {
@@ -320,7 +352,9 @@ export class Runs {
       if (slot && !(await this.#acquire(runId, abort.signal, push))) { this.#unlockAll(runId, mine); return stopWaiting("실행을 멈췄습니다(차례를 기다리던 중)"); }
       try {
         // 고정된 출력 — 초안 시험에만(게시된 버전 · 일정 · 웹훅은 늘 진짜로 돈다). 초안에 없는 노드의 것은 버린다
-        const pins = version === null ? Object.fromEntries(Object.entries(this.store.flowPins(flowId)).filter(([nid]) => flow.nodes.some((n) => n.id === nid))) : {};
+        const pins = { ...(version === null ? Object.fromEntries(Object.entries(this.store.flowPins(flowId)).filter(([nid]) => flow.nodes.some((n) => n.id === nid))) : {}),
+          // 여기서부터 다시 — 앞 단계는 그 실행의 출력(게시된 버전이어도)
+          ...(resumed?.pins ?? {}) };
         return await this.worker.run({
           runId, flow, params, secrets, flowUid: this.store.flowUid(flowId), flowUids: flowUidsFor(this.store, flow), on, parentRunId: req.parentRunId ?? null,
           ...(Object.keys(pins).length ? { pins } : {}),

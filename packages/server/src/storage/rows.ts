@@ -81,6 +81,7 @@ export function toRun(r: Row): RunRow {
     parentRunId: (r["parent_run_id"] as string | null) ?? null,
     ranOn: (r["ran_on"] as string | null) ?? null,
     startedBy: (r["started_by"] as string | null) ?? null,
+    resumedFrom: r["resumed_json"] ? JSON.parse(String(r["resumed_json"])) as RunRow["resumedFrom"] : null,
   };
 }
 

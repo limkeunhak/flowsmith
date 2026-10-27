@@ -242,6 +242,8 @@ function migrate(db: DatabaseSync): void {
   if (!cols.includes("pins_json")) db.exec("ALTER TABLE flow ADD COLUMN pins_json TEXT");
   if (!cols.includes("deployed_by")) db.exec("ALTER TABLE flow ADD COLUMN deployed_by TEXT");
   if (!runCols.includes("ran_on")) db.exec("ALTER TABLE run ADD COLUMN ran_on TEXT");
+  // 여기서부터 다시(2026-10-27) — 어느 실행의 어느 단계부터(JSON { runId, nodeId, nodeName })
+  if (!runCols.includes("resumed_json")) db.exec("ALTER TABLE run ADD COLUMN resumed_json TEXT");
   // 대시보드 — 노드 요약(결과 본문을 다시 읽지 않게, 2026-10-17). 옛 기록은 비어 있고 runsSince가 결과에서 만든다
   if (!runCols.includes("nodes_json")) db.exec("ALTER TABLE run ADD COLUMN nodes_json TEXT");
   // 워커 종류(2026-10-24, PLAN §44 · 4단계) — 옛 워커는 모두 공용

@@ -77,7 +77,7 @@ export interface RunOptions {
    */
   human?: boolean;
   /**
-   * **고정된 출력**(n8n의 pin data) — 이 노드들은 돌지 않고 이 값을 내놓는다. 초안 시험에서만(서버가 그때만 준다).
+   * **고정된 출력**(n8n의 pin data) — 이 노드들은 돌지 않고 이 값을 내놓는다. 서버가 초안 시험 · 여기서부터 다시(앞 실행의 출력 — core planResume)에만 준다.
    * 뒤 노드(값 다듬기 · 파일 · HTTP)를 만들 때 사이트를 다시 돌지 않게. 조건 노드는 고정하지 않는다(갈래를 골라야 한다)
    */
   pins?: Record<string, Output>;
@@ -300,7 +300,7 @@ export async function runFlow(flow: Flow, opts: RunOptions = {}): Promise<RunRes
           // 고정된 출력 — 돌지 않고 그 값을 내놓는다(초안 시험). 웹페이지 노드면 페이지도 열리지 않는다
           rec.pinned = true;
           rec.output = pin;
-          const log = "고정된 출력을 썼습니다 — 이 노드는 돌지 않았습니다(초안 시험)";
+          const log = "고정된 출력을 썼습니다 — 이 노드는 돌지 않았습니다(초안 시험 · 여기서부터 다시)";
           rec.logs.push(log);
           emit({ kind: "log", nodeId: node.id, text: log });
           state.succeed(node.id, pin);

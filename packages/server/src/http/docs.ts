@@ -84,7 +84,8 @@ export const DOCS: Record<string, RouteDoc> = {
   "GET /api/runs/:runId/approval": { tag: "실행", summary: "기다리는 승인", description: "이 실행이 «승인 기다리기» 노드에서 기다리면 안내 · 누가(역할) · 언제까지. 아니면 null." },
   "POST /api/runs/:runId/approval": { tag: "실행", summary: "승인 · 거절", description: "노드가 정한 역할(minRole) 이상만. 거절하면 그 노드가 실패해 실행이 멈춘다. 기다리지 않으면 409.", body: { "*approved": "true 승인 · false 거절", comment: "한마디(기록에 남는다 · 500자까지)" }, example: { approved: true, comment: "확인했습니다" } },
   "GET /api/approvals": { tag: "실행", summary: "승인을 기다리는 실행들", description: "내가 볼 수 있는 워크플로우의 것만 — 오래 기다린 차례로." },
-  "POST /api/runs/:runId/rerun": { tag: "실행", summary: "같은 입력으로 다시 실행", description: "그 실행의 입력 · 버전 그대로(초안으로 돈 실행이면 **지금** 초안 — 편집자 이상). 새 runId가 바로 온다.", ok: 202 },
+  "GET /api/runs/:runId/resume-plan": { tag: "실행", summary: "여기서부터 다시 — 미리 보기", description: "`?from=단계 id` — 그 단계부터 다시 하면 지난 출력을 쓰는 단계(`reused`)와 다시 도는 앞 단계(`again` — `browser` 화면을 다시 만든다 · `masked` 가린 값). 할 수 없으면 `{ error }`." },
+  "POST /api/runs/:runId/rerun": { tag: "실행", summary: "같은 입력으로 다시 실행", description: "그 실행의 입력 그대로. 버전은 그 실행 것(초안으로 돈 실행이면 **지금** 초안 — 편집자 이상) · `version`을 주면 그 버전으로. `from`을 주면 **그 단계부터** — 앞 단계는 그 실행이 내놓은 출력을 쓰고 돌지 않는다(브라우저 화면이 필요하면 앞의 웹페이지 단계는 다시 돈다 · 개인정보라 가린 출력도). 앞 단계가 그 실행에서 끝나지 않았으면 409. 새 runId가 바로 온다.", body: { version: "버전 번호 · \"draft\" — 없으면 그 실행의 버전", from: "다시 시작할 단계(노드) id — 버전은 그 실행 것만" }, example: { from: "pdf" }, ok: 202 },
   "POST /api/runs/:runId/cancel": { tag: "실행", summary: "멈추기", description: "그 실행이 부른 실행도 함께. 돌고 있지 않으면 409.", ok: 202 },
 
   // ── 점검

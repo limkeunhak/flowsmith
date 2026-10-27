@@ -140,7 +140,10 @@ export const api = {
   getSuiteRun: (id: string) => call<SuiteRunView>("GET", `/suite-runs/${encodeURIComponent(id)}`),
   cancelSuiteRun: (id: string) => call<{ cancelling: boolean }>("POST", `/suite-runs/${encodeURIComponent(id)}/cancel`),
   /** 같은 입력 · 같은 버전으로 다시 */
-  rerun: (runId: string) => call<{ runId: string; version: number | null }>("POST", `/runs/${encodeURIComponent(runId)}/rerun`),
+  /** 같은 입력으로 다시 — version이면 그 버전으로 · from이면 그 단계부터(앞 단계는 그 실행의 출력) */
+  rerun: (runId: string, opts: { version?: number | "draft"; from?: string } = {}) => call<{ runId: string; version: number | null }>("POST", `/runs/${encodeURIComponent(runId)}/rerun`, opts),
+  /** 여기서부터 다시 — 미리 보기(지난 출력을 쓰는 단계 · 다시 도는 앞 단계) */
+  resumePlan: (runId: string, from: string) => call<{ from: string; reused: string[]; again: { id: string; why: "browser" | "masked" }[] } | { error: string }>("GET", `/runs/${encodeURIComponent(runId)}/resume-plan?from=${encodeURIComponent(from)}`),
   listWorkers: () => call<WorkersView>("GET", "/workers"),
   listPlugins: () => call<PluginsView>("GET", "/plugins"),
   /** 같은 사이트를 다루는 워크플로우의 웹페이지 노드 — AI가 녹화해 둔 요소를 다시 쓴다(ai/refs.ts) */
