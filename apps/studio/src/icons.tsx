@@ -55,6 +55,23 @@ export const IconBook = (p: P) => <Svg {...p}><path d="M4 5.5A2.5 2.5 0 0 1 6.5 
 export const IconNote = (p: P) => <Svg {...p}><path d="M5 4h14v11l-5 5H5z" /><path d="M14 20v-5h5" /><path d="M8.5 9h7M8.5 12.5h4" /></Svg>;
 export const IconSidebar = (p: P) => <Svg {...p}><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><path d="M9.5 4.5v15" /></Svg>;
 
+/** 브랜드 마크 — 이어진 세 단계(Flow) 중 가운데를 망치(Smith)가 내리친다. 맞은 단계만 달군 주황.
+ *  색이 정해진 그림이라 Svg · currentColor를 쓰지 않는다 — 바탕(숯빛 타일)은 감싸는 쪽(.side-mark)이 깐다. public/favicon.svg와 같은 그림.
+ *  sparks — 맞은 자리의 불꽃. 24px 밑에서는 뭉개지니 끈다 */
+export const BrandMark = ({ size = 32, sparks = size >= 24, ...rest }: P & { sparks?: boolean }) => (
+  <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true" {...rest}>
+    <path d="M19 46.5h6.5M38.5 46.5H45" stroke="#f3e9dc" strokeWidth={3.2} strokeLinecap="round" />
+    <rect x="6" y="40" width="13" height="13" rx="3.2" fill="#f3e9dc" />
+    <rect x="25.5" y="40" width="13" height="13" rx="3.2" fill="#ff6b2c" />
+    <rect x="45" y="40" width="13" height="13" rx="3.2" fill="#f3e9dc" />
+    <g transform="translate(32 38) rotate(-12)" fill="#f3e9dc">
+      <path d="M1 -13 L25 -24" stroke="#f3e9dc" strokeWidth={4.6} strokeLinecap="round" />
+      <path d="M-7 -2q0 2 2 2h10q2 0 2-2v-11l-2.6-3.2v-6.3q0-1.5-1.5-1.5h-5.8q-1.5 0-1.5 1.5v6.3L-7 -13Z" />
+    </g>
+    {sparks && <path d="M21.5 37l-4.4-2.4M42.5 37l4.4-2.4M20.5 31.5l-4-.4" stroke="#ff6b2c" strokeWidth={2.6} strokeLinecap="round" />}
+  </svg>
+);
+
 /* ── 노드 아이콘 — 두 겹(연한 면 + 선). 타일 · 노드 고르기 · 노드 창 머리에 쓴다 ── */
 const soft = { fill: "currentColor", fillOpacity: 0.14, stroke: "none" } as const;
 export const NodeIconWeb = (p: P) => <Svg {...p}><rect x="3" y="4.5" width="18" height="15" rx="2.5" {...soft} /><rect x="3" y="4.5" width="18" height="15" rx="2.5" /><path d="M3 9h18" /><path d="M6 6.8h.01M8.4 6.8h.01" strokeWidth={2.4} /><path d="m12.6 12.2 5.6 2.2-2.4.9-.9 2.4z" fill="currentColor" /></Svg>;
