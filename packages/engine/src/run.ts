@@ -24,6 +24,7 @@ import { Primitives } from "./browser/primitives.ts";
 import { runWebNode, type StepLog } from "./nodes/web-node.ts";
 import { runCustomNode } from "./nodes/custom-node.ts";
 import { runFileWriteNode, type FileStoreOptions } from "./nodes/file-write-node.ts";
+import { runZipNode } from "./nodes/zip-node.ts";
 import { runFileReadNode } from "./nodes/file-read-node.ts";
 import { runExtensionNode } from "./nodes/extension-node.ts";
 import { runFlowCallNode, type CallFlow } from "./nodes/flow-call-node.ts";
@@ -292,6 +293,7 @@ export async function runFlow(flow: Flow, opts: RunOptions = {}): Promise<RunRes
           if (node.type === "flowCall") throw new ProbeStop(node.id, null, "다른 워크플로우 실행 앞에서 멈췄습니다 — 점검은 다른 워크플로우를 돌리지 않습니다");
           if (node.type === "http" && !httpSafe(node.config.method)) throw new ProbeStop(node.id, null, `HTTP ${node.config.method} 요청 앞에서 멈췄습니다 — 점검은 GET · HEAD만 보냅니다`);
           if (node.type === "fileWrite") throw new ProbeStop(node.id, null, "파일 쓰기 노드 앞에서 멈췄습니다 — 점검은 파일을 쓰지 않습니다");
+          if (node.type === "zip") throw new ProbeStop(node.id, null, "압축 노드 앞에서 멈췄습니다 — 점검은 파일을 쓰지 않습니다");
           if (node.type === "approval") throw new ProbeStop(node.id, null, "승인 기다리기 앞에서 멈췄습니다 — 점검은 사람에게 승인을 묻지 않습니다");
           if (node.type === "extension" && opts.extensions?.get(node.config.extension)?.risk !== "safe") throw new ProbeStop(node.id, null, "확장 노드 앞에서 멈췄습니다 — 되돌릴 수 없는 일을 하거나 알 수 없는 확장입니다");
         }
@@ -380,6 +382,12 @@ export async function runFlow(flow: Flow, opts: RunOptions = {}): Promise<RunRes
               retry: { count: flow.settings.retries, delayMs: flow.settings.retryDelayMs },
               log: (text) => { rec.logs.push(text); emit({ kind: "log", nodeId: node.id, text }); },
             });
+            rec.output = output;
+            state.succeed(node.id, output);
+            break;
+          }
+          case "zip": {
+            const output = await runZipNode(node, scope, opts.files, (text) => { rec.logs.push(text); emit({ kind: "log", nodeId: node.id, text }); });
             rec.output = output;
             state.succeed(node.id, output);
             break;

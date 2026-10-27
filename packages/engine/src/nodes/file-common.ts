@@ -3,8 +3,10 @@
  * ★파일은 파일 뿌리(data/files) 아래에만 — 이 플로우 폴더(<uuid>) · 공유 폴더(shared) · 다른 플로우의 폴더.
  * 실제로 다루는 것은 `FileOps` — 서버에서는 디스크, PC 워커에서는 서버에 맡긴다(2026-10-17).
  */
-import { appendFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, posix, resolve, sep } from "node:path";
+import { zipIncludes } from "@flowsmith/core";
+import { writeZip, ZipLimitError } from "../zip.ts";
 
 export interface FileStoreOptions {
   /** 파일 뿌리 — 파일 쓰기 노드는 이 아래에만 쓴다(ops가 없을 때 이 PC의 디스크) */
@@ -32,6 +34,11 @@ export interface FileOps {
   write(path: string, text: string): Promise<void>;
   /** 바이트 그대로 — «파일로 저장»(PDF 같은 것). 폴더가 없으면 만든다 */
   writeBytes(path: string, data: Uint8Array): Promise<void>;
+  /**
+   * 압축(PLAN §52) — srcDir 아래 파일들(include glob · 비우면 모두)을 dest에 zip으로. 파일이 있는 곳에서 한다(PC 워커는 서버에 맡긴다).
+   * 결과 zip 자신 · 쓰다 만 것(.part)은 묶지 않는다 · 쓰다 실패하면 남기지 않는다
+   */
+  zip(srcDir: string, include: string[], dest: string, ifExists: "overwrite" | "fail"): Promise<{ count: number; bytes: number }>;
   append(path: string, text: string): Promise<void>;
   stat(path: string): Promise<FileStat | null>;
   remove(path: string): Promise<void>;
@@ -60,6 +67,34 @@ export function localFileOps(root: string): FileOps {
     read: (path) => readFile(abs(path), "utf8").catch((e) => { if (missing(e)) return null; throw e; }),
     write: async (path, text) => { const p = abs(path); await mkdir(dirname(p), { recursive: true }); await writeFile(p, text, "utf8"); },
     writeBytes: async (path, data) => { const p = abs(path); await mkdir(dirname(p), { recursive: true }); await writeFile(p, data); },
+    zip: async (srcDir, include, dest, ifExists) => {
+      const src = abs(srcDir);
+      const d = abs(dest);
+      const there = await stat(src).catch(() => null);
+      if (!there?.isDirectory()) throw new FileStoreError(`묶을 폴더 「${srcDir}」가 없습니다`);
+      if (ifExists === "fail" && (await stat(d).catch(() => null))) throw new FileStoreError(`「${dest}」가 이미 있습니다 — 덮어쓰려면 «이미 있으면»을 «덮어쓰기»로`);
+      const part = `${d}.part`;
+      const names = (await readdir(src, { recursive: true })).map((n) => String(n).split(sep).join("/")).sort();
+      const entries = [];
+      for (const name of names) {
+        const full = resolve(src, name);
+        if (full === d || full === part || name.endsWith(".part") || !zipIncludes(include, name)) continue;
+        const st = await stat(full).catch(() => null);
+        if (!st?.isFile()) continue;
+        entries.push({ name, mtime: st.mtime, read: () => readFile(full) });
+      }
+      if (entries.length === 0) throw new FileStoreError(`「${srcDir}」에 묶을 파일이 없습니다${include.length ? ` — 포함 규칙 ${include.join(" · ")}` : ""}`);
+      await mkdir(dirname(d), { recursive: true });
+      try {
+        const r = await writeZip(part, entries);
+        await rename(part, d);
+        return r;
+      } catch (e) {
+        await rm(part, { force: true }).catch(() => undefined);
+        if (e instanceof ZipLimitError) throw new FileStoreError(e.message);
+        throw e;
+      }
+    },
     append: async (path, text) => { const p = abs(path); await mkdir(dirname(p), { recursive: true }); await appendFile(p, text, "utf8"); },
     stat: (path) => stat(abs(path)).then((s) => ({ size: s.size, mtimeMs: s.mtimeMs, isFile: s.isFile() }), (e) => { if (missing(e)) return null; throw e; }),
     remove: (path) => rm(abs(path)),

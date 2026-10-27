@@ -1,7 +1,7 @@
 /**
  * 그래프 다루기 — 출력 · 입력 이름 · 넣을 수 있는 값 · 포트 · 순환 미리 보기 · 노드 넣고 잇기.
  */
-import { APPROVAL_OUTPUTS, CHECK_OUTPUTS, BLOCKED_OUTPUTS, BLOCKED_PORT, blockRules, FILE_READ_OUTPUTS, FLOW_CALL_OUTPUTS, HTTP_OUTPUTS, STORE_OUTPUTS, TRANSFORM_OUTPUTS, ELSE_PORT, OUT_PORT, SECRET_PARTS, type ConditionCase, type Flow, type FlowNode, type Ref, parseTemplate } from "@flowsmith/core";
+import { APPROVAL_OUTPUTS, CHECK_OUTPUTS, BLOCKED_OUTPUTS, BLOCKED_PORT, blockRules, FILE_READ_OUTPUTS, FLOW_CALL_OUTPUTS, HTTP_OUTPUTS, STORE_OUTPUTS, TRANSFORM_OUTPUTS, ZIP_OUTPUTS, ELSE_PORT, OUT_PORT, SECRET_PARTS, type ConditionCase, type Flow, type FlowNode, type Ref, parseTemplate } from "@flowsmith/core";
 import { newNode, nextId, type NodeChoice } from "./nodes.ts";
 
 /** 단계 번호(1부터) — 캔버스 위치로 매긴다(왼쪽 → 오른쪽, 같은 열이면 위 → 아래). 공정 카드와 공정 트랙이 같은 번호를 쓴다 */
@@ -22,6 +22,7 @@ export function outputsOf(flow: Flow, nodeId: string, seen = new Set<string>()):
     case "custom": return n.config.outputs;
     case "extension": return n.config.outputs;
     case "fileWrite": return [...STORE_OUTPUTS];
+    case "zip": return [...ZIP_OUTPUTS];
     case "fileRead": return [...FILE_READ_OUTPUTS];
     case "flowCall": return [...FLOW_CALL_OUTPUTS];
     case "http": return [...HTTP_OUTPUTS];
