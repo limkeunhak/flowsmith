@@ -7,7 +7,7 @@
 import { BLOCKED_PORT, OUT_PORT, blockRules, type Edge, type Flow, type FlowNode, type WebAction, type WebNode } from "@flowsmith/core";
 import { nextId } from "./nodes.ts";
 
-const GAP_X = 240;
+const GAP_X = 260;   // 공정 카드 폭(196) + 사이 64 — graph.ts와 같게
 export const HUMAN_NODE_NAME = "사람 기다리기";
 export const OPEN_NODE_NAME = "페이지 접속";
 

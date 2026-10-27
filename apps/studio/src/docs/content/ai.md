@@ -47,7 +47,7 @@ AI는 «어느 단추 · 어느 칸»인지 지어내지 않습니다.
 
 ## 쓸 AI · API 키 — 내 설정
 
-- 왼쪽 아래 **내 설정**에서 **쓸 AI**를 고릅니다 — **Claude (Anthropic)** 또는 **Gemini (Google)**.
+- 위 막대 오른쪽의 **내 설정**(톱니)에서 **쓸 AI**를 고릅니다 — **Claude (Anthropic)** 또는 **Gemini (Google)**.
 - 고른 AI의 **API 키**를 넣습니다 — Claude는 sk-ant-…(console.anthropic.com), Gemini는 AIza… 또는 AQ.…(aistudio.google.com — 2026년부터 AQ.… 형식으로 나옵니다). 키는 AI마다 따로 둡니다.
 - **AI 창 위쪽 줄**에서도 AI(Claude · Gemini)와 모델을 바로 바꿀 수 있습니다 — «내 설정»과 같은 값이라 어느 쪽에서 바꿔도 같이 바뀌고, **다음에 보내는 말부터** 그 모델로 갑니다(대화 중간에 바꿔도 됩니다). 키가 없는 AI는 «(키 없음)»으로 보이고, 오른쪽 «키 넣기»가 «내 설정»으로 데려갑니다.
 - **모델**도 고를 수 있습니다(비우면 기본 — Claude `claude-opus-5-5` · Gemini `gemini-3.8-flash`). Gemini는 모델 이름이 자주 바뀌니, 목록에 없으면 «다른 모델 이름 적기»로 적습니다.

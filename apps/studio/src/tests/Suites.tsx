@@ -5,7 +5,8 @@
 import { useEffect, useState } from "react";
 import { api, ApiError, type SuiteSummary } from "../api.ts";
 import { useMe } from "../shell/me.ts";
-import { IconPlus } from "../icons.tsx";
+import { IconPlus, IconTestTube } from "../icons.tsx";
+import { EmptyState } from "../EmptyState.tsx";
 import { ago } from "../format.ts";
 import { SuiteStatus } from "./SuitePage.tsx";
 
@@ -41,7 +42,7 @@ export function Suites() {
         </form>
       )}
       {list === null ? <div className="empty">불러오는 중…</div> : list.length === 0 ? (
-        <div className="card empty-state"><b>아직 Suite가 없습니다</b><span>검사 노드로 기대값을 정한 워크플로우를 게시한 뒤, Suite를 만들어 시나리오로 넣으세요.</span></div>
+        <EmptyState icon={<IconTestTube size={22} />} title="아직 Suite가 없습니다">검사 노드로 기대값을 정한 워크플로우를 게시한 뒤, 위에서 Suite를 만들어 시나리오로 넣으세요.</EmptyState>
       ) : (
         <div className="suite-list">
           {list.map((s) => (

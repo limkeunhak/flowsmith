@@ -1,45 +1,16 @@
-/* n8n의 틀 · 파랑 — 사이드바 · 노드 타일 · 노드 창 · 실행 중 빛 · 빈 캔버스 · 고르기 · 목록 · 실행 기록 · 좁은 화면 · 로그인 · 팀. ★앞(editor.css)의 것을 덮는다 — 순서를 바꾸지 않는다 */
+/* 틀(2026-10-17에서 이어짐 · 작업대는 workbench.css) — 노드 창 · 빈 캔버스 · 고르기 · 목록 · 실행 기록 · 좁은 화면 · 로그인 · 팀. ★앞(editor.css)의 것을 덮는다 — 순서를 바꾸지 않는다 */
 /* ══ 디자인 — n8n의 틀 · 파랑 (2026-10-17) ══════════════════════════════════════ */
 
-/* 앱 틀 — 왼쪽 사이드바 + 본문 */
-.app { display: grid; grid-template-columns: auto minmax(0, 1fr); height: 100%; }
+/* 앱 틀 — 위 앱 막대(shell/AppBar.tsx · 모양은 workbench.css) + 본문 */
+/* 열은 minmax(0, 1fr) — 비워 두면 안쪽 내용의 최소 폭만큼 늘어나 좁은 화면에서 가로로 밀린다 */
+.app { display: grid; grid-template-rows: auto minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); height: 100%; }
 .app-main { min-width: 0; min-height: 0; overflow: auto; }
-.app-main > .editor { height: 100%; }
-.side { width: 212px; background: var(--side-bg); color: var(--side-text); border-right: 1px solid var(--side-border); display: flex; flex-direction: column; padding: 10px 8px; gap: 2px; transition: width .15s ease; overflow: hidden; }
-.side.folded { width: 60px; }
-.side-brand { display: flex; align-items: center; gap: 10px; padding: 6px 6px 16px; color: var(--side-active-text); font-weight: 700; font-size: 15px; letter-spacing: -.01em; white-space: nowrap; }
-.side-brand:hover { text-decoration: none; }
-/* 브랜드 타일 — 아이콘(BrandMark)과 같은 숯빛. 숯빛 사이드바 위에서도 테두리 한 줄로 타일이 보인다 */
-.side-mark { width: 32px; height: 32px; border-radius: 7px; flex: none; display: grid; place-items: center; overflow: hidden; background: var(--char-800); box-shadow: inset 0 0 0 1px rgb(243 233 220 / .12); }
-.side-nav { display: flex; flex-direction: column; gap: 2px; }
-.side-item { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 7px; color: var(--side-text); font-size: 14px; font-weight: 500; white-space: nowrap; border: none; background: transparent; width: 100%; justify-content: flex-start; }
-.side-item svg { flex: none; color: var(--side-muted); }
-.side-item:hover { background: var(--side-hover) !important; text-decoration: none; color: var(--side-active-text); }
-.side-item.on { background: var(--side-active); color: var(--side-active-text); }
-.side-item.on svg { color: var(--side-accent); }
-.side.folded .side-label { display: none; }
-.side.folded .side-item, .side.folded .side-brand { justify-content: center; padding-left: 0; padding-right: 0; }
-.side-foot { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--side-border); padding-top: 8px; }
-.side-theme { display: flex; gap: 2px; background: var(--side-hover); border-radius: 7px; padding: 2px; }
-.side-theme button { flex: 1; border: none; background: transparent; color: var(--side-muted); padding: 5px 4px; font-size: 12px; justify-content: center; gap: 4px; border-radius: 5px; }
-.side-theme button:hover { color: var(--side-active-text); background: transparent !important; }
-.side-theme button.on { background: var(--side-active); color: var(--side-active-text); }
-.side.folded .side-theme { background: transparent; padding: 0; }
+.app-main > .editor { height: 100%; grid-template-columns: minmax(0, 1fr); }
 
 /* 첫 화면 */
 .page { max-width: 1120px; padding: 28px 32px 48px; }
 .page-head h1 { font-size: var(--fs-24); }
 
-/* 노드 타일 — n8n처럼: 흰 네모 · 얇은 테두리 · 가운데 색 아이콘 · 이름은 아래 · 시작 노드는 왼쪽이 둥글다 */
-.relay-node .tile { background: var(--node-bg); border: 2px solid var(--node-border); border-radius: 10px; box-shadow: var(--shadow-sm); }
-.relay-node:hover .tile { border-color: var(--node-border-hover); }
-.relay-node.is-start .tile { border-radius: 44px 10px 10px 44px; }
-.relay-node .tile .tile-icon { background: transparent; width: auto; height: auto; }
-.relay-node.selected .tile { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft), var(--shadow); }
-.relay-node.st-running .tile { border-color: var(--accent); }
-.relay-node .tile-name { font-size: 14px; }
-.relay-node .react-flow__handle-left { width: 8px; height: 18px; border-radius: 3px; left: -6px; background: var(--node-border); border: none; }
-.relay-node .react-flow__handle-right { background: var(--node-bg); border: 2px solid var(--edge); }
 .relay-edge { stroke-width: 2.2 !important; }
 
 /* 노드 종류 색 — 타일 아이콘 · 고르기 · 서랍 머리 */
@@ -58,40 +29,12 @@
 .canvas .react-flow__background { opacity: .9; }
 
 /* 첫 화면 템플릿 카드 — 파란 띠 */
-.tpl-card { position: relative; overflow: hidden; padding-top: 18px; }
-.tpl-card::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 4px; background: linear-gradient(90deg, var(--ember-600), var(--ember-300)); }
-.tpl-card.blank::before { display: none; }
 .tpl-card:hover { box-shadow: var(--shadow); }
 
-/* ── 노드 창 — n8n처럼 입력 | 설정 | 출력 (2026-10-17) ── */
+/* 단계 작업 시트(옛 노드 창) — workbench.css */
 .work { position: relative; }
-.ndv-backdrop { position: absolute; inset: 0; z-index: 20; background: rgb(23 19 15 / .38); backdrop-filter: blur(1.5px); display: flex; padding: 14px 18px 18px; }
-.ndv { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--bg); border-radius: 12px; box-shadow: var(--shadow-lg); overflow: hidden; border: 1px solid var(--border); }
-.ndv-top { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--panel); border-bottom: 1px solid var(--border); }
-.ndv-cols { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(420px, 520px) minmax(0, 1fr); }
-.ndv-pane { min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--sunken); }
-.ndv-pane-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
-.ndv-pane-head b { font-size: 12px; letter-spacing: .06em; color: var(--muted); }
-.ndv-pane-body { flex: 1; min-height: 0; overflow: auto; padding: 14px; }
-.ndv-empty { color: var(--muted); font-size: 13px; text-align: center; padding: 48px 16px; line-height: 1.7; }
-.ndv-center.drawer { border-left: 1px solid var(--border); border-right: 1px solid var(--border); box-shadow: 0 0 24px rgb(28 25 21 / .08); min-height: 0; flex-direction: column; }
-.ndv-pane .data-table { max-height: none; }
-.ndv-pane pre.json { max-height: none; }
-@media (max-width: 1100px) { .ndv-cols { grid-template-columns: minmax(0, 1fr) minmax(380px, 460px); } .ndv-cols > .ndv-pane:first-child { display: none; } }
 
-/* ── 실행 중 — n8n처럼 테두리를 따라 도는 빛 (2026-10-17) ── */
-@property --ring { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
-.relay-node.st-running .tile { animation: none; border-color: var(--accent-line); }
-.relay-node.st-running .tile::after {
-  content: ""; position: absolute; inset: -5px; border-radius: 14px; padding: 3px; pointer-events: none;
-  background: conic-gradient(from var(--ring), transparent 0 50%, var(--ember-300) 70%, var(--accent) 88%, transparent 100%);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
-  animation: ring 1.1s linear infinite;
-}
-.relay-node.is-start.st-running .tile::after { border-radius: 48px 14px 14px 48px; }
-@keyframes ring { to { --ring: 360deg; } }
-@media (prefers-reduced-motion: reduce) { .relay-node.st-running .tile::after { animation: none; background: var(--accent); } .relay-edge.running { animation: none; } }
+/* 실행 중 — workbench.css(달군 테두리 + 아래 진행 막대) */
 
 /* ── 빈 캔버스 ── */
 .first-step { position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%); z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
@@ -116,8 +59,10 @@
 /* ── 첫 화면 목록 — n8n처럼 (2026-10-17) ── */
 .list-tools { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
 .list-tools .search { width: 300px; max-width: 100%; }
-.flow-icons { display: flex; gap: 4px; width: 132px; flex: none; }
-.flow-icons .mini-tile { width: 28px; height: 28px; border-radius: 7px; }
+/* 노드 아이콘은 겹쳐 쌓는다 — 넷을 나란히 두면 칸이 넓어 이름까지 빈칸이 떴다. 폭은 고정이라 줄마다 이름 자리가 같다 */
+.flow-icons { display: flex; width: 88px; flex: none; }
+.flow-icons .mini-tile { width: 28px; height: 28px; border-radius: 7px; box-shadow: 0 0 0 2px var(--panel); }
+.flow-icons .mini-tile + .mini-tile { margin-left: -8px; }
 .mini-tile.empty { border: 1.5px dashed var(--border-strong); }
 .mini-tile.t-transform { color: var(--tf); background: var(--tf-soft); }
 .mini-tile.t-fileRead, .mini-tile.t-fileWrite { color: var(--file); background: var(--file-soft); }
@@ -151,11 +96,6 @@
 
 /* ── 좁은 화면 ── */
 @media (max-width: 960px) {
-  .side { width: 60px; }
-  .side .side-label { display: none; }
-  .side .side-item, .side .side-brand { justify-content: center; padding-left: 0; padding-right: 0; }
-  .side .side-theme { background: transparent; padding: 0; flex-direction: column; }
-  .side .side-theme button span { display: none; }
   .page { padding: 20px 16px 40px; }
   .crumb, .save-state { display: none; }
   .topbar { grid-template-columns: auto auto 1fr; gap: 6px; padding: 0 8px; }
@@ -163,12 +103,11 @@
   .work.with-drawer > .drawer { position: absolute; right: 0; top: 0; bottom: 0; width: min(460px, 100%); z-index: 15; box-shadow: var(--shadow-lg); }
   .executions { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
   .exec-list { max-height: 34vh; border-right: none; border-bottom: 1px solid var(--border); }
-  .ndv-backdrop { padding: 6px; }
 }
 @media (max-width: 640px) {
-  .page-head { flex-wrap: wrap; }
+  .page-head h1.grow { flex: 1 1 100%; }
   .flow-row { flex-wrap: wrap; gap: 8px; }
-  .flow-icons { width: auto; }
+  .flow-icons { display: none; }   /* 이름이 세 줄로 꺾이지 않게 — 좁은 화면에서는 이름 · 상태가 먼저 */
   .tpl-grid { grid-template-columns: minmax(0, 1fr); }
   .topbar .monitor-btn, .topbar .issue-btn { display: none; }
   .guide { width: calc(100% - 32px); }
@@ -194,18 +133,10 @@
 .avatar.small { width: 26px; height: 26px; font-size: 12px; }
 .user-row.off { opacity: .55; }
 .user-row select { width: auto; }
-.side-me-anchor { position: relative; }
-.side-me-text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.25; min-width: 0; }
-.side-me-text b { font-size: 13px; color: var(--side-active-text); overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
-.side-me-text span { font-size: 11px; color: var(--side-muted); }
-.side-menu { left: 6px; right: auto; bottom: calc(100% + 6px); top: auto; min-width: 220px; color: var(--text); }
 .modal-backdrop { position: fixed; inset: 0; z-index: 60; background: rgb(23 19 15 / .4); display: grid; place-items: center; padding: 16px; }
 .modal { width: min(420px, 100%); padding: 20px; display: flex; flex-direction: column; gap: 12px; }
 .name-modal h2 { margin: 0; font-size: 17px; }
 .readonly-banner { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 6; padding: 6px 14px; font-size: 13px; background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent-line); border-radius: 999px; box-shadow: var(--shadow-sm); max-width: calc(100% - 420px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* 사이드바의 내 메뉴가 사이드바 밖으로 나와 보이게 — 접힐 때 글자는 숨기므로 넘치지 않는다 */
-.side { overflow: visible; }
-.side-menu { z-index: 70; }
 
 /* ── 팀 ── */
 .team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }

@@ -12,18 +12,18 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  applyEdgeChanges, applyNodeChanges, Background, BackgroundVariant, BaseEdge, Controls, EdgeLabelRenderer, getBezierPath, Handle, NodeResizer, Position,
+  applyEdgeChanges, applyNodeChanges, Background, BackgroundVariant, ConnectionLineType, BaseEdge, Controls, EdgeLabelRenderer, getSmoothStepPath, Handle, NodeResizer, Position,
   ReactFlow, ReactFlowProvider, useReactFlow,
   type Connection, type Edge as RFEdge, type EdgeChange, type EdgeProps, type Node as RFNode, type NodeChange, type NodeProps,
 } from "@xyflow/react";
 import { BLOCKED_PORT, NOTE_COLORS, type Flow, type FlowNode, type FlowNote, type NoteColor } from "@flowsmith/core";
 import type { NodeStatus } from "../../api.ts";
-import { canSplitStages, freeSpot, nextId, portsOf, reaches, subtitleOf, type AddRequest } from "../../model/index.ts";
+import { canSplitStages, freeSpot, nextId, portsOf, reaches, stepNumbers, subtitleOf, type AddRequest } from "../../model/index.ts";
 import { IconAlert, IconCheck, IconGear, IconNote, IconPlus, IconSkip, IconTrash, IconX } from "../../icons.tsx";
 import { metaOf } from "../nodeMeta.tsx";
 
 /** start — 들어오는 엣지가 없는 노드(n8n처럼 왼쪽이 둥글다) */
-type Data = { node: FlowNode; status: NodeStatus | null; issues: string[]; connected: string[]; drift: "changed" | "broken" | null; start: boolean; pinned: boolean; ai: "added" | "changed" | null };
+type Data = { node: FlowNode; no: number; status: NodeStatus | null; issues: string[]; connected: string[]; drift: "changed" | "broken" | null; start: boolean; pinned: boolean; ai: "added" | "changed" | null };
 type FNode = RFNode<Data, "relay">;
 type NNode = RFNode<{ note: FlowNote }, "note">;
 type CNode = FNode | NNode;
@@ -90,8 +90,10 @@ function NoteText({ id, text, readOnly, onCommit }: { id: string; text: string; 
   );
 }
 
-const TILE = 96;
-const PORT_GAP = 34;
+/** 공정 카드 — 가로 196 · 높이는 포트 수에 따라(최소 64). 새로 놓는 간격은 graph.ts의 GAP_X(260) */
+const TILE = 64;
+const CARD_W = 196;
+const PORT_GAP = 30;
 
 function StatusBadge({ status }: { status: NodeStatus | null }) {
   if (!status || status === "pending") return null;
@@ -103,7 +105,7 @@ function StatusBadge({ status }: { status: NodeStatus | null }) {
 }
 
 function RelayNode({ data, selected }: NodeProps<FNode>) {
-  const { node, status, issues, connected, drift, start, pinned, ai } = data;
+  const { node, no, status, issues, connected, drift, start, pinned, ai } = data;
   const { readOnly, requestAdd, removeNodes, openNode } = useContext(CanvasCtx);
   const meta = metaOf(node);
   const Icon = meta.icon;
@@ -127,7 +129,12 @@ function RelayNode({ data, selected }: NodeProps<FNode>) {
       )}
       <div className="tile" style={{ height }}>
         <Handle type="target" position={Position.Left} id="in" />
-        <span className="tile-icon"><Icon size={38} strokeWidth={1.7} /></span>
+        <span className="tile-icon"><Icon size={22} strokeWidth={1.8} /></span>
+        <div className="tile-body">
+          <div className="tile-kicker"><span className="tile-no">{String(no).padStart(2, "0")}</span>{start ? "시작 · " : ""}{meta.title}</div>
+          <div className="tile-name" title={node.name}>{node.name}</div>
+          <div className="tile-sub">{subtitleOf(node)}</div>
+        </div>
         <StatusBadge status={status} />
         {drift && <span className={`tile-drift ${drift}`} title={drift === "broken" ? "변경 감시: 요소를 못 찾습니다" : "변경 감시: 요소가 바뀌었습니다"}>{drift === "broken" ? "깨짐" : "바뀜"}</span>}
         {issues.length > 0 && <span className="tile-issue" title={issues.join("\n")}><IconAlert size={15} strokeWidth={2.2} /></span>}
@@ -135,7 +142,16 @@ function RelayNode({ data, selected }: NodeProps<FNode>) {
         {ports.map((p, i) => (
           <div key={p.id} className="port" style={{ top: topOf(i) }}>
             {p.end === null && <Handle type="source" position={Position.Right} id={p.id} style={{ top: 0 }} />}
-            {node.type === "condition" && <span className={`port-label${p.end ? " end" : ""}`}>{p.label}{p.end ? ` → ${p.end}` : ""}</span>}
+            {/* 갈래 이름은 짧게 — 카드 사이(64)를 넘으면 옆 카드 밑으로 겹친다. 전체 문구는 툴팁에 */}
+            {node.type === "condition" && (
+              <span className={`port-label${p.end ? " end" : ""}`} title={p.end ? `${p.label} → ${p.end}` : p.label}>{p.label}</span>
+            )}
+            {/* 끝나는 갈래 — 선 끝에 종료 원(◉). 노드가 아니라 카드에 붙은 그림이라 끌면 같이 움직인다 */}
+            {p.end && (
+              <span className={`port-terminal${p.end.endsWith("실패") ? " fail" : ""}`} title={p.end}>
+                <span className="stub" /><span className="terminal-dot" />
+              </span>
+            )}
             {node.type !== "condition" && p.id === BLOCKED_PORT && (
               <span className="port-label blocked" title="고르면 안 되는 행에 걸리면 이쪽으로 갑니다 — 잇지 않으면 그 자리에서 멈춥니다(실패)">
                 {p.label}{connected.includes(p.id) ? "" : " → 멈춤"}
@@ -152,8 +168,6 @@ function RelayNode({ data, selected }: NodeProps<FNode>) {
           </div>
         ))}
       </div>
-      <div className="tile-name" title={node.name}>{node.name}</div>
-      <div className="tile-sub">{subtitleOf(node)}</div>
     </div>
   );
 }
@@ -161,7 +175,8 @@ function RelayNode({ data, selected }: NodeProps<FNode>) {
 function RelayEdge(props: EdgeProps<FEdge>) {
   const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, markerEnd, selected, data } = props;
   const { readOnly, requestAdd, removeEdge, hoveredEdge, hoverEdge } = useContext(CanvasCtx);
-  const [path, lx, ly] = getBezierPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition });
+  // 직각 · 둥근 모서리(작업대) — 곡선(베지어)은 n8n의 얼굴이었다. offset은 포트에서 꺾이기 전까지 곧게 나가는 길이
+  const [path, lx, ly] = getSmoothStepPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, borderRadius: 10, offset: 18 });
   const show = !readOnly && (hoveredEdge === id || selected);
   const cls = data?.running ? "running" : data?.done ? "done" : "";
   return (
@@ -227,6 +242,7 @@ function Inner({ flow, selected, statuses, issues, drift, pinned, aiMarks, readO
     const connected = new Map<string, string[]>();
     for (const e of flow.edges) connected.set(e.from.node, [...(connected.get(e.from.node) ?? []), e.from.port]);
     const targets = new Set(flow.edges.map((e) => e.to.node));
+    const nos = stepNumbers(flow);
     setNodes((prev) => {
       const old = new Map(prev.map((n) => [n.id, n]));
       // 메모 — 노드 뒤에 깔린다(zIndex). 고른 것은 캔버스가 기억한다(오른쪽 서랍과 상관없다)
@@ -245,7 +261,7 @@ function Inner({ flow, selected, statuses, issues, drift, pinned, aiMarks, readO
           position: o?.dragging ? o.position : n.position,
           selected: n.id === selected,
           draggable: !readOnly,
-          data: { node: n, status: statuses[n.id] ?? null, issues: issues.get(n.id) ?? [], connected: connected.get(n.id) ?? [], drift: drift?.get(n.id) ?? null, start: !targets.has(n.id), pinned: pinned?.has(n.id) ?? false, ai: aiMarks?.get(n.id) ?? null },
+          data: { node: n, no: nos.get(n.id) ?? 0, status: statuses[n.id] ?? null, issues: issues.get(n.id) ?? [], connected: connected.get(n.id) ?? [], drift: drift?.get(n.id) ?? null, start: !targets.has(n.id), pinned: pinned?.has(n.id) ?? false, ai: aiMarks?.get(n.id) ?? null },
         } as FNode;
       })];
     });
@@ -319,7 +335,7 @@ function Inner({ flow, selected, statuses, issues, drift, pinned, aiMarks, readO
   const centerAdd = useCallback(() => {
     const box = wrap.current?.getBoundingClientRect();
     const p = rf.screenToFlowPosition({ x: (box?.left ?? 0) + (box?.width ?? 800) / 2, y: (box?.top ?? 0) + (box?.height ?? 600) / 2 });
-    onRequestAdd({ kind: "at", position: { x: p.x - TILE / 2, y: p.y - TILE / 2 } });
+    onRequestAdd({ kind: "at", position: { x: p.x - CARD_W / 2, y: p.y - TILE / 2 } });
   }, [rf, onRequestAdd]);
 
   const fitted = useRef(false);
@@ -334,7 +350,7 @@ function Inner({ flow, selected, statuses, issues, drift, pinned, aiMarks, readO
     const box = wrap.current?.getBoundingClientRect();
     const tl = rf.screenToFlowPosition({ x: box?.left ?? 0, y: box?.top ?? 0 });
     const br = rf.screenToFlowPosition({ x: (box?.left ?? 0) + (box?.width ?? 800), y: (box?.top ?? 0) + (box?.height ?? 600) });
-    const taken = rf.getNodes().map((n) => ({ x: n.position.x, y: n.position.y, width: n.measured?.width ?? n.width ?? TILE, height: n.measured?.height ?? n.height ?? TILE }));
+    const taken = rf.getNodes().map((n) => ({ x: n.position.x, y: n.position.y, width: n.measured?.width ?? n.width ?? CARD_W, height: n.measured?.height ?? n.height ?? TILE }));
     const size = { width: 260, height: 140 };
     const at = freeSpot(taken, size, { x: tl.x, y: tl.y, width: br.x - tl.x, height: br.y - tl.y });
     onChange((f) => ({ ...f, notes: [...(f.notes ?? []), { id: nextId("m", (f.notes ?? []).map((n) => n.id)), text: "", position: { x: at.x, y: at.y }, ...size, color: "yellow" }] }));
@@ -365,11 +381,14 @@ function Inner({ flow, selected, statuses, issues, drift, pinned, aiMarks, readO
           }}
           nodesConnectable={!readOnly}
           deleteKeyCode={readOnly ? null : ["Delete", "Backspace"]}
-          snapToGrid snapGrid={[20, 20]}
+          snapToGrid snapGrid={[24, 24]}
           minZoom={0.25} maxZoom={2}
           defaultEdgeOptions={{ type: "relay" }}
+          connectionLineType={ConnectionLineType.SmoothStep}
         >
-          <Background variant={BackgroundVariant.Dots} gap={20} size={1.3} />
+          {/* 모눈 — 작은 칸 24 · 큰 칸 120(점 무늬 대신) */}
+          <Background id="minor" variant={BackgroundVariant.Lines} gap={24} lineWidth={1} color="var(--grid-minor)" />
+          <Background id="major" variant={BackgroundVariant.Lines} gap={120} lineWidth={1} color="var(--grid-major)" />
           <Controls showInteractive={false} position="bottom-left" />
         </ReactFlow>
         {menu && (

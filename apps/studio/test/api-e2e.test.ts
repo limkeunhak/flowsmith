@@ -1,5 +1,5 @@
 /**
- * API 화면 e2e — 사이드바에서 열면 Swagger UI가 서버의 명세로 그려지고 «Try it out»이 지금 로그인으로 불린다 ·
+ * API 화면 e2e — 앱 막대에서 열면 Swagger UI가 서버의 명세로 그려지고 «Try it out»이 지금 로그인으로 불린다 ·
  * 내 토큰 만들기(값은 한 번) → 그 토큰으로 밖에서 부르기 → 지우기.
  */
 import { mkdtempSync, rmSync } from "node:fs";
@@ -37,9 +37,9 @@ afterAll(async () => {
 });
 
 describe("API 화면", () => {
-  it("★사이드바 → API 목록(Swagger) → Try it out이 지금 로그인으로 불린다", async () => {
+  it("★앱 막대 → API 목록(Swagger) → Try it out이 지금 로그인으로 불린다", async () => {
     await page.goto(app.url);
-    await page.locator(".side").getByRole("link", { name: "API" }).click();
+    await page.locator(".appbar").getByRole("link", { name: "API" }).click();
     expect(page.url()).toContain("#/api");
     await expect.poll(() => page.locator(".swagger-ui .opblock-tag").count(), { timeout: 15_000 }).toBeGreaterThan(8);
     expect(await page.locator(".swagger-ui .opblock-tag").allInnerTexts()).toEqual(expect.arrayContaining([expect.stringContaining("워크플로우"), expect.stringContaining("API 토큰")]));

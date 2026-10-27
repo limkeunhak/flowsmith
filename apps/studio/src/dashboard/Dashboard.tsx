@@ -10,6 +10,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { NODE_TYPE_LABEL, TRIGGER_LABEL, RUN_STATUS_LABEL } from "@flowsmith/core";
 import { api, ApiError, type DashboardView } from "../api.ts";
+import { EmptyState } from "../EmptyState.tsx";
+import { IconChart } from "../icons.tsx";
 import { Donut, dur, Line, num, pct, StackBars, type Slice } from "./charts.tsx";
 import { dateTime } from "../format.ts";
 import { poll } from "../shell/poll.ts";
@@ -81,7 +83,7 @@ export function Dashboard() {
       <Approvals />
       {error && <div className="banner bad" style={{ marginBottom: 12 }}>{error}</div>}
       {!v || !slices ? <div className="empty">불러오는 중…</div> : v.totals.runs === 0 ? (
-        <div className="card empty-state"><b>이 기간에 실행이 없습니다</b><span>워크플로우를 실행하면 여기에 쌓입니다.</span></div>
+        <EmptyState icon={<IconChart size={22} />} title="이 기간에 실행이 없습니다" action={<a className="button" href="#/">워크플로우로 가기</a>}>워크플로우를 실행하면 여기에 쌓입니다. 기간을 늘려 보거나 워크플로우를 한 번 돌려 보세요.</EmptyState>
       ) : (
         <>
           <div className="dash-stats">

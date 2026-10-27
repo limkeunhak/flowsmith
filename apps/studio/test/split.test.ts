@@ -44,8 +44,8 @@ describe("웹페이지 노드 나누기", () => {
     expect(checkFlow(r.flow)).toEqual([]);
     expect(outputsOf(r.flow, "web1").sort()).toEqual(["amount", "orders"]);
     // 위치 — 오른쪽으로 늘어놓고 뒤 노드는 민다
-    expect(parts.map((p) => p.position.x)).toEqual([100, 340, 580, 820, 1060]);
-    expect(r.flow.nodes.find((n) => n.id === "save")!.position.x).toBe(400 + 4 * 240);
+    expect(parts.map((p) => p.position.x)).toEqual([100, 360, 620, 880, 1140]);
+    expect(r.flow.nodes.find((n) => n.id === "save")!.position.x).toBe(400 + 4 * 260);
     // 원래 초안은 그대로
     expect(web(f, "web1").config.actions).toHaveLength(5);
   });

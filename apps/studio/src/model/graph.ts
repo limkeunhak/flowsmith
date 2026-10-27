@@ -4,6 +4,12 @@
 import { APPROVAL_OUTPUTS, CHECK_OUTPUTS, BLOCKED_OUTPUTS, BLOCKED_PORT, blockRules, FILE_READ_OUTPUTS, FLOW_CALL_OUTPUTS, HTTP_OUTPUTS, STORE_OUTPUTS, TRANSFORM_OUTPUTS, ELSE_PORT, OUT_PORT, SECRET_PARTS, type ConditionCase, type Flow, type FlowNode, type Ref, parseTemplate } from "@flowsmith/core";
 import { newNode, nextId, type NodeChoice } from "./nodes.ts";
 
+/** 단계 번호(1부터) — 캔버스 위치로 매긴다(왼쪽 → 오른쪽, 같은 열이면 위 → 아래). 공정 카드와 공정 트랙이 같은 번호를 쓴다 */
+export function stepNumbers(flow: Flow): Map<string, number> {
+  const order = [...flow.nodes].sort((a, b) => a.position.x - b.position.x || a.position.y - b.position.y);
+  return new Map(order.map((n, i) => [n.id, i + 1]));
+}
+
 /** 노드가 내놓는 출력 이름들 — 초안이 틀려 있어도 계산되게 너그럽게 */
 export function outputsOf(flow: Flow, nodeId: string, seen = new Set<string>()): string[] {
   if (seen.has(nodeId)) return [];
@@ -158,7 +164,7 @@ export type AddRequest =
   | { kind: "between"; edge: string }
   | { kind: "at"; position: { x: number; y: number } };
 
-const GAP_X = 220;
+const GAP_X = 260;   // 공정 카드 폭(196) + 사이 64
 const near = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.abs(a.x - b.x) < 150 && Math.abs(a.y - b.y) < 110;
 
 /** 노드를 넣고 잇는다 — n8n처럼 출력 점 뒤 · 엣지 사이 · 빈 곳 */

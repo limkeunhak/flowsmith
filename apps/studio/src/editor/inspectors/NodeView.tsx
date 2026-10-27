@@ -1,18 +1,19 @@
 /**
- * **노드 창** — n8n의 노드 화면처럼 세 칸: 입력 | 설정 | 출력 (PLAN §21).
+ * **단계 작업 시트** — 작업대(2026-10-27). n8n식 세 칸 창(입력 | 설정 | 출력)을 걷어내고 작업 자리를 통째로 덮는 시트로 (PLAN §21 · §20).
  *
- *   입력  이 노드가 받을(받은) 값 — 마지막 실행에서. 없으면 «앞 단계까지 실행»
- *   설정  노드 종류마다의 설정(inspectors/*) · 녹화 · 문제
- *   출력  이 노드가 내놓은 값 · 기록 · 실패 카드(고치는 단추) — «이 단계까지 실행»
+ *   왼쪽 공정표  단계를 번호 순서로(캔버스 카드 · 공정 트랙과 같은 번호) — 눌러 다른 단계로. 위에 «캔버스로»
+ *   가운데 설정  번호 · 종류 · 이름 · ← 이전 / 다음 → · 노드 종류마다의 설정(inspectors/*) · 녹화 · 문제 — 넓게
+ *   아래 값 대장  받은 값(«앞 단계까지 실행») | 내놓은 값 · 기록 · 실패 카드(«이 단계까지 실행»)
  *
  * ★단계 실행은 **초안**을 그 자리까지만 돌린다(실제 사이트에서 실제로 일어난다 — 되돌릴 수 없는 동작이 있으면 묻는다).
- * ☆가운데 칸은 옛 서랍과 같은 이름표(.drawer)를 단다 — 화면 시험 · 녹화 · 다시 지정이 같은 자리를 찾게.
+ * ☆가운데 설정은 옛 서랍과 같은 이름표(.drawer)를 단다 · 값 대장의 두 칸은 .ndv-pane(받은 값이 첫째, 내놓은 값이 끝) — 화면 시험 · 녹화 · 다시 지정이 같은 자리를 찾게.
  */
 import { useState } from "react";
 import type { Flow, FlowNode, ProbeFinding } from "@flowsmith/core";
 import type { NodeRun } from "../../api.ts";
 import type { Fix } from "../../model/index.ts";
 import { IconArrowLeft, IconPlay, IconTrash, IconX } from "../../icons.tsx";
+import { stepNumbers } from "../../model/index.ts";
 import { NodeSettings } from "./NodeInspector.tsx";
 import { metaOf } from "../nodeMeta.tsx";
 import { canSplitStages } from "../../model/index.ts";
@@ -24,8 +25,10 @@ import { durationText } from "@flowsmith/core";
 export type RunPart = "before" | "after";
 
 
-export function NodeView({ flow, node, run, sample, issues, update, remove, onClose, onRecord, findings, onRepick, onRunPart, running, runError, onFix, pinned = null, onPin, onSplit }: {
+export function NodeView({ flow, node, run, sample, issues, update, remove, onClose, onGo, onRecord, findings, onRepick, onRunPart, running, runError, onFix, pinned = null, onPin, onSplit }: {
   flow: Flow; node: FlowNode;
+  /** 다른 단계로 — 공정표 · 이전/다음 */
+  onGo: (nodeId: string) => void;
   /** 마지막 실행에서 이 노드 — 돌지 않았으면(대기) 출력 칸이 비어 있다 */
   run: NodeRun | null;
   /** 이 노드가 받을 입력 — 돌았으면 받은 것, 아니면 앞 노드들의 출력 */
@@ -52,6 +55,13 @@ export function NodeView({ flow, node, run, sample, issues, update, remove, onCl
   const from = flow.edges.filter((e) => e.to.node === node.id).map((e) => flow.nodes.find((n) => n.id === e.from.node)?.name).filter(Boolean) as string[];
   const ran = run && run.status !== "pending" ? run : null;
   const unsafe = node.type === "web" && node.config.actions.some((a) => a.risk === "unsafe");
+  // 공정표 — 캔버스 위치 순(카드 · 트랙과 같은 번호)
+  const nos = stepNumbers(flow);
+  const order = [...flow.nodes].sort((a, b) => (nos.get(a.id) ?? 0) - (nos.get(b.id) ?? 0));
+  const here = order.findIndex((n) => n.id === node.id);
+  const prev = order[here - 1] ?? null;
+  const next = order[here + 1] ?? null;
+  const no = (id: string) => String(nos.get(id) ?? 0).padStart(2, "0");
   const runAfter = () => {
     if (unsafe && !confirm("이 단계에는 되돌릴 수 없는 동작(제출 · 저장 등)이 있습니다. 실제 사이트에서 실제로 일어납니다. 돌릴까요?")) return;
     onRunPart("after");
@@ -59,33 +69,42 @@ export function NodeView({ flow, node, run, sample, issues, update, remove, onCl
 
   return (
     <div className="ndv-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="ndv" role="dialog" aria-label={`${node.name} 설정`}>
-        <div className="ndv-top">
-          <button className="ghost small" onClick={onClose}><IconArrowLeft size={15} /> 캔버스로</button>
-          <span className="grow" />
-          {runError && <span className="small" style={{ color: "var(--bad)" }} title={runError.join("\n")}>{runError[0]}</span>}
-          <button className="icon-btn" title="닫기 (Esc)" onClick={onClose}><IconX /></button>
-        </div>
-        <div className="ndv-cols">
-          {/* ── 입력 ── */}
-          <section className="ndv-pane">
-            <header className="ndv-pane-head">
-              <b>입력</b>
-              <span className="small muted grow">{from.length ? from.join(" · ") : "첫 단계"}</span>
-              {from.length > 0 && <button className="small" disabled={running} title="앞 단계들만 돌려 이 노드가 받을 값을 봅니다(이 노드는 돌리지 않습니다)" onClick={() => onRunPart("before")}><IconPlay size={12} /> 앞 단계까지 실행</button>}
-            </header>
-            <div className="ndv-pane-body">
-              {sample && Object.keys(sample).length > 0 ? <ResultView value={sample} fileName={`${node.name}-입력`} />
-                : from.length === 0 ? <div className="ndv-empty">첫 단계라 앞에서 받는 값이 없습니다{flow.params.length ? " — 실행 입력은 «워크플로우 실행»에서 넣습니다" : ""}</div>
-                : <div className="ndv-empty">{running ? "도는 중…" : <>아직 받은 값이 없습니다.<br />«앞 단계까지 실행»을 누르면 앞 단계들을 돌려 이 노드가 받을 값을 보여 줍니다.</>}</div>}
-            </div>
-          </section>
-
-          {/* ── 설정 ── */}
-          <section className="ndv-center drawer">
-            <div className="drawer-head">
-              <span className={`mini-tile ${meta.cls}`}><Icon size={18} /></span>
-              <input className="title-input grow" value={node.name} aria-label="노드 이름" onChange={(e) => update((n) => ({ ...n, name: e.target.value }))} />
+      <div className="ndv sheet" role="dialog" aria-label={`${node.name} 설정`}>
+        {/* ── 공정표 ── */}
+        <aside className="sheet-steps">
+          <div className="sheet-steps-top">
+            <button className="ghost small" onClick={onClose}><IconArrowLeft size={15} /> 캔버스로</button>
+            <span className="grow" />
+            <button className="icon-btn" title="닫기 (Esc)" aria-label="닫기" onClick={onClose}><IconX size={16} /></button>
+          </div>
+          <div className="sheet-flow-name" title={flow.name}>{flow.name}</div>
+          <ol className="sheet-step-list" aria-label="단계">
+            {order.map((n) => {
+              const m = metaOf(n);
+              return (
+                <li key={n.id}>
+                  <button className={`sheet-step${n.id === node.id ? " on" : ""}`} aria-current={n.id === node.id ? "step" : undefined} onClick={() => onGo(n.id)}>
+                    <span className="tile-no">{no(n.id)}</span>
+                    <span className={`sheet-step-mark ${m.cls}`} aria-hidden="true" />
+                    <span className="sheet-step-name">{n.name}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </aside>
+        <div className="sheet-main">
+          {runError && <div className="banner bad small sheet-error" title={runError.join("\n")}>{runError[0]}</div>}
+          {/* ── 설정 — 넓게 ── */}
+          <section className="sheet-body drawer">
+            <div className="drawer-head sheet-head">
+              <span className={`mini-tile ${meta.cls}`}><Icon size={20} /></span>
+              <div className="sheet-title grow">
+                <span className="sheet-kicker"><span className="tile-no">{no(node.id)}</span>{meta.title}</span>
+                <input className="title-input" value={node.name} aria-label="노드 이름" onChange={(e) => update((n) => ({ ...n, name: e.target.value }))} />
+              </div>
+              <button className="small" disabled={!prev} title={prev ? `이전 단계 — ${prev.name}` : "첫 단계"} onClick={() => prev && onGo(prev.id)}>← {prev ? no(prev.id) : "—"}</button>
+              <button className="small" disabled={!next} title={next ? `다음 단계 — ${next.name}` : "마지막 단계"} onClick={() => next && onGo(next.id)}>{next ? no(next.id) : "—"} →</button>
               {onSplit && canSplitStages(node) && (
                 <button className="small" title="사람 기다리기마다 노드를 나눕니다 — 페이지 접속 → 사람 기다리기 → 그 뒤 동작. 같은 페이지에서 이어 돌고, 읽은 값도 뒤로 이어집니다" onClick={() => onSplit("stages")}>단계별로 나누기</button>
               )}
@@ -106,10 +125,26 @@ export function NodeView({ flow, node, run, sample, issues, update, remove, onCl
             <div className="drawer-foot small muted">{meta.title} · <span className="mono">{node.id}</span></div>
           </section>
 
-          {/* ── 출력 ── */}
+          {/* ── 값 대장 — 받은 값 | 내놓은 값 ── */}
+          <div className="sheet-dock">
+            {/* ── 받은 값 ── */}
           <section className="ndv-pane">
             <header className="ndv-pane-head">
-              <b>출력</b>
+              <b>받은 값</b>
+              <span className="small muted grow">{from.length ? from.join(" · ") : "첫 단계"}</span>
+              {from.length > 0 && <button className="small" disabled={running} title="앞 단계들만 돌려 이 노드가 받을 값을 봅니다(이 노드는 돌리지 않습니다)" onClick={() => onRunPart("before")}><IconPlay size={12} /> 앞 단계까지 실행</button>}
+            </header>
+            <div className="ndv-pane-body">
+              {sample && Object.keys(sample).length > 0 ? <ResultView value={sample} fileName={`${node.name}-입력`} />
+                : from.length === 0 ? <div className="ndv-empty">첫 단계라 앞에서 받는 값이 없습니다{flow.params.length ? " — 실행 입력은 «워크플로우 실행»에서 넣습니다" : ""}</div>
+                : <div className="ndv-empty">{running ? "도는 중…" : <>아직 받은 값이 없습니다.<br />«앞 단계까지 실행»을 누르면 앞 단계들을 돌려 이 노드가 받을 값을 보여 줍니다.</>}</div>}
+            </div>
+          </section>
+
+            {/* ── 내놓은 값 ── */}
+          <section className="ndv-pane">
+            <header className="ndv-pane-head">
+              <b>내놓은 값</b>
               <span className="small muted grow">{ran ? <><StatusDot status={ran.status} /> {STATUS_TEXT[ran.status]}{ran.ms > 0 ? ` · ${durationText(ran.ms)}` : ""}</> : ""}</span>
               <button className="small primary" disabled={running} title="처음부터 이 노드까지 돌립니다(초안) — 뒤 노드는 돌리지 않습니다" onClick={runAfter}><IconPlay size={12} /> 이 단계까지 실행</button>
             </header>
@@ -147,6 +182,7 @@ export function NodeView({ flow, node, run, sample, issues, update, remove, onCl
               )}
             </div>
           </section>
+          </div>
         </div>
       </div>
     </div>

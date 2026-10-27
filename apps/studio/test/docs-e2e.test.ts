@@ -1,5 +1,5 @@
 /**
- * 가이드 화면 e2e — 사이드바에서 열고 · 목차로 옮기고 · 찾고 · «이 페이지에서» · 이전/다음 · 문서마다 제목이 있다.
+ * 가이드 화면 e2e — 앱 막대에서 열고 · 목차로 옮기고 · 찾고 · «이 페이지에서» · 이전/다음 · 문서마다 제목이 있다.
  */
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -30,9 +30,9 @@ afterAll(async () => {
 });
 
 describe("가이드", () => {
-  it("★사이드바에서 열고 · 목차 · 찾기 · 이 페이지에서 · 다음", async () => {
+  it("★앱 막대에서 열고 · 목차 · 찾기 · 이 페이지에서 · 다음", async () => {
     await page.goto(app.url);
-    await page.locator(".side").getByRole("link", { name: "가이드" }).click();
+    await page.locator(".appbar").getByRole("link", { name: "가이드" }).click();
     await expect.poll(() => page.locator(".doc h1").innerText()).toBe("시작하기");
     expect(await page.locator(".doc table").count()).toBeGreaterThan(0);
 

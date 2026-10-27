@@ -5,7 +5,8 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError, forgetExtensions, type PluginsView, type PluginView, type PluginSourceEntry } from "../api.ts";
-import { IconAlert, IconCheck, IconPlus, IconTrash } from "../icons.tsx";
+import { IconAlert, IconCheck, IconPlus, IconPuzzle, IconTrash } from "../icons.tsx";
+import { EmptyState } from "../EmptyState.tsx";
 import { useMe } from "./me.ts";
 import { ago } from "../format.ts";
 
@@ -44,7 +45,7 @@ export function Plugins() {
       {note && <div className="banner ok" style={{ marginBottom: 12 }}>{note}</div>}
       {v === null ? <div className="empty">불러오는 중…</div> : (
         <div className="stack plugin-page">
-          <div className={`banner ${v.signing.required ? "" : "warn"} small`}>
+          <div className={`banner ${v.signing.required && v.signing.keys.length ? "info" : "warn"} small`}>
             {v.signing.required
               ? v.signing.keys.length ? <>서명된 묶음만 받습니다 — 믿는 키 {v.signing.keys.map((k) => <span key={k.fingerprint} className="pill mono" title={`지문 ${k.fingerprint}`}>{k.name}</span>)}</>
                 : <>서명된 묶음만 받는데 믿는 키가 없습니다 — 서버의 FLOWSMITH_PLUGIN_KEYS에 믿는 키 파일을 주세요</>
@@ -54,7 +55,7 @@ export function Plugins() {
           <Source v={v} admin={admin} busy={busy} act={act} />
 
           <h2 className="section-title">설치된 플러그인</h2>
-          {v.plugins.length === 0 && <div className="card empty-state"><b>설치된 플러그인이 없습니다</b><span>flowsmith-ext build로 만든 묶음(.fspkg)을 올리거나 사내 저장소에서 받으세요.</span></div>}
+          {v.plugins.length === 0 && <EmptyState icon={<IconPuzzle size={22} />} title="설치된 플러그인이 없습니다">flowsmith-ext build로 만든 묶음(.fspkg)을 올리거나 사내 저장소에서 받으세요.</EmptyState>}
           {v.plugins.map((p) => <PluginCard key={p.id} p={p} admin={admin} busy={busy} act={act} />)}
 
           {v.builtIn.length > 0 && <>

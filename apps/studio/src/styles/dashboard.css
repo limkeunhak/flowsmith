@@ -1,7 +1,5 @@
 /* 대시보드 — 숫자 · 차트 · 도넛 · 표 */
 /* ─── 대시보드 ─────────────────────────────────────────────────── */
-.page.dash { max-width: 1280px; }
-.dash .page-head { flex-wrap: wrap; }
 .dash-flow { max-width: 220px; }
 .seg { display: inline-flex; padding: 3px; border-radius: 8px; background: var(--sunken); border: 1px solid var(--border); }
 .seg button { border: none; background: transparent; padding: 4px 12px; border-radius: 6px; font-size: var(--fs-13); color: var(--muted); }
@@ -54,7 +52,6 @@
 @media (max-width: 1100px) { .dash-grid.four { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dash-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 760px) { .dash-grid.two, .dash-grid.four { grid-template-columns: minmax(0, 1fr); } }
 
-.dash .page-head h1 { white-space: nowrap; }
 @media (max-width: 640px) {
   .dash-flow { max-width: none; flex: 1 1 100%; order: 3; }
   .dash-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
