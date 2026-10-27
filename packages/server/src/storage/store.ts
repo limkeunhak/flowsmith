@@ -1,7 +1,7 @@
 /**
  * **저장소** — SQLite (`node:sqlite`). 나중에 Postgres로 옮긴다 (PLAN §4.2).
  *
- *   flow          플로우마다 **초안** 하나 — 고쳐 쓴다. 틀려 있어도 저장된다(편집 중이니까). 묶음(group_name)은 초안 밖의 이름표
+ *   flow          플로우마다 **초안** 하나 — 고쳐 쓴다. 틀려 있어도 저장된다(편집 중이니까). 직접 지정한 화면(group_name)은 초안 밖의 이름표
  *   flow_version  초안을 굳힌 것 — ★검문소를 통과한 것만, 덮어쓰지 않는다
  *   (배포)        flow.active_version — «이 버전을 활성으로»
  *   secret        잠긴 시크릿 값. 평문은 이 파일 어디에도 없다
@@ -13,6 +13,7 @@
  *   suite · suite_run · suite_fire  웹 e2e 테스트 묶음 — 시나리오(게시된 플로우) · 한 번 돈 것(판정) · 일정
  *   run_shot      검사가 불통과였을 때의 페이지 한 장
  *   shared_value  팀 공용 값 — 팀(또는 모두)이 함께 쓰는 변수 · 잠긴 시크릿. 플로우는 제 팀 → 공용 차례로 찾는다
+ *   area          화면 규칙 — 주소 앞부분 → 화면 이름(목록이 이 이름으로 묶는다 · flow.group_name은 틀린 것만 직접 지정)
  *   file_trigger · file_seen  파일이 생기면 — 무엇을 보나 · 이미 본 파일(같은 파일로 두 번 돌지 않게)
  *   team · team_member  팀과 사람 — 플로우는 한 팀에 속한다(flow.team_id, 없으면 «공용» — 모두가 본다)
  *   worker        실행을 받아 가는 PC(젠킨스의 노드) — 라벨 · 동시 실행 수 · 팀 · 토큰 해시. 플로우는 어디서 돌지(flow.run_on),
@@ -35,9 +36,11 @@ import { SharedRepo } from "./shared.ts";
 import { SuiteRepo } from "./suites.ts";
 import { PluginRepo } from "./plugins.ts";
 import { AiRepo } from "./ai.ts";
+import { AreaRepo } from "./areas.ts";
 
 export * from "./types.ts";
 export type { SharedKind, SharedRow } from "./shared.ts";
+export type { AreaRule } from "./areas.ts";
 export type { PluginRow, PluginVersionRow, PluginEvent } from "./plugins.ts";
 export type { Suite, SuiteItem, SuiteRun, SuiteRunItem, SuiteRunStatus, SuiteSchedule, SuiteNotifyRule } from "./suites.ts";
 
@@ -48,6 +51,7 @@ export class Store {
   readonly #people: PeopleRepo;
   readonly #workers: WorkerRepo;
   readonly #shared: SharedRepo;
+  readonly #areas: AreaRepo;
   readonly #suites: SuiteRepo;
   readonly #plugins: PluginRepo;
   readonly #ai: AiRepo;
@@ -63,6 +67,7 @@ export class Store {
     this.#suites = new SuiteRepo(this.#db, (id) => { try { return this.#people.getTeam(id).name; } catch { return null; } });
     this.#plugins = new PluginRepo(this.#db);
     this.#ai = new AiRepo(this.#db);
+    this.#areas = new AreaRepo(this.#db);
   }
 
   /** 확장 플러그인 기록 — run/plugins.ts가 쓴다 */
@@ -179,6 +184,8 @@ export class Store {
   claimSuiteFire: SuiteRepo["claimSuiteFire"] = (...a) => this.#suites.claimSuiteFire(...a);
 
   // ─── 팀 공용 값 (shared.ts) ───────────────────────────────────────
+  listAreas: AreaRepo["listAreas"] = (...a) => this.#areas.listAreas(...a);
+  setAreas: AreaRepo["setAreas"] = (...a) => this.#areas.setAreas(...a);
   listShared: SharedRepo["listShared"] = (...a) => this.#shared.listShared(...a);
   putShared: SharedRepo["putShared"] = (...a) => this.#shared.putShared(...a);
   sealedShared: SharedRepo["sealedShared"] = (...a) => this.#shared.sealedShared(...a);
