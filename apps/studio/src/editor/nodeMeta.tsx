@@ -3,7 +3,7 @@
  * 캔버스 타일 · 노드 고르기 · 노드 창이 같이 쓴다(한 곳에 두어 서로를 가져가지 않게 — 의존 점검 2026-10-17).
  */
 import type { FlowNode, NodeType } from "@flowsmith/core";
-import { NodeIconApproval, NodeIconCall, NodeIconCheck, NodeIconCode, NodeIconExt, NodeIconFileIn, NodeIconFileOut, NodeIconHttp, NodeIconHuman, NodeIconIf, NodeIconOpen, NodeIconTransform, NodeIconWeb } from "../icons.tsx";
+import { NodeIconApproval, NodeIconCall, NodeIconCheck, NodeIconCode, NodeIconExt, NodeIconFileIn, NodeIconFileOut, NodeIconHttp, NodeIconHuman, NodeIconCapture, NodeIconHtml, NodeIconIf, NodeIconOpen, NodeIconTransform, NodeIconWeb } from "../icons.tsx";
 import { webFace } from "../model/split.ts";
 
 export type NodeGroup = "web" | "data" | "flow" | "connect" | "advanced";
@@ -32,6 +32,8 @@ export const NODE_META: Record<NodeType, { title: string; desc: string; icon: ty
 
 /** 웹페이지 노드의 다른 얼굴(속은 웹페이지 노드) — 사람 기다리기뿐 · 페이지 접속만(사용자 요청 2026-10-22 · 노드 나누기) */
 export const HUMAN_META = { title: "사람 기다리기", desc: "로그인 · 본인 인증처럼 사람이 직접 할 일을 기다렸다가 같은 페이지에서 이어 갑니다 — 일정 · 웹훅 실행이면 알림으로 사람을 부릅니다", icon: NodeIconHuman, group: "web" as NodeGroup, keywords: "human wait login 사람 기다리기 로그인 인증 대기 본인 확인 캡차" };
+export const CAPTURE_META = { title: "화면 캡처", desc: "지금 페이지를 그림 파일(PNG · JPEG)로 남깁니다 — 전체 페이지 · 보이는 화면 · 요소 하나, 개인정보는 가려서", icon: NodeIconCapture, group: "web" as NodeGroup, keywords: "capture screenshot 캡처 캡쳐 스크린샷 화면 저장 이미지 그림 png jpg" };
+export const HTML_META = { title: "HTML 추출", desc: "지금 페이지(또는 요소 하나)의 HTML을 파일로 남깁니다 — 따로 열어도 보이게 원래 주소를 붙입니다", icon: NodeIconHtml, group: "web" as NodeGroup, keywords: "html 추출 소스 저장 크롤링 스크랩 scrape dom 페이지 내용" };
 export const OPEN_META = { title: "페이지 접속", desc: "주소를 열기만 합니다 — 뒤 노드가 이 페이지에서 이어서 합니다", icon: NodeIconOpen, group: "web" as NodeGroup, keywords: "" };
 
 /** 캔버스 · 노드 창이 쓸 얼굴 — 노드 종류의 것, 웹페이지면 사람 기다리기 · 페이지 접속 */
@@ -39,5 +41,7 @@ export function metaOf(n: FlowNode): { title: string; icon: typeof NodeIconWeb; 
   const face = webFace(n);
   if (face === "human") return { title: HUMAN_META.title, icon: HUMAN_META.icon, cls: "t-human" };
   if (face === "open") return { title: OPEN_META.title, icon: OPEN_META.icon, cls: "t-web t-open" };
+  if (face === "capture") return { title: CAPTURE_META.title, icon: CAPTURE_META.icon, cls: "t-web" };
+  if (face === "html") return { title: HTML_META.title, icon: HTML_META.icon, cls: "t-web" };
   return { title: NODE_META[n.type].title, icon: NODE_META[n.type].icon, cls: `t-${n.type}` };
 }

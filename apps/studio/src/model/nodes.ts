@@ -23,13 +23,23 @@ export const emptyTarget = (label = ""): Target => ({ label, locators: [{ kind: 
  * 고를 수 있는 것 — 노드 종류, 또는 워커에 설치된 확장.
  * «human»(사람 기다리기)은 따로 된 종류가 아니라 **사람 기다리기 동작 하나만 든 웹페이지 노드**다(앞 페이지에서 이어서) — 캔버스가 따로 그린다(split.ts webFace)
  */
-export type NodeChoice = Exclude<NodeType, "extension"> | "human" | ExtensionMeta;
+export type NodeChoice = Exclude<NodeType, "extension"> | "human" | "capture" | "html" | ExtensionMeta;
 
 export function newNode(choice: NodeChoice, flow: Flow, position: { x: number; y: number }): FlowNode {
   if (choice === "human") {
     const id = nextId("web", flow.nodes.map((n) => n.id));
     const hasWeb = flow.nodes.some((n) => n.type === "web");
     return { id, name: "사람 기다리기", position, type: "web", config: { start: hasWeb ? { kind: "continue" } : { kind: "url", url: "" }, actions: [newAction("human", [])] } };
+  }
+  // 화면 캡처 · HTML 추출 — 앞 페이지에서 이어서 저장 동작 하나(속은 웹페이지 노드)
+  if (choice === "capture" || choice === "html") {
+    const id = nextId("web", flow.nodes.map((n) => n.id));
+    const hasWeb = flow.nodes.some((n) => n.type === "web");
+    const save = newAction("save", []) as Extract<WebAction, { kind: "save" }>;
+    const action: WebAction = choice === "capture"
+      ? { ...save, source: "screenshot", path: "capture/화면.png", skipExisting: false, capture: { area: "full", target: null, format: "png", quality: null, mask: [] } }
+      : { ...save, source: "html", path: "html/페이지.html", skipExisting: false, html: { area: "page", target: null } };
+    return { id, name: choice === "capture" ? "화면 캡처" : "HTML 추출", position, type: "web", config: { start: hasWeb ? { kind: "continue" } : { kind: "url", url: "" }, actions: [action] } };
   }
   if (typeof choice === "object") {
     const id = nextId("ext", flow.nodes.map((n) => n.id));
