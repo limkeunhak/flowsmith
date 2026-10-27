@@ -34,8 +34,8 @@ export function targetOf(a: WebAction): Target | null {
   switch (a.kind) {
     case "readTable": return a.table.rows;
     case "pickRow": return a.pick.rows;
-    case "wait": return a.wait.kind === "visible" || a.wait.kind === "hidden" || a.wait.kind === "filled" ? a.wait.target : null;
-    case "goto": case "closeWindow": return null;
+    case "wait": return "target" in a.wait ? a.wait.target : null;
+    case "goto": case "closeWindow": case "recheck": return null;
     case "press": return a.target;
     // 사람 기다리기 — «이 화면일 때만»이 있으면 그것, 없으면 끝났다는 표시의 요소
     case "human": return a.appears ?? (a.done.kind === "url" ? null : a.done.target);
@@ -49,8 +49,8 @@ export function withTarget(a: WebAction, target: Target): WebAction {
   switch (a.kind) {
     case "readTable": return { ...a, table: { ...a.table, rows: target } };
     case "pickRow": return { ...a, pick: { ...a.pick, rows: target } };
-    case "wait": return a.wait.kind === "visible" || a.wait.kind === "hidden" || a.wait.kind === "filled" ? { ...a, wait: { ...a.wait, target } } : a;
-    case "goto": case "closeWindow": return a;
+    case "wait": return "target" in a.wait ? { ...a, wait: { ...a.wait, target } } : a;
+    case "goto": case "closeWindow": case "recheck": return a;
     case "human": return a.appears ? { ...a, appears: target } : a.done.kind === "url" ? a : { ...a, done: { ...a.done, target } };
     case "walletApprove": return a.done.kind === "url" ? a : { ...a, done: { ...a.done, target } };
     default: return { ...a, target };

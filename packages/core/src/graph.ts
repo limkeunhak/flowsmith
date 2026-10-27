@@ -112,8 +112,11 @@ function targetsOf(n: FlowNode): { where: string; target: Target; click: boolean
       case "fill": case "select": case "check": case "read": case "assert": out.push({ where: w, target: a.target, click: false }); break;
       case "pickRow": out.push({ where: w, target: a.pick.rows, click: false }); break;
       case "press": if (a.target) out.push({ where: w, target: a.target, click: false }); break;
-      case "wait": if (a.wait.kind === "visible" || a.wait.kind === "hidden" || a.wait.kind === "filled") out.push({ where: w, target: a.wait.target, click: false }); break;
-      case "readTable": out.push({ where: w, target: a.table.rows, click: false }); break;
+      case "wait": if ("target" in a.wait) out.push({ where: w, target: a.wait.target, click: false }); break;
+      case "readTable":
+        out.push({ where: w, target: a.table.rows, click: false });
+        if (a.table.empty) out.push({ where: `${w} 빈 표 표시`, target: a.table.empty, click: false });
+        break;
       case "human":
         if (a.appears) out.push({ where: `${w} 이 화면일 때만`, target: a.appears, click: false });
         if (a.done.kind !== "url") out.push({ where: `${w} 끝났다는 표시`, target: a.done.target, click: false });
@@ -121,7 +124,7 @@ function targetsOf(n: FlowNode): { where: string; target: Target; click: boolean
       case "walletApprove":
         if (a.done.kind !== "url") out.push({ where: `${w} 끝났다는 표시`, target: a.done.target, click: false });
         break;
-      case "goto": case "closeWindow": break;
+      case "goto": case "closeWindow": case "recheck": break;
     }
   });
   return out;

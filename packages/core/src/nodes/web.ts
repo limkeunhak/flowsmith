@@ -48,8 +48,14 @@ export type Risk = (typeof RISKS)[number];
 export const READ_STRATEGIES = ["auto", "value", "text", "innerText", "checked", "attribute", "selected", "link"] as const;
 export type ReadStrategy = (typeof READ_STRATEGIES)[number];
 
-export const WAIT_KINDS = ["fixed", "visible", "hidden", "url", "networkIdle", "filled"] as const;
+export const WAIT_KINDS = ["fixed", "visible", "hidden", "url", "networkIdle", "filled", "stable", "changed"] as const;
 export type WaitKind = (typeof WAIT_KINDS)[number];
+
+/**
+ * «값이 그대로일 때까지»의 조용한 시간 — 기본 2초 · 0.3~30초.
+ * NexusFlow 실측(2026-08-18)에서 채우는 도중 멎는 틈이 최대 1초 남짓이었다. 그보다 넉넉하게 잡는다
+ */
+export const STABLE_WAIT = { defaultMs: 2_000, minMs: 300, maxMs: 30_000 } as const;
 
 export type Wait =
   | { kind: "fixed"; ms: number }
@@ -58,7 +64,18 @@ export type Wait =
   | { kind: "url"; pattern: string }
   | { kind: "networkIdle" }
   /** 칸 · 요소에 값이 찰 때까지 — 조회 뒤 결과가 늦게 채워지는 화면 */
-  | { kind: "filled"; target: Target };
+  | { kind: "filled"; target: Target }
+  /**
+   * 값이 ms 동안 그대로일 때까지 — 두 번 바뀌는 칸(금액 · 조회 결과).
+   * ★«찼다»와 «다 됐다»는 다르다. 중간값도 비어 있지 않고 그럴듯하다. 빈 값은 그대로여도 끝으로 치지 않는다
+   */
+  | { kind: "stable"; target: Target; ms: number }
+  /**
+   * 값이 **바로 앞 동작 직전**과 달라질 때까지, 달라지면 다시 그대로일 때까지 — 같은 화면에서 조회를 다시 하는 곳.
+   * 앞 결과가 남아 있으면 «찼다» · «보인다»는 곧바로 통과해 묵은 값을 읽는다.
+   * ★시간이 다 돼도 안 바뀌면 멈추지 않고 이어 간다(두 결과가 정말 같을 수 있다). 그 사실은 실행 기록에 남긴다
+   */
+  | { kind: "changed"; target: Target };
 
 interface ActionBase {
   id: string;
@@ -104,6 +121,11 @@ export type WebAction =
   | (ActionBase & { kind: "readTable"; table: TableTarget; output: string })
   /** 팝업 창을 닫고 연 창으로 돌아간다(닫기 단추가 없을 때) */
   | (ActionBase & { kind: "closeWindow" })
+  /**
+   * **넣은 칸 다시 확인** — 이 노드에서 지금 창에 넣고 · 고르고 · 켠 칸을 다시 읽는다. 지워졌거나 바뀐 칸은 한 번만 다시 넣고,
+   * 그래도 안 맞으면 멈춘다. 늦게 온 조회 응답이 이미 넣은 칸을 지우는 화면에서, 제출 · 계산 단추 바로 앞에 둔다
+   */
+  | (ActionBase & { kind: "recheck" })
   /** 표에서 키 열이 그 값인 행을 찾아 누른다 — 행 번호가 아니라 값으로 찾는다 */
   | (ActionBase & { kind: "pickRow"; pick: RowPick })
   /** 확인 — 화면의 값이 기대와 다르면 **멈춘다**(신원 대조: 다른 고객의 화면이면 더 가지 않는다) */
@@ -124,7 +146,7 @@ export type WebAction =
    */
   | (ActionBase & { kind: "walletApprove"; done: HumanDone });
 
-export const ACTION_KINDS = ["goto", "click", "fill", "select", "check", "press", "wait", "read", "readTable", "closeWindow", "pickRow", "assert", "human", "walletApprove"] as const;
+export const ACTION_KINDS = ["goto", "click", "fill", "select", "check", "press", "wait", "read", "readTable", "closeWindow", "recheck", "pickRow", "assert", "human", "walletApprove"] as const;
 /** MetaMask 승인을 기다리는 시간 — 기본 2분 · 10초~10분 */
 export const WALLET_APPROVE_TIMEOUT = { defaultMs: 2 * 60_000, minMs: 10_000, maxMs: 10 * 60_000 } as const;
 export type ActionKind = WebAction["kind"];
@@ -136,6 +158,16 @@ export interface TableTarget {
   /** 행 안에서의 상대 위치(css) */
   columns: TableColumn[];
   maxRows: number;
+  /**
+   * 빈 표 표시 — 「조회 결과가 없습니다」처럼 행이 없을 때만 보이는 것. 보이면 행을 기다리지 않고 빈 표로 끝낸다
+   * (그 문구가 행 모양으로 그려져도 빈 표다). 없으면 행이 안 나올 때 시간 제한까지 기다린 뒤 빈 표로 본다
+   */
+  empty?: Target;
+  /**
+   * 스크롤 상자(css, 행과 같은 iframe) — 보이는 행만 그리는 표(가상 스크롤)일 때. 맨 위부터 반 화면씩 내리며 읽고,
+   * 앞 묶음과 겹치는 행으로 이어 붙인다. ★겹침이 없으면 행을 건너뛴 것이라 멈춘다. 다 읽으면 스크롤을 원래 자리로 돌린다
+   */
+  scroll?: string;
 }
 
 /**
