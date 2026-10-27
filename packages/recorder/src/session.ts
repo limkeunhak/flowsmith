@@ -547,13 +547,24 @@ export class RecorderSession {
     };
   }
 
-  /** 프레임 경로 — 바깥부터 iframe을 가리키는 css. 각 단계가 정확히 하나여야 한다 */
+  /**
+   * 프레임 경로 — 바깥부터 iframe을 가리키는 css. 각 단계가 정확히 하나여야 한다.
+   * ★이름(name)을 id보다 먼저 쓴다 — iframe의 이름은 화면을 가리키고(WebSquare MDI는 화면 코드 «ZZUF0105U»), id는 열린 차례인 경우가 많다
+   *  («mdi_subWindow1_iframe» — 다른 화면을 먼저 열어 두면 번호가 바뀐다). 둘 다 바뀌어 보이는 글자면 예전대로 id부터 쓴다
+   */
   async #framePath(frame: Frame): Promise<string[]> {
     const path: string[] = [];
     let f = frame;
     for (let parent = f.parentFrame(); parent; parent = f.parentFrame()) {
       const el = await f.frameElement();
-      let sel = await el.evaluate((e: any) => (e.id ? `#${(globalThis as any).CSS.escape(e.id)}` : e.getAttribute("name") ? `iframe[name="${e.getAttribute("name")}"]` : ""));
+      let sel = await el.evaluate((e: any) => {
+        const g = globalThis as any;
+        const shaky = (s: string) => (g.__relayUnstable ? g.__relayUnstable(s) : false);
+        const name = e.getAttribute("name");
+        if (name && !shaky(name)) return `iframe[name="${name.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"]`;
+        if (e.id && !shaky(e.id)) return `#${g.CSS.escape(e.id)}`;
+        return e.id ? `#${g.CSS.escape(e.id)}` : name ? `iframe[name="${name}"]` : "";
+      });
       if (!sel || (await parent.locator(sel).count()) !== 1) sel = await el.evaluate((e: any) => (globalThis as any).__relayCssPath?.(e) ?? "iframe");
       path.unshift(sel);
       f = parent;

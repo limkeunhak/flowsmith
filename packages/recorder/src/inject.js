@@ -102,8 +102,11 @@ function relayRecorder(opts) {
   // ── 위치 후보 ──
   const esc = (s) => CSS.escape(s);
   const q = (s) => s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-  // 매번 바뀌어 보이는 id는 믿지 않는다 — 숫자 덩어리 · 해시 · 프레임워크가 지은 이름
-  const unstable = (s) => /\d{4,}|[0-9a-f]{8,}|^(ember|react|ng|mui|css|jsx|radix|headlessui)[-_:]/i.test(s) || s.includes(":");
+  // 매번 바뀌어 보이는 id는 믿지 않는다 — 숫자 덩어리 · 해시 · 프레임워크가 지은 이름(WebSquare가 그릴 때 붙이는 wq_uuid_N 포함).
+  // ★글자에 바로 붙은 숫자는 화면 코드다 — WebSquare 격자 칸 «grd_cipa0032VOList_cell_0_3»의 cipa0032. 그것만으로 버리면
+  //  구조 경로(#wq_uuid_98 > div:nth-of-type(2) > …)가 남아 오히려 바뀐다(NexusStudio 2026-10-27)
+  const unstable = (s) => /(^|[^a-z])\d{4,}|[0-9a-f]{8,}|^(ember|react|ng|mui|css|jsx|radix|headlessui|wq_uuid)[-_:]/i.test(s) || s.includes(":");
+  window.__relayUnstable = unstable;   // 서버가 iframe 경로를 지을 때도 같은 규칙으로(session.ts #framePath)
   function cssPath(el) {
     const parts = [];
     let cur = el;
