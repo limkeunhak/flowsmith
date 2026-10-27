@@ -213,6 +213,8 @@ export class WorkerAgent {
       list: async (dir) => (await f("list", dir)) as string[],
       read: async (path) => (await f("read", path)) as string | null,
       write: async (path, text) => { await f("write", path, text); },
+      // 바이트는 base64 글로 실어 보낸다(서버가 풀어 쓴다)
+      writeBytes: async (path, data) => { await f("writeBytes", path, Buffer.from(data).toString("base64")); },
       append: async (path, text) => { await f("append", path, text); },
       stat: async (path) => (await f("stat", path)) as Awaited<ReturnType<FileOps["stat"]>>,
       remove: async (path) => { await f("remove", path); },
