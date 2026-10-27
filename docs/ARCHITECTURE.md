@@ -215,14 +215,14 @@ flowsmith/
 | 모듈 | 역할 |
 |---|---|
 | `App.tsx` · `FlowList.tsx` | 주소(해시) 나누기 · 첫 화면(템플릿 · 플로우 목록) |
-| `shell/` | 앱 틀 — 왼쪽 사이드바(플로우 · 템플릿 · 화면 색 · 접기) · 밝게/어둡게(`theme.ts`) |
-| `styles/tokens.css` · `styles/*.css` | 모양은 구역마다 — base · editor · layout(n8n의 틀 — editor를 덮는다) · pages · dashboard · docs, **이 차례로** 불러온다(main.tsx). **색은 tokens.css에서만** — 주황(ember) · 숯빛(char) 눈금 · 의미 토큰(바탕 · 글자 · 강조 · 상태) · 노드 종류 색 · 사이드바. 밝게/어둡게(시스템 · `html[data-theme]`). 컴포넌트 CSS는 이름만 쓴다 |
+| `shell/` | 앱 틀 — 위 앱 막대(`AppBar.tsx` — 길 · API · 가이드 · 화면 색 · 내 설정 · 나) · 밝게/어둡게(`theme.ts`) |
+| `styles/tokens.css` · `styles/*.css` | 모양은 구역마다 — base · editor · layout · pages · dashboard · docs · api · **workbench(작업대 — 맨 끝에서 앞의 것을 덮는다)**, **이 차례로** 불러온다(main.tsx). **색은 tokens.css에서만** — 주황(ember) · 숯빛(char) 눈금 · 의미 토큰(바탕 · 글자 · 강조 · 상태 · 주 단추 --primary · 실행 --run · 모눈) · 노드 종류 색 · 앱 막대(--side-*). 밝게/어둡게(시스템 · `html[data-theme]`). 컴포넌트 CSS는 이름만 쓴다 |
 | `api.ts` | 서버 API 클라이언트(응답 타입 포함) |
 | `model/` | 초안을 고치는 순수 함수 — `nodes`(새 노드 · 새 동작 · normalize) · `describe`(사람 말로) · `graph`(입출력 · 포트 · 값 칩 이름) · `templates`(첫 화면 템플릿) · `guide`(다음 할 일) · `fix`(깨졌을 때 고치기) |
 | `editor/FlowEditor.tsx` | 편집기 셸 — 위쪽 막대 · 캔버스 · 서랍 · 실행 로그 |
 | `editor/canvas/` | 캔버스(노드 · 엣지 · 포트의 ＋) · 노드 고르기(무리별) |
 | `editor/nodeMeta.tsx` | 노드 종류의 얼굴 — 이름 · 설명 · 아이콘 · 무리. 캔버스 · 노드 고르기 · 노드 창이 함께 쓴다 |
-| `editor/inspectors/` | **노드 창**(`NodeView` — n8n처럼 입력 \| 설정 \| 출력, 단계 실행) · 노드 종류마다의 설정(웹 · 조건 · 값 다듬기 · 커스텀 · 확장 · 파일 쓰기 · 파일 읽기 · 다른 플로우 실행 · HTTP) |
+| `editor/inspectors/` | **단계 작업 시트**(`NodeView` — 왼쪽 공정표 · 가운데 설정 · 아래 값 대장(받은 값 \| 내놓은 값), 단계 실행) · 노드 종류마다의 설정(웹 · 조건 · 값 다듬기 · 커스텀 · 확장 · 파일 쓰기 · 파일 읽기 · 다른 플로우 실행 · HTTP) |
 | `editor/record/` | 녹화 패널(녹화한 동작 · 제안 · 다시 지정 · 사람 기다리기 — 표시 고르기 → 직접 로그인(녹화 안 됨) → 끝 표시) |
 | `editor/run/` | 실행 시작 · 실행 로그 · 실행 기록 · 진행 구독(useRun) |
 | `editor/monitor/` | 변경 감시 보고서 · 발견 카드 |

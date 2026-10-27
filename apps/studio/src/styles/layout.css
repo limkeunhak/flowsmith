@@ -31,21 +31,8 @@
 /* 첫 화면 템플릿 카드 — 파란 띠 */
 .tpl-card:hover { box-shadow: var(--shadow); }
 
-/* ── 노드 창 — n8n처럼 입력 | 설정 | 출력 (2026-10-17) ── */
+/* 단계 작업 시트(옛 노드 창) — workbench.css */
 .work { position: relative; }
-.ndv-backdrop { position: absolute; inset: 0; z-index: 20; background: rgb(23 19 15 / .38); backdrop-filter: blur(1.5px); display: flex; padding: 14px 18px 18px; }
-.ndv { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--bg); border-radius: 12px; box-shadow: var(--shadow-lg); overflow: hidden; border: 1px solid var(--border); }
-.ndv-top { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--panel); border-bottom: 1px solid var(--border); }
-.ndv-cols { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(420px, 520px) minmax(0, 1fr); }
-.ndv-pane { min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--sunken); }
-.ndv-pane-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
-.ndv-pane-head b { font-size: 12px; letter-spacing: .06em; color: var(--muted); }
-.ndv-pane-body { flex: 1; min-height: 0; overflow: auto; padding: 14px; }
-.ndv-empty { color: var(--muted); font-size: 13px; text-align: center; padding: 48px 16px; line-height: 1.7; }
-.ndv-center.drawer { border-left: 1px solid var(--border); border-right: 1px solid var(--border); box-shadow: 0 0 24px rgb(28 25 21 / .08); min-height: 0; flex-direction: column; }
-.ndv-pane .data-table { max-height: none; }
-.ndv-pane pre.json { max-height: none; }
-@media (max-width: 1100px) { .ndv-cols { grid-template-columns: minmax(0, 1fr) minmax(380px, 460px); } .ndv-cols > .ndv-pane:first-child { display: none; } }
 
 /* 실행 중 — workbench.css(달군 테두리 + 아래 진행 막대) */
 
@@ -116,7 +103,6 @@
   .work.with-drawer > .drawer { position: absolute; right: 0; top: 0; bottom: 0; width: min(460px, 100%); z-index: 15; box-shadow: var(--shadow-lg); }
   .executions { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
   .exec-list { max-height: 34vh; border-right: none; border-bottom: 1px solid var(--border); }
-  .ndv-backdrop { padding: 6px; }
 }
 @media (max-width: 640px) {
   .page-head h1.grow { flex: 1 1 100%; }

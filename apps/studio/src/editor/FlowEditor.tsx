@@ -404,10 +404,10 @@ export function FlowEditor({ id, runId, panel }: { id: string; runId?: string; p
               openPublish: () => setMenu("publish"),
             })} />
           </Canvas>
-          {/* 노드 창 — n8n처럼 캔버스 위에 세 칸(입력 | 설정 | 출력) */}
+          {/* 단계 작업 시트 — 작업 자리를 덮는다(공정표 · 설정 · 값 대장) */}
           {drawer?.kind === "node" && node && (
             <NodeView key={node.id} flow={draft} node={node} run={nodeRun} sample={sample} issues={issues.get(node.id) ?? []}
-              update={updateNode(node.id)} remove={() => removeNodes([node.id])} onClose={() => setDrawer(null)} onRecord={setRecording}
+              update={updateNode(node.id)} remove={() => removeNodes([node.id])} onClose={() => setDrawer(null)} onGo={(nid) => setDrawer({ kind: "node", id: nid })} onRecord={setRecording}
               findings={monitor.findingsFor(node.id)} onRepick={(actionId) => repick(node.id, actionId)}
               onRunPart={(part) => void runPart(node.id, part)} running={run.view?.status === "running"} runError={run.error} onFix={onFix}
               pinned={detail.pins?.[node.id] ?? null}
