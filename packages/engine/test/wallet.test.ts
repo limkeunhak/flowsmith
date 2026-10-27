@@ -136,3 +136,34 @@ describe("테스트 지갑", () => {
     expect(base({ ...ok, defaultChainId: 9 })).toThrow(/처음 체인 9/);
   });
 });
+
+describe("실행마다 지갑을 고른다 — 두 지갑이 차례를 주고받는 거래(판매자 · 구매자)", () => {
+  const KEY_B = generatePrivateKey();
+  const pick = (secret: string, param: Record<string, unknown> = { name: "wallet", label: "지갑", type: "select", options: ["qa", "qa_b"], default: "qa" }) => parseFlow({
+    schemaVersion: 1, id: "p", name: "p", params: [param],
+    settings: { defaultTimeoutMs: 5000, wallet: { secret, announceAs: "MetaMask", defaultChainId: QA_CHAIN, chains: [{ chainId: QA_CHAIN, name: "QA", rpcUrl, allowTx: false }] } },
+    secrets: [{ name: "qa", kind: "text" }, { name: "qa_b", kind: "text" }],
+    nodes: [{ id: "n", type: "web", name: "마켓", position: { x: 0, y: 0 }, config: { start: { kind: "url", url: dappUrl }, actions: [
+      { id: "c", kind: "click", target: { label: "연결", locators: [{ kind: "css", value: "#connect" }], fingerprint: null, frames: [], verifiedAt: null }, popup: false },
+      { id: "r", kind: "read", output: "me", target: { label: "주소", locators: [{ kind: "css", value: "#connect-ok" }], fingerprint: null, frames: [], verifiedAt: null } },
+    ] } }],
+    edges: [],
+  });
+
+  it("★실행 입력이 고른 시크릿의 키로 · 입력이 없으면 기본값", async () => {
+    const f = pick("{{ $params.wallet }}");
+    const b = await runFlow(f, { browser, params: { wallet: "qa_b" }, secrets: { qa: KEY, qa_b: KEY_B } });
+    expect(b.status, JSON.stringify(b.nodes[0]!.failure)).toBe("success");
+    expect((b.output as Record<string, string>)["me"]).toBe(privateKeyToAccount(KEY_B).address);
+    const a = await runFlow(f, { browser, secrets: { qa: KEY, qa_b: KEY_B } });
+    expect((a.output as Record<string, string>)["me"]).toBe(ADDRESS);
+  }, 60_000);
+
+  it("검문소 — 고르는 입력은 «고르기» · 보기마다 글자 시크릿 · 보기 밖 값은 실행 전에 멈춘다", async () => {
+    expect(() => pick("{{ $params.nope }}")).toThrow(/실행 입력 "nope"이\(가\) 정의되지 않았습니다/);
+    expect(() => pick("{{ $params.wallet }}", { name: "wallet", label: "지갑", type: "text" })).toThrow(/«고르기» 종류여야/);
+    expect(() => pick("{{ $params.wallet }}", { name: "wallet", label: "지갑", type: "select", options: ["qa", "mainnet"] })).toThrow(/시크릿 "mainnet"이\(가\) 정의되지 않았습니다/);
+    // 보기 밖 값은 입력 검사가 막는다 — 다른 시크릿을 끌어오지 못한다
+    await expect(runFlow(pick("{{ $params.wallet }}"), { browser, params: { wallet: "other" }, secrets: { qa: KEY, qa_b: KEY_B } })).rejects.toThrow(/지갑/);
+  });
+});

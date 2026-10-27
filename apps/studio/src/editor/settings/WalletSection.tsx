@@ -5,7 +5,7 @@
  * 키는 시크릿(글자)에 · 체인마다 RPC 주소와 «거래 허용». ★테스트 지갑 · QA 체인 전용.
  */
 import type { Flow, WalletChain, WalletSettings } from "@flowsmith/core";
-import { WALLET_ANNOUNCE } from "@flowsmith/core";
+import { WALLET_ANNOUNCE, walletSecretParam } from "@flowsmith/core";
 import { IconX } from "../../icons.tsx";
 import { Field } from "../widgets.tsx";
 
@@ -31,7 +31,7 @@ export function WalletSection({ flow, update }: { flow: Flow; update: Update }) 
       <>
         <h3>MetaMask 지갑 — 지갑 브라우저</h3>
         <div className="subcard stack" style={{ gap: 8 }}>
-          <SecretPick w={mw} set={set} textSecrets={textSecrets} label="키 시크릿(글자 하나 — 개인키 0x…64자리 또는 복구 문구 12~24 단어)" />
+          <SecretPick w={mw} set={set} flow={flow} textSecrets={textSecrets} label="키 시크릿(글자 하나 — 개인키 0x…64자리 또는 복구 문구 12~24 단어)" />
           <Chains w={mw} set={set} optional />
           <span className="small muted">
             «MetaMask 승인» 동작이 MetaMask 화면을 읽고 연결 · 로그인 서명은 누르고, 체인 추가 · 바꾸기는 위 목록 안만, 거래는 «거래 허용»을 켠 체인만 누릅니다.
@@ -58,7 +58,7 @@ export function WalletSection({ flow, update }: { flow: Flow; update: Update }) 
         <div className="subcard stack" style={{ gap: 8 }}>
           {flow.settings.browser === "attach" && <div className="banner warn small">사람의 크롬에 붙는 워크플로우에는 넣지 않습니다 — 그 크롬의 메타마스크를 쓰고 «사람 기다리기»로 승인하세요</div>}
           <div className="row wrap">
-            <SecretPick w={tw} set={set} textSecrets={textSecrets} label="개인키 시크릿(글자 하나 — 0x…64자리)" />
+            <SecretPick w={tw} set={set} flow={flow} textSecrets={textSecrets} label="개인키 시크릿(글자 하나 — 0x…64자리)" />
             <Field label="사이트에 보이는 이름">
               <select value={tw.announceAs} onChange={(e) => set({ ...tw, announceAs: e.target.value as WalletSettings["announceAs"] })}>
                 {WALLET_ANNOUNCE.map((a) => <option key={a} value={a}>{a}{a === "MetaMask" ? "(isMetaMask · io.metamask)" : ""}</option>)}
@@ -76,17 +76,25 @@ export function WalletSection({ flow, update }: { flow: Flow; update: Update }) 
   );
 }
 
-function SecretPick({ w, set, textSecrets, label }: { w: WalletSettings; set: (w: WalletSettings) => void; textSecrets: Flow["secrets"]; label: string }) {
-  const known = textSecrets.some((s) => s.name === w.secret);
+function SecretPick({ w, set, flow, textSecrets, label }: { w: WalletSettings; set: (w: WalletSettings) => void; flow: Flow; textSecrets: Flow["secrets"]; label: string }) {
+  // 실행마다 고르기 — «고르기» 실행 입력의 보기가 시크릿 이름들(두 지갑이 차례를 주고받는 거래)
+  const choosers = flow.params.filter((p) => p.type === "select");
+  const byParam = walletSecretParam(w.secret);
+  const known = byParam !== null ? choosers.some((p) => p.name === byParam) : textSecrets.some((s) => s.name === w.secret);
+  const missing = byParam !== null ? (choosers.find((p) => p.name === byParam)?.options ?? []).filter((o) => !textSecrets.some((s) => s.name === o)) : [];
   return (
     <>
       <Field label={label}>
         <select value={w.secret} onChange={(e) => set({ ...w, secret: e.target.value })}>
           {!known && <option value={w.secret}>{w.secret} — 아직 정의 안 됨</option>}
           {textSecrets.map((s) => <option key={s.name} value={s.name}>{s.name}{s.description ? ` — ${s.description}` : ""}</option>)}
+          {choosers.map((p) => <option key={p.name} value={`{{ $params.${p.name} }}`}>실행 입력 «{p.label}»으로 고르기</option>)}
         </select>
       </Field>
-      {!known && <span className="small" style={{ color: "var(--warn)" }}>위 «시크릿»에 «글자 하나» 종류로 «{w.secret}»을(를) 만들고 키를 넣으세요</span>}
+      {!known && byParam === null && <span className="small" style={{ color: "var(--warn)" }}>위 «시크릿»에 «글자 하나» 종류로 «{w.secret}»을(를) 만들고 키를 넣으세요</span>}
+      {!known && byParam !== null && <span className="small" style={{ color: "var(--warn)" }}>«고르기» 종류의 실행 입력 «{byParam}»을 만들고 보기에 시크릿 이름들을 넣으세요</span>}
+      {missing.length > 0 && <span className="small" style={{ color: "var(--warn)" }}>보기 {missing.map((m) => `«${m}»`).join(" · ")}가 «글자 하나» 시크릿에 없습니다</span>}
+      {byParam !== null && known && <span className="small muted">실행마다 지갑을 고릅니다 — 판매자 · 구매자가 실행 때 정해지는 거래에서 역할 워크플로우 한 벌을 두 지갑으로 돌립니다. 녹화는 입력의 기본값 지갑으로 합니다.</span>}
     </>
   );
 }

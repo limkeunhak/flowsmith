@@ -14,7 +14,7 @@
 import { readFileSync } from "node:fs";
 import { chromium, type Browser, type BrowserContext, type Dialog, type Frame, type Page } from "playwright";
 import {
-  evaluate, FlowError, parseFlow,
+  evaluate, FlowError, parseFlow, walletSecretName,
   type DialogAnswer, type Flow, type Locator, type Output, type SecretValue, type Target, type WebAction, type WebNode,
 } from "@flowsmith/core";
 import { approveUntil, build, ensureChain, locateOne, Primitives, rootOf, RunInputError, runFlow, runWebNode, startScreencast, toFailure, type Screencast, installWallet } from "@flowsmith/engine";
@@ -180,11 +180,13 @@ export class RecorderSession {
       // 테스트 지갑 — 녹화 · 앞 단계 재생이 같은 지갑을 쓴다(실행과 같게)
       const wallet = req.draft.settings?.wallet;
       if (wallet) {
-        const key = secrets[wallet.secret];
+        // 실행 입력으로 고르는 지갑이면 녹화의 입력(없으면 기본값)으로
+        const secret = walletSecretName(wallet.secret, req.params ?? {}, req.draft.params ?? []);
+        const key = secrets[secret];
         if (typeof key === "string") {
           try { await installWallet(context, wallet, key, { log: (text) => io.send({ t: "progress", text }) }); }
           catch (e) { io.send({ t: "notice", level: "error", text: `테스트 지갑을 달지 못했습니다 — ${(e as Error).message}` }); }
-        } else io.send({ t: "notice", level: "warn", text: `테스트 지갑: 시크릿 «${wallet.secret}»에 개인키가 없어 지갑 없이 녹화합니다` });
+        } else io.send({ t: "notice", level: "warn", text: `테스트 지갑: 시크릿 «${secret}»에 개인키가 없어 지갑 없이 녹화합니다` });
       }
       const page = await context.newPage();
       s = new RecorderSession(context, page, io, forbidden, viewport);

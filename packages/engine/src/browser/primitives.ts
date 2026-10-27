@@ -252,9 +252,26 @@ export class Primitives {
       case "visible":
       case "hidden": {
         const loc = locateAll(this.page, w.target);
-        const ok = await loc.first().waitFor({ state: w.kind, timeout: timeoutMs }).then(() => true, () => false);
-        if (!ok) throw new StepError({ problem: "timeout", message: `${w.target.label}이 ${w.kind === "visible" ? "나타나지" : "사라지지"} 않았습니다 — ${describeLocator(w.target.locators[0]!)}`, label: w.target.label, locator: w.target.locators[0]!, candidates: [] });
-        return null;
+        const until = (ms: number) => loc.first().waitFor({ state: w.kind, timeout: ms }).then(() => true, () => false);
+        const every = w.reloadEveryMs;
+        let ok = false;
+        let reloads = 0;
+        if (!every) ok = await until(timeoutMs);
+        else {
+          // 새로고침하며 — 간격마다 보고, 아니면 다시 연다. 다시 연 뒤에는 화면이 그려질 때까지 조금 둔다
+          // (★«사라질 때까지»는 아직 안 그려진 화면에서도 맞는다 — 그래서 그려지기를 먼저 기다린다)
+          const deadline = Date.now() + timeoutMs;
+          for (;;) {
+            ok = await until(Math.max(1, Math.min(every, deadline - Date.now())));
+            if (ok || Date.now() >= deadline) break;
+            await this.page.reload({ waitUntil: "load", timeout: Math.max(1_000, deadline - Date.now()) }).catch(() => undefined);
+            await this.page.waitForLoadState("networkidle", { timeout: Math.min(5_000, Math.max(1, deadline - Date.now())) }).catch(() => undefined);
+            reloads++;
+          }
+        }
+        const tried = reloads > 0 ? ` — 새로고침 ${reloads}번` : "";
+        if (!ok) throw new StepError({ problem: "timeout", message: `${w.target.label}이 ${w.kind === "visible" ? "나타나지" : "사라지지"} 않았습니다${tried} — ${describeLocator(w.target.locators[0]!)}`, label: w.target.label, locator: w.target.locators[0]!, candidates: [] });
+        return reloads > 0 ? `새로고침 ${reloads}번 만에 ${w.kind === "visible" ? "나타났습니다" : "사라졌습니다"}` : null;
       }
       case "url": await this.page.waitForURL(new RegExp(w.pattern, "u"), { timeout: timeoutMs }); return null;
       case "networkIdle": await this.page.waitForLoadState("networkidle", { timeout: timeoutMs }); return null;

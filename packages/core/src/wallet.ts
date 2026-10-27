@@ -30,7 +30,10 @@ export interface WalletChain {
 export interface WalletSettings {
   /** 방식 — 없으면 inject(옛 매니페스트) */
   mode: WalletMode;
-  /** 키를 담은 시크릿 — 글자 종류. inject: 개인키(0x…64자리) · metamask: 개인키 또는 복구 문구(12 · 15 · 18 · 21 · 24 단어) */
+  /**
+   * 키를 담은 시크릿 — 글자 종류. inject: 개인키(0x…64자리) · metamask: 개인키 또는 복구 문구(12 · 15 · 18 · 21 · 24 단어).
+   * `{{ $params.이름 }}`이면 **실행마다 고른다** — 그 실행 입력(고르기)의 보기가 시크릿 이름들이다(walletSecretName)
+   */
   secret: string;
   /** 사이트에 어떤 지갑으로 보이나(inject만) — MetaMask면 isMetaMask · EIP-6963 rdns io.metamask */
   announceAs: "MetaMask" | "Flowsmith Test Wallet";
@@ -49,6 +52,23 @@ export const WALLET_ANNOUNCE = ["MetaMask", "Flowsmith Test Wallet"] as const;
  */
 export const METAMASK_VERSION = "13.0.0";
 export const METAMASK_SHA256 = "901bae57c92a752168d35643cd225d80716e6eae0f939d3bb812299f4dfb9bee";
+
+const SECRET_PARAM = /^\{\{\s*\$params\.([A-Za-z_][A-Za-z0-9_]*)\s*\}\}$/u;
+
+/**
+ * 지갑 시크릿을 실행 입력으로 고르나 — 그 입력 이름. 두 지갑이 차례를 주고받는 거래(판매자 · 구매자)에서
+ * 역할 워크플로우 한 벌을 지갑마다 돌린다. 역할은 실행 때 정해진다(토큰을 가진 쪽이 판매자)
+ */
+export function walletSecretParam(secret: string): string | null {
+  return SECRET_PARAM.exec(secret.trim())?.[1] ?? null;
+}
+
+/** 이 실행이 쓸 시크릿 이름 — 실행 입력에서 고르면 그 값(없으면 입력의 기본값) */
+export function walletSecretName(secret: string, params: Record<string, string>, defs: readonly { name: string; default?: string }[] = []): string {
+  const p = walletSecretParam(secret);
+  if (p === null) return secret;
+  return (params[p] ?? "").trim() || (defs.find((d) => d.name === p)?.default ?? "").trim();
+}
 
 /** 시크릿의 키가 어떤 꼴인가 — 개인키(0x 없어도) · 복구 문구 · 모름 */
 export function walletKeyKind(key: string): "privateKey" | "mnemonic" | null {
