@@ -232,3 +232,22 @@ export function describePick(p: ReadPick): string {
   const when = p.offset === 0 ? `이번 ${unit}` : p.offset === -1 ? { hour: "지난 시간", day: "어제", month: "지난달" }[p.unit] : `${-p.offset}${unit === "날" ? "일" : unit === "달" ? "달" : "시간"} 전`;
   return `${when} 파일`;
 }
+
+const utf8Bytes = (s: string): number => new TextEncoder().encode(s).length;
+
+/** 경로 마디마다 파일 이름에 못 쓰는 글자를 바꾼다(제목이 그대로 파일 이름이 된다) — 「..」 · 빈 마디도 막는다 */
+export function safeFilePath(rel: string): string {
+  const parts = rel.split("/").filter((p) => p.trim() !== "").map((p) => {
+    let s = p.replace(/[\\:*?"<>|\u0000-\u001f]/gu, "_").replace(/\s+/gu, " ").trim().replace(/[. ]+$/u, "");
+    if (s === "" || s === "." || s === "..") s = "_";
+    // 너무 긴 이름은 자른다(확장자는 남긴다) — 디스크 · 압축 도구가 255바이트를 넘기면 못 다룬다
+    if (utf8Bytes(s) > 180) {
+      const ext = /\.[A-Za-z0-9]{1,8}$/u.exec(s)?.[0] ?? "";
+      let base = s.slice(0, s.length - ext.length);
+      while (utf8Bytes(base + ext) > 180) base = base.slice(0, -1);
+      s = base.trimEnd() + ext;
+    }
+    return s;
+  });
+  return parts.length ? parts.join("/") : "_";
+}

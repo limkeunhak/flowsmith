@@ -7,7 +7,7 @@
  *  노드가 끝날 때 머문 창을 실행기에 알린다 — 다음 노드의 «이어서»가 거기서 시작한다.
  */
 import type { Page } from "playwright";
-import { checkRule, durationText, evaluate, HUMAN_TIMEOUT, WALLET_APPROVE_TIMEOUT, type DialogAnswer, type HumanDone, type Output, type ProbeFinding, type Scope, type Target, type WebAction, type WebNode } from "@flowsmith/core";
+import { checkRule, durationText, evaluate, safeFilePath, HUMAN_TIMEOUT, WALLET_APPROVE_TIMEOUT, type DialogAnswer, type HumanDone, type Output, type ProbeFinding, type Scope, type Target, type WebAction, type WebNode } from "@flowsmith/core";
 import { describeLocator, locateAll } from "../browser/locate.ts";
 import { pause, PROBLEMS, retryable, RunStopped, StepError, toFailure } from "../errors.ts";
 import type { Primitives } from "../browser/primitives.ts";
@@ -163,22 +163,8 @@ function toNumber(v: unknown, label: string): number {
 /** «파일로 저장» — 큰 PDF는 만드는 데 오래 걸린다(Confluence 내보내기). 동작에 시간 제한이 없으면 이만큼 */
 const SAVE_TIMEOUT_MS = 180_000;
 
-/** 경로 마디마다 파일 이름에 못 쓰는 글자를 바꾼다(제목이 그대로 파일 이름이 된다) — 「..」 · 빈 마디도 막는다 */
-export function safeFilePath(rel: string): string {
-  const parts = rel.split("/").filter((p) => p.trim() !== "").map((p) => {
-    let s = p.replace(/[\\:*?"<>|\u0000-\u001f]/gu, "_").replace(/\s+/gu, " ").trim().replace(/[. ]+$/u, "");
-    if (s === "" || s === "." || s === "..") s = "_";
-    // 너무 긴 이름은 자른다(확장자는 남긴다) — 디스크 · 압축 도구가 255바이트를 넘기면 못 다룬다
-    if (Buffer.byteLength(s) > 180) {
-      const ext = /\.[A-Za-z0-9]{1,8}$/u.exec(s)?.[0] ?? "";
-      let base = s.slice(0, s.length - ext.length);
-      while (Buffer.byteLength(base + ext) > 180) base = base.slice(0, -1);
-      s = base.trimEnd() + ext;
-    }
-    return s;
-  });
-  return parts.length ? parts.join("/") : "_";
-}
+// 경로 다듬기는 core(safeFilePath) — 저장한 이름과 그것을 찾는 쪽(사이트 만들기 스크립트)이 같은 규칙을 쓴다
+export { safeFilePath } from "@flowsmith/core";
 
 async function saveFile(
   a: Extract<WebAction, { kind: "save" }>, page: Page, files: FileStoreOptions | undefined,

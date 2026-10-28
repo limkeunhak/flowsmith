@@ -851,3 +851,12 @@ n8n의 노드 화면처럼, 노드를 누르면 캔버스 위에 세 칸이 열�
 사용자: «pdf 추출 워크플로우와 유사하게 html 추출 워크플로우 — 마지막에 압축해서 하나의 파일». `examples/confluence/confluence-html.json`: 로그인 → 페이지 목록(PDF와 같은 찾기) → 목록 CSV → 페이지마다 열어 «파일로 저장 · html»(본문 `#main-content` · 또는 페이지 전체 — 실행 입력 area) → 결과 CSV → **압축(zip)** → 판정(찾음 · 모두 받음 · zip에 묶음).
 - 요소 하나의 HTML에는 원래 페이지의 제목을 `<title>`로 붙인다 — Confluence 본문에는 제목이 없다.
 - 남은 것: 그림 · 첨부는 위키를 가리킨다(로그인한 브라우저에서만 보인다) · 받은 것도 페이지를 연 뒤에 건너뛴다.
+
+## 53. Confluence 클론 사이트 (2026-10-28)
+
+사용자: «추출한 html들을 가지고 클론해서 웹 페이지를 만들 수 있을까» → «진행해줘».
+- **수집(워크플로우)**: confluence-html에 «그림 · 첨부 목록(REST)»(받은 페이지마다 body.view에서 위키 안의 첨부 · 썸네일 · 아이콘 주소 — 겹치면 하나) → «그림 · 첨부 받기»(행마다 반복 · 주소에서 받기 · 로그인한 브라우저로 · `assets/<위키 경로>`). zip에 html · assets · pages.csv · result.csv. 실행 입력 `assets`(all · images).
+- **사이트(스크립트 — `examples/confluence/site/build.ts`)**: 노드가 아니다(Confluence 전용 일). 의존 없이(core · engine을 상대 경로로) — 본문 꺼내기(태그 짝 세기) · 링크 · 그림 다시 쓰기(pageId · /display/제목 · /spaces/…/pages/id · 첨부 · 썸네일→원본) · 스크립트 · on… · base · 위키 CSS 걷어 내기 · 틀(트리 · 경로 · 검색 — file://에서 돌게 데이터는 <script>로) · `--zip`.
+- 경로 다듬기(safeFilePath)를 core로 옮겼다 — 워크플로우가 저장한 이름과 스크립트가 찾는 이름이 같은 규칙이어야 한다.
+- 시험(engine confluence-site.test.ts): 가짜 위키(쿠키가 있어야 그림)에서 워크플로우 끝까지 → 사이트 → file://로 열어 그림이 그려지고 · 첨부 · 페이지 링크가 로컬로 · /display 링크를 누르면 그 파일 · 트리 · 검색 · 첫 화면 링크 · 콘솔 오류 없음.
+- ★사내 위키 내용 — 사내에서만 연다.

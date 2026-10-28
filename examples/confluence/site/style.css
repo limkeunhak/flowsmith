@@ -1,0 +1,72 @@
+/* Confluence 클론 — 틀(머리 · 트리 · 본문)과 위키 본문에 자주 나오는 것(표 · 코드 · 정보 상자 · 펼치기 · 할 일) */
+:root { --bg: #fff; --fg: #172b4d; --muted: #6b778c; --line: #dfe1e6; --side: #f4f5f7; --link: #0052cc; --hl: #deebff; --code: #f4f5f7; }
+@media (prefers-color-scheme: dark) { :root { --bg: #1d2125; --fg: #c7d1db; --muted: #8c9bab; --line: #2c333a; --side: #161a1d; --link: #579dff; --hl: #1c2b41; --code: #22272b; } }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
+a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+a.out::after { content: " ↗"; font-size: 11px; color: var(--muted); }
+
+.top { position: sticky; top: 0; z-index: 5; display: flex; gap: 16px; align-items: center; padding: 10px 20px; background: var(--side); border-bottom: 1px solid var(--line); }
+.brand { font-weight: 700; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40%; }
+#q { margin-left: auto; width: min(360px, 50vw); padding: 6px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--fg); font: inherit; }
+#hits { position: absolute; right: 20px; top: 46px; width: min(520px, 90vw); max-height: 70vh; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.15); padding: 6px; }
+#hits a { display: block; padding: 8px 10px; border-radius: 4px; color: var(--fg); }
+#hits a:hover { background: var(--hl); text-decoration: none; }
+#hits b { display: block; } #hits span { display: block; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: calc(100vh - 50px); }
+#tree { background: var(--side); border-right: 1px solid var(--line); padding: 12px 8px; overflow: auto; position: sticky; top: 50px; height: calc(100vh - 50px); font-size: 13px; }
+#tree ul { list-style: none; margin: 0; padding-left: 14px; }
+#tree > ul { padding-left: 0; }
+#tree li > ul { display: none; } #tree li.open > ul { display: block; }
+#tree li { position: relative; }
+#tree a { display: block; padding: 3px 6px 3px 18px; border-radius: 3px; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tree a.here { background: var(--hl); font-weight: 600; }
+#tree .tog { position: absolute; left: 0; top: 2px; width: 18px; border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0; font-size: 11px; }
+
+main { padding: 24px 40px 60px; max-width: 1100px; }
+.crumbs { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+h1 { font-size: 26px; margin: 4px 0 20px; }
+footer { margin-top: 48px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+.missing { padding: 12px 16px; border-left: 3px solid #ff991f; background: rgba(255,153,31,.08); }
+
+/* ── 위키 본문 ── */
+.wiki img { max-width: 100%; height: auto; }
+.wiki table, .wiki .confluenceTable { border-collapse: collapse; margin: 12px 0; }
+.wiki th, .wiki td, .wiki .confluenceTh, .wiki .confluenceTd { border: 1px solid var(--line); padding: 6px 10px; vertical-align: top; }
+.wiki th, .wiki .confluenceTh { background: var(--side); text-align: left; }
+.wiki .table-wrap { overflow-x: auto; }
+.wiki pre, .wiki code, .wiki .code .codeContent { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
+.wiki pre, .wiki .code, .wiki .preformatted { background: var(--code); border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; overflow-x: auto; }
+.wiki .code pre, .wiki .preformatted pre { border: 0; padding: 0; margin: 0; }
+.wiki .codeHeader { font-weight: 600; margin-bottom: 6px; }
+/* 정보 · 메모 · 경고 · 팁 상자 */
+.wiki .confluence-information-macro { border-radius: 4px; padding: 10px 14px 10px 14px; margin: 12px 0; border: 1px solid var(--line); }
+.wiki .confluence-information-macro-information { background: rgba(0,82,204,.07); border-color: rgba(0,82,204,.3); }
+.wiki .confluence-information-macro-note { background: rgba(255,153,31,.08); border-color: rgba(255,153,31,.4); }
+.wiki .confluence-information-macro-warning { background: rgba(222,53,11,.07); border-color: rgba(222,53,11,.35); }
+.wiki .confluence-information-macro-tip { background: rgba(0,135,90,.07); border-color: rgba(0,135,90,.35); }
+.wiki .confluence-information-macro-icon, .wiki .aui-icon { display: none; }
+.wiki .panel { border: 1px solid var(--line); border-radius: 4px; margin: 12px 0; }
+.wiki .panelHeader { padding: 6px 12px; border-bottom: 1px solid var(--line); font-weight: 600; }
+.wiki .panelContent { padding: 10px 12px; }
+/* 펼치기 — 받은 모습 그대로는 접혀 있다. 클론에서는 펼쳐 보인다 */
+.wiki .expand-content, .wiki .expand-hidden { display: block !important; opacity: 1 !important; height: auto !important; }
+.wiki .expand-control { font-weight: 600; margin-top: 8px; }
+.wiki .expand-control-icon { display: none; }
+/* 상태 표시 · 할 일 */
+.wiki .status-macro, .wiki .aui-lozenge { display: inline-block; padding: 0 6px; border-radius: 3px; font-size: 11px; font-weight: 700; text-transform: uppercase; background: var(--side); border: 1px solid var(--line); }
+.wiki ul.inline-task-list { list-style: none; padding-left: 4px; }
+.wiki ul.inline-task-list > li::before { content: "☐ "; }
+.wiki ul.inline-task-list > li.checked::before { content: "☑ "; }
+.wiki ul.inline-task-list > li.checked { text-decoration: line-through; color: var(--muted); }
+.wiki .user-mention, .wiki .confluence-userlink { background: var(--hl); border-radius: 3px; padding: 0 3px; }
+.wiki .columnLayout { display: flex; gap: 20px; flex-wrap: wrap; } .wiki .columnLayout > .cell { flex: 1 1 260px; min-width: 0; }
+.wiki h1, .wiki h2, .wiki h3 { margin-top: 1.4em; }
+
+@media (max-width: 800px) {
+  .layout { grid-template-columns: 1fr; }
+  #tree { position: static; height: auto; max-height: 40vh; border-right: 0; border-bottom: 1px solid var(--line); }
+  main { padding: 16px; }
+}
+@media print { .top, #tree, footer { display: none; } .layout { display: block; } }
