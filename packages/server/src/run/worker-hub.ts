@@ -263,6 +263,14 @@ export class WorkerHub implements WorkerClient {
       case "write": if (typeof text !== "string") throw new Error("쓸 글이 없습니다"); return f.write(rel, text);
       case "append": if (typeof text !== "string") throw new Error("쓸 글이 없습니다"); return f.append(rel, text);
       case "writeBytes": if (typeof text !== "string") throw new Error("쓸 바이트가 없습니다"); return f.writeBytes(rel, Buffer.from(text, "base64"));
+      case "zip": {
+        // 묶을 폴더는 읽을 수 있는 곳 · 결과는 쓸 수 있는 곳(이 실행의 폴더 · 공유)
+        const o = JSON.parse(String(text)) as { include?: unknown; dest?: unknown; ifExists?: unknown };
+        const dest = rootedPath(String(o.dest ?? ""));
+        if (!dest || !writable.has(dest.split("/")[0]!)) throw new Error(`「${String(o.dest)}」는 이 실행이 쓸 수 없는 곳입니다`);
+        const include = Array.isArray(o.include) ? o.include.map(String) : [];
+        return f.zip(rel, include, dest, o.ifExists === "fail" ? "fail" : "overwrite");
+      }
       case "remove": return f.remove(rel);
       default: throw new Error(`모르는 파일 일입니다 — ${fn}`);
     }

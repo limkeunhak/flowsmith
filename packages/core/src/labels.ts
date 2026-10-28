@@ -5,7 +5,7 @@
 import type { NodeType } from "./flow.ts";
 import type { WebAction } from "./nodes/web.ts";
 
-export const NODE_TYPE_LABEL: Record<NodeType, string> = { web: "웹페이지", condition: "조건", custom: "커스텀", extension: "확장", fileWrite: "파일 쓰기", fileRead: "파일 읽기", flowCall: "다른 워크플로우 실행", http: "HTTP 요청", transform: "값 다듬기", approval: "승인 기다리기", check: "검사" };
+export const NODE_TYPE_LABEL: Record<NodeType, string> = { web: "웹페이지", condition: "조건", custom: "커스텀", extension: "확장", fileWrite: "파일 쓰기", fileRead: "파일 읽기", flowCall: "다른 워크플로우 실행", http: "HTTP 요청", transform: "값 다듬기", approval: "승인 기다리기", check: "검사", zip: "압축(zip)" };
 
 export const ACTION_LABEL: Record<WebAction["kind"], string> = {
   goto: "주소로 가기", click: "누르기", fill: "넣기", select: "고르기", check: "체크",
