@@ -4,15 +4,16 @@
  */
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser } from "playwright";
-import { parseFlow } from "@flowsmith/core";
+import { parseFlow, safeFilePath as coreSafe } from "@flowsmith/core";
 import { runFlow } from "../src/index.ts";
-import { buildSite, linkTarget, mainContent } from "../../../examples/confluence/site/build.ts";
+import { buildSite, checkOut, linkTarget, mainContent, safeFilePath } from "../../../examples/confluence/site/build.ts";
 
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
 const T = (id: string, title: string, anc: string[] = []) => ({ id, title, ancestors: anc.map((t) => ({ title: t })), space: { key: "SP" } });
@@ -127,7 +128,35 @@ describe("Confluence 클론", () => {
     await page.locator("article a", { hasText: "개요로" }).click();
     expect(decodeURIComponent(page.url())).toMatch(/pages\/\[서비스 파트\]\/개요\.html$/);
     expect(errors).toEqual([]);
+
+    // ★입력과 출력이 같으면 · 출력이 입력 안이면 멈추고 수집한 것은 그대로
+    const before = readdirSync(dir).sort();
+    await expect(buildSite(dir, dir)).rejects.toThrow(/입력과 출력이 같은 폴더/);
+    await expect(buildSite(dir, join(dir, "site"))).rejects.toThrow(/출력 폴더가 입력 폴더 안/);
+    await expect(buildSite(dir, root)).rejects.toThrow(/입력 폴더가 출력 폴더 안/);
+    expect(readdirSync(dir).sort()).toEqual(before);
+    // 이 스크립트가 만든 것이 아닌 폴더는 비우지 않는다 · 만든 것은 다시 만든다
+    const other = join(root, "남의 것");
+    mkdirSync(other); writeFileSync(join(other, "중요.txt"), "x");
+    await expect(buildSite(dir, other)).rejects.toThrow(/비어 있지 않습니다/);
+    expect(existsSync(join(other, "중요.txt"))).toBe(true);
+    await expect(buildSite(dir, out)).resolves.toMatchObject({ pages: 4 });
+
+    // ★site/ 폴더만 다른 곳에 복사해 돌린다(저장소 밖 — Flowsmith 코드를 불러오지 않는다)
+    const copy = join(root, "복사본");
+    cpSync(new URL("../../../examples/confluence/site", import.meta.url), copy, { recursive: true });
+    const log = execFileSync(process.execPath, [join(copy, "build.ts"), dir, join(root, "사이트2"), "--zip"], { encoding: "utf8" });
+    expect(log).toMatch(/페이지 4쪽\(받지 못함 0\) · 그림 · 첨부 4개/);
+    expect(existsSync(join(root, "사이트2", "index.html"))).toBe(true);
+    expect(existsSync(join(root, "사이트2.zip"))).toBe(true);
+    const bad = (() => { try { execFileSync(process.execPath, [join(copy, "build.ts"), dir, dir], { encoding: "utf8", stdio: "pipe" }); return ""; } catch (e) { return String((e as { stderr: string }).stderr); } })();
+    expect(bad).toMatch(/멈췄습니다 — 입력과 출력이 같은 폴더/);
   }, 120_000);
+
+  it("경로 다듬기 — 스크립트의 것이 Flowsmith core와 같다(워크플로우가 저장한 이름을 찾는다)", () => {
+    for (const x of ["a/b:c?.pdf", "/a//b/", "../x/./y.html", "[서비스 파트]/운영: 절차?/장애 대응", `${"가".repeat(100)}.html`, "탭\t이름 *.png", "끝점...", "  "]) expect(safeFilePath(x)).toBe(coreSafe(x));
+    expect(() => checkOut("/a/b", "/a/b/")).toThrow(/같은 폴더/);
+  });
 
   it("본문 꺼내기 · 링크 대상", () => {
     expect(mainContent(`<body><div id="x"><div id="main-content"><div>a</div><div>b</div></div><div>밖</div></div></body>`)).toBe(`<div id="main-content"><div>a</div><div>b</div></div>`);

@@ -2,7 +2,7 @@
 /**
  * Confluence HTML 수집 결과 → 로그인 없이 열리는 정적 사이트(PLAN §53).
  *
- *   node examples/confluence/site/build.ts <수집 폴더> <사이트 폴더> [--zip]
+ *   node build.ts <수집 폴더> <사이트 폴더> [--zip]        — 이 폴더(site/)만 복사해 어디서든(Node 24 · 의존 없음)
  *
  *   수집 폴더 — confluence-html 워크플로우의 결과(zip을 푼 것 · 또는 서버의 워크플로우 폴더): pages.csv · html/ · assets/
  *   사이트 폴더 — index.html을 파일로 바로 연다(서버 없이). --zip이면 «사이트 폴더.zip»도 만든다
@@ -12,11 +12,106 @@
  * ★위키 밖 링크 · 받지 못한 그림은 원래 주소로 남긴다(로그인한 브라우저에서만 열린다) — 몇 개인지 알린다.
  * ★사내 위키 내용이다 — 만든 사이트는 사내에서만 연다.
  */
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, posix, relative, resolve, sep } from "node:path";
-import { safeFilePath } from "../../../packages/core/src/index.ts";
-import { parseCsv } from "../../../packages/engine/src/nodes/file-common.ts";
-import { writeZip } from "../../../packages/engine/src/zip.ts";
+import { crc32, deflateRawSync } from "node:zlib";
+
+// ★이 폴더(site/)만 복사해 어디서든 돌게 — Flowsmith 저장소의 코드를 불러오지 않는다(Node 24 · 의존 없음).
+//  아래 셋은 Flowsmith의 것과 같은 규칙이다 — 경로 다듬기는 시험(confluence-site.test.ts)이 core와 같은지 본다
+
+/** 경로 마디마다 파일 이름에 못 쓰는 글자를 바꾼다 — Flowsmith core safeFilePath와 같다(워크플로우가 이 이름으로 저장했다) */
+export function safeFilePath(rel: string): string {
+  const bytes = (x: string) => new TextEncoder().encode(x).length;
+  const parts = rel.split("/").filter((p) => p.trim() !== "").map((p) => {
+    let s = p.replace(/[\\:*?"<>|\u0000-\u001f]/gu, "_").replace(/\s+/gu, " ").trim().replace(/[. ]+$/u, "");
+    if (s === "" || s === "." || s === "..") s = "_";
+    if (bytes(s) > 180) {
+      const ext = /\.[A-Za-z0-9]{1,8}$/u.exec(s)?.[0] ?? "";
+      let base = s.slice(0, s.length - ext.length);
+      while (bytes(base + ext) > 180) base = base.slice(0, -1);
+      s = base.trimEnd() + ext;
+    }
+    return s;
+  });
+  return parts.length ? parts.join("/") : "_";
+}
+
+/** CSV — 따옴표 안의 쉼표 · 줄바꿈 · 「""」 · BOM */
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let quoted = false;
+  const s = text.startsWith("\uFEFF") ? text.slice(1) : text;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i]!;
+    if (quoted) {
+      if (ch === '"' && s[i + 1] === '"') { cell += '"'; i++; } else if (ch === '"') quoted = false; else cell += ch;
+    } else if (ch === '"') quoted = true;
+    else if (ch === ",") { row.push(cell); cell = ""; }
+    else if (ch === "\n" || ch === "\r") { if (ch === "\r" && s[i + 1] === "\n") i++; row.push(cell); rows.push(row); row = []; cell = ""; }
+    else cell += ch;
+  }
+  if (cell !== "" || row.length > 0) { row.push(cell); rows.push(row); }
+  return rows;
+}
+
+/** zip — 한글 이름(UTF-8 표시) · 이미 압축된 것은 그대로 · ZIP64 없음(65,535개 · 4GB까지) */
+async function writeZip(path: string, files: { name: string; full: string }[]): Promise<void> {
+  if (files.length > 65_535) throw new Error(`파일이 ${files.length}개라 zip 하나에 담지 못합니다(65,535개까지)`);
+  const out = createWriteStream(path);
+  let offset = 0;
+  const write = (b: Uint8Array) => new Promise<void>((ok, fail) => { out.write(b, (e) => (e ? fail(e) : ok())); offset += b.length; });
+  const central: Buffer[] = [];
+  try {
+    for (const f of files) {
+      const data = readFileSync(f.full);
+      const packed = /\.(pdf|png|jpe?g|gif|webp|zip|gz|mp4|mov|docx|xlsx|pptx)$/iu.test(f.name) ? null : deflateRawSync(data);
+      const payload = packed && packed.length < data.length ? packed : data;
+      const method = payload === data ? 0 : 8;
+      if (offset + payload.length > 0xffff_ffff) throw new Error("4GB를 넘어 zip 하나에 담지 못합니다");
+      const name = Buffer.from(f.name, "utf8");
+      const d = statSync(f.full).mtime;
+      const time = (d.getHours() << 11) | (d.getMinutes() << 5) | Math.floor(d.getSeconds() / 2);
+      const date = ((Math.max(1980, d.getFullYear()) - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+      const crc = crc32(data) >>> 0;
+      const local = Buffer.alloc(30);
+      local.writeUInt32LE(0x04034b50, 0); local.writeUInt16LE(20, 4); local.writeUInt16LE(0x0800, 6); local.writeUInt16LE(method, 8); local.writeUInt16LE(time, 10); local.writeUInt16LE(date, 12);
+      local.writeUInt32LE(crc, 14); local.writeUInt32LE(payload.length, 18); local.writeUInt32LE(data.length, 22); local.writeUInt16LE(name.length, 26);
+      const at = offset;
+      await write(local); await write(name); await write(payload);
+      const cen = Buffer.alloc(46);
+      cen.writeUInt32LE(0x02014b50, 0); cen.writeUInt16LE(20, 4); cen.writeUInt16LE(20, 6); cen.writeUInt16LE(0x0800, 8); cen.writeUInt16LE(method, 10); cen.writeUInt16LE(time, 12); cen.writeUInt16LE(date, 14);
+      cen.writeUInt32LE(crc, 16); cen.writeUInt32LE(payload.length, 20); cen.writeUInt32LE(data.length, 24); cen.writeUInt16LE(name.length, 28); cen.writeUInt32LE(at, 42);
+      central.push(cen, name);
+    }
+    const cdAt = offset;
+    for (const b of central) await write(b);
+    const end = Buffer.alloc(22);
+    end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(files.length, 8); end.writeUInt16LE(files.length, 10); end.writeUInt32LE(offset - cdAt, 12); end.writeUInt32LE(cdAt, 16);
+    await write(end);
+  } finally {
+    await new Promise<void>((ok) => out.end(ok));
+  }
+}
+
+/** 이 스크립트가 만든 사이트라는 표시 — 다시 만들 때 이것이 있는 폴더만 비운다 */
+const MARK = ".confluence-site";
+
+/**
+ * 출력 폴더를 비워도 되나 — ★입력과 같거나 서로 안에 있으면 · 이 스크립트가 만든 사이트가 아닌데 비어 있지 않으면 멈춘다
+ * (입력과 출력을 같은 폴더로 주면 수집한 것을 지운다)
+ */
+export function checkOut(inDir: string, outDir: string): void {
+  const a = resolve(inDir) + sep;
+  const b = resolve(outDir) + sep;
+  if (a === b) throw new Error(`입력과 출력이 같은 폴더입니다(${resolve(inDir)}) — 사이트는 다른 폴더에 만듭니다. 예: node build.ts ${inDir} ./confluence-site`);
+  if (b.startsWith(a)) throw new Error(`출력 폴더가 입력 폴더 안에 있습니다(${resolve(outDir)}) — 입력 밖의 폴더를 주세요`);
+  if (a.startsWith(b)) throw new Error(`입력 폴더가 출력 폴더 안에 있습니다 — 출력 폴더를 비우면 입력이 지워집니다. 다른 폴더를 주세요`);
+  if (existsSync(outDir) && readdirSync(outDir).length > 0 && !existsSync(join(outDir, MARK))) {
+    throw new Error(`출력 폴더 ${resolve(outDir)}가 비어 있지 않습니다 — 이 스크립트가 만든 사이트가 아니라 비우지 않습니다. 빈 폴더나 없는 폴더를 주세요`);
+  }
+}
 
 export interface SitePage { id: string; title: string; path: string; depth: number; site: string; src: string | null }
 export interface SiteReport { pages: number; missing: string[]; assets: number; external: number; unresolved: string[]; out: string; zip: string | null }
@@ -141,8 +236,10 @@ export async function buildSite(inDir: string, outDir: string, opts: { zip?: boo
     return { id: r[col("id")]!, title: r[col("title")]!, path, depth: Number(r[col("depth")] ?? 0), site: `pages/${safeFilePath(path)}.html`, src: existsSync(src) ? src : null };
   });
   if (pages.length === 0) throw new Error("pages.csv에 페이지가 없습니다");
+  checkOut(inDir, outDir);
   rmSync(outDir, { recursive: true, force: true });
   mkdirSync(outDir, { recursive: true });
+  writeFileSync(join(outDir, MARK), "confluence/site/build.ts가 만든 사이트 — 다시 만들면 이 폴더를 비우고 새로 씁니다\n");
   // 그림 · 첨부 — 그대로 옮긴다
   const assetList = walk(join(inDir, "assets")).map((a) => `assets/${a}`);
   if (assetList.length) cpSync(join(inDir, "assets"), join(outDir, "assets"), { recursive: true });
@@ -183,17 +280,19 @@ export async function buildSite(inDir: string, outDir: string, opts: { zip?: boo
   let zip: string | null = null;
   if (opts.zip) {
     zip = `${resolve(outDir)}.zip`;
-    const files = walk(outDir).sort();
-    await writeZip(zip, files.map((f) => ({ name: f, mtime: statSync(join(outDir, f)).mtime, read: async () => readFileSync(join(outDir, f)) })));
+    const files = walk(outDir).filter((f) => f !== MARK).sort();
+    await writeZip(zip, files.map((f) => ({ name: f, full: join(outDir, f) })));
   }
   return { pages: pages.length, missing, assets: assetList.length, external: seen.external, unresolved: [...seen.unresolved].sort(), out: resolve(outDir), zip };
 }
 
 // 명령으로 부르면
-if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename)) {
+// ★실제 경로로 견준다 — macOS의 /var → /private/var처럼 링크를 거친 경로여도
+const real = (p: string) => { try { return realpathSync(p); } catch { return resolve(p); } };
+if (process.argv[1] && real(process.argv[1]) === real(import.meta.filename)) {
   const args = process.argv.slice(2).filter((a) => !a.startsWith("--"));
-  if (args.length < 2) { console.error("쓰는 법: node examples/confluence/site/build.ts <수집 폴더> <사이트 폴더> [--zip]"); process.exit(2); }
-  const r = await buildSite(args[0]!, args[1]!, { zip: process.argv.includes("--zip") });
+  if (args.length < 2) { console.error("쓰는 법: node build.ts <수집 폴더(zip을 푼 것)> <사이트 폴더(다른 폴더)> [--zip]"); process.exit(2); }
+  const r = await buildSite(args[0]!, args[1]!, { zip: process.argv.includes("--zip") }).catch((e: Error) => { console.error(`멈췄습니다 — ${e.message}`); process.exit(1); });
   console.log(`페이지 ${r.pages}쪽(받지 못함 ${r.missing.length}) · 그림 · 첨부 ${r.assets}개 → ${relative(process.cwd(), r.out) || r.out}${sep}index.html`);
   if (r.zip) console.log(`zip: ${r.zip}`);
   if (r.unresolved.length) console.log(`사이트에 없는 위키 주소 ${r.unresolved.length}곳은 원래 주소로 남겼습니다(로그인한 브라우저에서만 열림) — 예: ${r.unresolved.slice(0, 5).join(" · ")}`);

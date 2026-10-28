@@ -63,6 +63,8 @@ footer { margin-top: 48px; padding-top: 12px; border-top: 1px solid var(--line);
 .wiki .user-mention, .wiki .confluence-userlink { background: var(--hl); border-radius: 3px; padding: 0 3px; }
 .wiki .columnLayout { display: flex; gap: 20px; flex-wrap: wrap; } .wiki .columnLayout > .cell { flex: 1 1 260px; min-width: 0; }
 .wiki h1, .wiki h2, .wiki h3 { margin-top: 1.4em; }
+/* 위키의 화면 기능 — 제목 링크 복사 · 빈 단추는 사이트에서 쓸모가 없다 */
+.wiki .copy-heading-link-container, .wiki button:empty { display: none; }
 
 @media (max-width: 800px) {
   .layout { grid-template-columns: 1fr; }
