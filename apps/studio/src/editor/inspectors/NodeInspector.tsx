@@ -5,9 +5,10 @@
  *  레코더가 못 잡는 동작(기다리기 등)을 더하는 자리다.
  */
 import {
-  type ApprovalNode, type CheckNode, type ConditionNode, type CustomNode, type Flow, type FlowNode, type ExtensionNode, type FileWriteNode, type FileReadNode, type FlowCallNode, type HttpNode, type TransformNode, type ProbeFinding, type WebNode,
+  type ApprovalNode, type CheckNode, type ConditionNode, type CustomNode, type Flow, type FlowNode, type ExtensionNode, type FileWriteNode, type FileReadNode, type FlowCallNode, type HttpNode, type TransformNode, type ProbeFinding, type WebNode, type ZipNode,
 } from "@flowsmith/core";
 import { FileWriteInspector } from "./FileWriteInspector.tsx";
+import { ZipInspector } from "./ZipInspector.tsx";
 import { FileReadInspector } from "./FileReadInspector.tsx";
 import { FlowCallInspector } from "./FlowCallInspector.tsx";
 import { HttpInspector } from "./HttpInspector.tsx";
@@ -38,6 +39,7 @@ export function NodeSettings({ flow, node, update, findings = [], onRepick, samp
       {node.type === "check" && <CheckInspector flow={flow} node={node} update={update as Update<CheckNode>} />}
       {node.type === "approval" && <ApprovalInspector flow={flow} node={node} update={update as Update<ApprovalNode>} />}
       {node.type === "fileWrite" && <FileWriteInspector flow={flow} node={node} update={update as Update<FileWriteNode>} />}
+      {node.type === "zip" && <ZipInspector flow={flow} node={node} update={update as Update<ZipNode>} />}
     </div>
   );
 }

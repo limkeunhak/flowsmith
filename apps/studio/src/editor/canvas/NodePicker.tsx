@@ -12,7 +12,7 @@ import { HUMAN_META, NODE_GROUPS, NODE_META } from "../nodeMeta.tsx";
 
 export { NODE_META } from "../nodeMeta.tsx";
 
-const BASIC: Exclude<NodeType, "extension">[] = ["web", "transform", "fileWrite", "fileRead", "condition", "flowCall", "http", "custom"];
+const BASIC: Exclude<NodeType, "extension">[] = ["web", "transform", "fileWrite", "fileRead", "zip", "condition", "flowCall", "http", "custom"];
 /** 웹에서 무리에 함께 — 사람 기다리기(속은 웹페이지 노드 · model/nodes.ts newNode("human")) */
 const showHuman = (hit: (t: string) => boolean) => hit(`${HUMAN_META.title} ${HUMAN_META.desc} ${HUMAN_META.keywords}`);
 

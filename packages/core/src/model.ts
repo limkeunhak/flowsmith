@@ -8,6 +8,7 @@ export * from "./nodes/condition.ts";
 export * from "./nodes/custom.ts";
 export * from "./nodes/extension.ts";
 export * from "./nodes/file.ts";
+export * from "./nodes/zip.ts";
 export * from "./nodes/flow-call.ts";
 export * from "./nodes/http.ts";
 export * from "./nodes/transform.ts";

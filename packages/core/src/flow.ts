@@ -11,6 +11,7 @@ import type { ConditionConfig } from "./nodes/condition.ts";
 import type { CustomConfig } from "./nodes/custom.ts";
 import type { ExtensionConfig } from "./nodes/extension.ts";
 import type { FileReadConfig, StoreConfig } from "./nodes/file.ts";
+import type { ZipConfig } from "./nodes/zip.ts";
 import type { FlowCallConfig } from "./nodes/flow-call.ts";
 import type { HttpConfig } from "./nodes/http.ts";
 import type { TransformConfig } from "./nodes/transform.ts";
@@ -214,7 +215,7 @@ export type BrowserMode = (typeof BROWSER_MODES)[number];
 
 // ─── 노드 ──────────────────────────────────────────────────────────
 
-export const NODE_TYPES = ["web", "condition", "custom", "extension", "fileWrite", "fileRead", "flowCall", "http", "transform", "approval", "check"] as const;
+export const NODE_TYPES = ["web", "condition", "custom", "extension", "fileWrite", "fileRead", "flowCall", "http", "transform", "approval", "check", "zip"] as const;
 export type NodeType = (typeof NODE_TYPES)[number];
 
 export interface NodeBase {
@@ -248,6 +249,12 @@ export interface ExtensionNode extends NodeBase {
 export interface FileWriteNode extends NodeBase {
   type: "fileWrite";
   config: StoreConfig;
+}
+
+/** 압축 — 폴더의 파일들을 zip 하나로 (nodes/zip.ts) */
+export interface ZipNode extends NodeBase {
+  type: "zip";
+  config: ZipConfig;
 }
 
 /** 파일 읽기 — 파일 쓰기 노드가 쓴 것을 읽는다 (nodes/file.ts) */
@@ -285,7 +292,7 @@ export interface CheckNode extends NodeBase {
   type: "check";
   config: CheckConfig;
 }
-export type FlowNode = WebNode | ConditionNode | CustomNode | ExtensionNode | FileWriteNode | FileReadNode | FlowCallNode | HttpNode | TransformNode | ApprovalNode | CheckNode;
+export type FlowNode = WebNode | ConditionNode | CustomNode | ExtensionNode | FileWriteNode | FileReadNode | FlowCallNode | HttpNode | TransformNode | ApprovalNode | CheckNode | ZipNode;
 
 /** 출력 포트 이름. 조건 노드는 갈래 id와 `else`, 나머지는 `out` 하나. */
 export const OUT_PORT = "out";

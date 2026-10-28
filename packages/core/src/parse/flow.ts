@@ -16,7 +16,7 @@ import { parseCron } from "../cron.ts";
 import { Checker, FlowError, isObj } from "./checker.ts";
 import { webConfig } from "./web.ts";
 import { conditionConfig } from "./condition.ts";
-import { approvalConfig, checkConfig, customConfig, extensionConfig, fileReadConfig, flowCallConfig, httpConfig, storeConfig, transformConfig } from "./nodes.ts";
+import { approvalConfig, checkConfig, customConfig, extensionConfig, fileReadConfig, flowCallConfig, httpConfig, storeConfig, transformConfig, zipConfig } from "./nodes.ts";
 
 export const DEFAULT_SETTINGS: FlowSettings = {
   forbiddenLabels: [],
@@ -58,6 +58,7 @@ function node(c: Checker, v: unknown, i: number): FlowNode {
     case "transform": return { id, name, position, type, config: transformConfig(c, cfg, where) };
     case "approval": return { id, name, position, type, config: approvalConfig(c, cfg, where) };
     case "check": return { id, name, position, type, config: checkConfig(c, cfg, where) };
+    case "zip": return { id, name, position, type, config: zipConfig(c, cfg, where) };
   }
 }
 

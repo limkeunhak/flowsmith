@@ -8,6 +8,7 @@ import {
 import {
   badDir, badFileName, READ_SCOPES, SEQUENCE_EVERY, STORE_FORMATS, STORE_SCOPES, type FileReadConfig, type ReadPick, STORE_KINDS, TIME_UNITS, WRITE_MODES, type Rolling, type StoreConfig,
 } from "../nodes/file.ts";
+import { ZIP_IF_EXISTS, type ZipConfig } from "../nodes/zip.ts";
 import { isSingleRefTemplate } from "../expr.ts";
 import { Checker, ID_RE, NAME_RE, type Obj } from "./checker.ts";
 
@@ -230,4 +231,29 @@ export function checkConfig(c: Checker, o: Obj, where: string): CheckConfig {
   if (Array.isArray(o["items"]) && items.length === 0) c.fail(where, "검사 항목이 하나도 없습니다");
   c.noDup(items.map((x) => x.id), "검사 항목 id", where);
   return { items };
+}
+
+export function zipConfig(c: Checker, o: Obj, where: string): ZipConfig {
+  const fw = `${where}.from`;
+  const f = c.obj(o["from"] ?? {}, fw);
+  const tw = `${where}.to`;
+  const t = c.obj(o["to"] ?? {}, tw);
+  // 폴더 · 이름에 표현식이 들 수 있다 — 표현식 밖의 글자만 본다(돌 때 엔진이 다시 본다)
+  const plain = (s: string) => s.replace(/\{\{[\s\S]*?\}\}/gu, "x");
+  const fromDir = c.str(f, "dir", fw, "");
+  if (badDir(plain(fromDir))) c.fail(fw, badDir(plain(fromDir))!);
+  const toDir = c.str(t, "dir", tw, "");
+  if (badDir(plain(toDir))) c.fail(tw, badDir(plain(toDir))!);
+  const name = c.text(t, "name", tw);
+  const badName = name.trim() !== "" ? badFileName(plain(name)) : null;
+  if (badName) c.fail(tw, badName);
+  const include = f["include"] == null ? [] : c.arr(f, "include", fw).map((x, i) => {
+    if (typeof x !== "string") { c.fail(`${fw}.include[${i}]`, "규칙은 글자입니다"); return ""; }
+    return x.trim();
+  }).filter((x) => x !== "");
+  return {
+    from: { scope: c.oneOf(STORE_SCOPES, f, "scope", fw, "flow"), dir: fromDir, include },
+    to: { scope: c.oneOf(STORE_SCOPES, t, "scope", tw, "flow"), dir: toDir, name },
+    ifExists: c.oneOf(ZIP_IF_EXISTS, o, "ifExists", where, "overwrite"),
+  };
 }
