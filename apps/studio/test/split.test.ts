@@ -92,4 +92,17 @@ describe("웹페이지 노드 나누기", () => {
     const g = guideItems(split, [], [], null, { openNode: () => {}, run: () => {}, publish: () => {} } as never).find((x) => x.id === `rec-${open.id}`)!;
     expect(g).toMatchObject({ text: "「페이지 접속」 — 시작 주소 넣기", done: true });
   });
+
+  it("★노드 고르기의 «화면 캡처» · «HTML 추출» — 저장 동작 하나만 든 웹페이지 노드(앞 페이지에서 이어서) · 검문소 통과", () => {
+    const f = flow();
+    for (const [choice, source, face] of [["capture", "screenshot", "capture"], ["html", "html", "html"]] as const) {
+      const n = newNode(choice, f, { x: 0, y: 0 }) as WebNode;
+      expect(n).toMatchObject({ type: "web", config: { start: { kind: "continue" } } });
+      expect(n.config.actions).toMatchObject([{ kind: "save", source }]);
+      expect(webFace(n)).toBe(face);
+      const g = { ...f, nodes: [...f.nodes, n], edges: [...f.edges, { id: "ez", from: { node: f.nodes[f.nodes.length - 1]!.id, port: "out" }, to: { node: n.id } }] };
+      expect(checkFlow(g)).toEqual([]);
+      expect(subtitleOf(n)).toBe(choice === "capture" ? "📷 capture/화면.png" : "🧾 html/페이지.html");
+    }
+  });
 });

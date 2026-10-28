@@ -23,13 +23,23 @@ export const emptyTarget = (label = ""): Target => ({ label, locators: [{ kind: 
  * 고를 수 있는 것 — 노드 종류, 또는 워커에 설치된 확장.
  * «human»(사람 기다리기)은 따로 된 종류가 아니라 **사람 기다리기 동작 하나만 든 웹페이지 노드**다(앞 페이지에서 이어서) — 캔버스가 따로 그린다(split.ts webFace)
  */
-export type NodeChoice = Exclude<NodeType, "extension"> | "human" | ExtensionMeta;
+export type NodeChoice = Exclude<NodeType, "extension"> | "human" | "capture" | "html" | ExtensionMeta;
 
 export function newNode(choice: NodeChoice, flow: Flow, position: { x: number; y: number }): FlowNode {
   if (choice === "human") {
     const id = nextId("web", flow.nodes.map((n) => n.id));
     const hasWeb = flow.nodes.some((n) => n.type === "web");
     return { id, name: "사람 기다리기", position, type: "web", config: { start: hasWeb ? { kind: "continue" } : { kind: "url", url: "" }, actions: [newAction("human", [])] } };
+  }
+  // 화면 캡처 · HTML 추출 — 앞 페이지에서 이어서 저장 동작 하나(속은 웹페이지 노드)
+  if (choice === "capture" || choice === "html") {
+    const id = nextId("web", flow.nodes.map((n) => n.id));
+    const hasWeb = flow.nodes.some((n) => n.type === "web");
+    const save = newAction("save", []) as Extract<WebAction, { kind: "save" }>;
+    const action: WebAction = choice === "capture"
+      ? { ...save, source: "screenshot", path: "capture/화면.png", skipExisting: false, capture: { area: "full", target: null, format: "png", quality: null, mask: [] } }
+      : { ...save, source: "html", path: "html/페이지.html", skipExisting: false, html: { area: "page", target: null } };
+    return { id, name: choice === "capture" ? "화면 캡처" : "HTML 추출", position, type: "web", config: { start: hasWeb ? { kind: "continue" } : { kind: "url", url: "" }, actions: [action] } };
   }
   if (typeof choice === "object") {
     const id = nextId("ext", flow.nodes.map((n) => n.id));
@@ -78,6 +88,17 @@ export function newNode(choice: NodeChoice, flow: Flow, position: { x: number; y
   }
 }
 
+/** 동작의 빈 칸을 기본값으로 — API · 손으로 넣은 초안(캡처의 가릴 요소 · HTML 범위가 빠진 것)을 열어도 화면이 죽지 않게 */
+export function withActionDefaults(a: WebAction): WebAction {
+  if (a.kind !== "save") return a;
+  if (a.source === "screenshot") {
+    const c = a.capture;
+    return { ...a, capture: { area: c?.area ?? "full", target: c?.target ?? null, format: c?.format ?? "png", quality: c?.quality ?? null, mask: c?.mask ?? [] } };
+  }
+  if (a.source === "html") return { ...a, html: { area: a.html?.area ?? "page", target: a.html?.target ?? null } };
+  return a;
+}
+
 export function newAction(kind: WebAction["kind"], taken: Iterable<string>): WebAction {
   const base = { id: nextId("a", taken), risk: "safe" as const, timeoutMs: null, optional: false };
   switch (kind) {
@@ -115,7 +136,7 @@ export function normalize(draft: unknown): Flow {
     // 실행 입력 — 빠진 칸(종류 · 보기 · 기본값 · 설명)은 검문소와 같은 기본값으로
     params: (d.params ?? []).map((p) => newParam(p)),
     // 옛 이름 «store»(저장 노드)는 파일 쓰기로
-    nodes: (d.nodes ?? []).map((n0) => ({ ...n0, type: (n0.type as string) === "store" ? "fileWrite" : n0.type }) as FlowNode).map((n) => ({ ...n, position: n.position ?? { x: 0, y: 0 }, ...(n.type === "fileWrite" ? { config: withStoreDefaults(n.config) } : n.type === "fileRead" ? { config: withFileReadDefaults(n.config) } : n.type === "flowCall" ? { config: withFlowCallDefaults(n.config) } : n.type === "http" ? { config: withHttpDefaults(n.config) } : n.type === "transform" ? { config: withTransformDefaults(n.config) } : n.type === "zip" ? { config: withZipDefaults(n.config) } : {}) }) as FlowNode),
+    nodes: (d.nodes ?? []).map((n0) => ({ ...n0, type: (n0.type as string) === "store" ? "fileWrite" : n0.type }) as FlowNode).map((n) => ({ ...n, position: n.position ?? { x: 0, y: 0 }, ...(n.type === "fileWrite" ? { config: withStoreDefaults(n.config) } : n.type === "fileRead" ? { config: withFileReadDefaults(n.config) } : n.type === "flowCall" ? { config: withFlowCallDefaults(n.config) } : n.type === "http" ? { config: withHttpDefaults(n.config) } : n.type === "transform" ? { config: withTransformDefaults(n.config) } : n.type === "zip" ? { config: withZipDefaults(n.config) } : n.type === "web" ? { config: { ...n.config, actions: (n.config.actions ?? []).map(withActionDefaults) } } : {}) }) as FlowNode),
     edges: d.edges ?? [],
     notes: d.notes ?? [],
     vars: d.vars ?? {},

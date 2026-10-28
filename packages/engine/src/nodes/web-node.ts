@@ -212,6 +212,25 @@ async function saveFile(
     if (/login|signin|sso/iu.test(new URL(res.url()).pathname) && !/login|signin|sso/iu.test(new URL(url).pathname)) {
       throw refuse(`받으려던 주소가 로그인 화면(${res.url()})으로 넘어갔습니다 — 로그인이 풀렸거나 권한이 없습니다`);
     }
+  } else if (a.source === "screenshot") {
+    const c = a.capture ?? { area: "full" as const, target: null, format: "png" as const, quality: null, mask: [] };
+    const opts = { type: c.format, timeout: timeoutMs, ...(c.quality !== null && c.format === "jpeg" ? { quality: c.quality } : {}), mask: c.mask.map((m) => locateAll(page, m)), animations: "disabled" as const };
+    if (c.area === "element") {
+      const el = locateAll(page, c.target!).first();
+      if (!(await el.isVisible().catch(() => false))) throw refuse(`찍을 요소 «${c.target!.label}»가 보이지 않습니다 — ${describeLocator(c.target!.locators[0]!)}`);
+      bytes = await el.screenshot(opts);
+    } else bytes = await page.screenshot({ ...opts, fullPage: c.area === "full" });
+    how = `${c.area === "full" ? "전체 페이지" : c.area === "viewport" ? "보이는 화면" : `«${c.target!.label}»`} ${c.format.toUpperCase()}${c.mask.length ? ` · ${c.mask.length}곳 가림` : ""}`;
+  } else if (a.source === "html") {
+    const h = a.html ?? { area: "page" as const, target: null };
+    let html: string;
+    if (h.area === "element") {
+      const el = locateAll(page, h.target!).first();
+      if ((await el.count()) === 0) throw refuse(`HTML을 뽑을 요소 «${h.target!.label}»가 없습니다 — ${describeLocator(h.target!.locators[0]!)}`);
+      html = await el.evaluate((e: any) => e.outerHTML as string);
+    } else html = await page.content();
+    bytes = Buffer.from(standaloneHtml(html, page.url(), h.area === "element"), "utf8");
+    how = h.area === "element" ? `«${h.target!.label}»의 HTML` : "페이지 HTML";
   } else {
     bytes = await page.pdf({ printBackground: true, format: "A4", timeout: timeoutMs } as Parameters<Page["pdf"]>[0]).catch((e: Error) => {
       throw fail(`지금 페이지를 PDF로 찍지 못했습니다 — 창 없는 브라우저(띄우기)에서만 됩니다. 사람의 크롬 · 창 있는 브라우저면 «주소에서 받기»를 쓰세요(${e.message.split("\n")[0]})`);
@@ -225,6 +244,18 @@ async function saveFile(
   }
   await fs.writeBytes(full, bytes);
   return { path: rel, note: `${rel}에 저장했습니다 — ${Math.max(1, Math.round(bytes.length / 1024))}KB(${how})` };
+}
+
+/**
+ * 뽑은 HTML을 따로 열어도 보이게 — 원래 주소를 <base>로(상대 경로의 그림 · 스타일 · 링크) · utf-8.
+ * 요소 하나면 문서로 감싼다. 이미 <base>가 있으면 두고, 원본 HTML은 바꾸지 않는다(스크립트도 그대로)
+ */
+export function standaloneHtml(html: string, url: string, fragment: boolean): string {
+  const head = `<meta charset="utf-8"><base href="${url.replace(/"/g, "&quot;")}">`;
+  if (fragment) return `<!doctype html>\n<html><head>${head}</head><body>\n${html}\n</body></html>\n`;
+  if (/<base[\s>]/iu.test(html)) return html;
+  if (/<head[^>]*>/iu.test(html)) return html.replace(/<head[^>]*>/iu, (m) => `${m}${head}`);
+  return `${head}\n${html}`;
 }
 
 /** 결과 행에 그 행의 값을 함께 — 어느 행의 결과인지 남게(객체면 칸 그대로 · 아니면 item) */

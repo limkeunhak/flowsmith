@@ -6,6 +6,7 @@ import {
 import { FindingCard } from "../monitor/Monitor.tsx";
 import { ACTION_LABEL, describeAction, emptyTarget, newAction } from "../../model/index.ts";
 import { Field, TargetEditor, TemplateInput } from "../widgets.tsx";
+import { IconX } from "../../icons.tsx";
 
 import { OP_LABEL } from "./ConditionInspector.tsx";
 
@@ -328,7 +329,7 @@ function ActionForm({ flow, nodeId, action: a, onChange }: { flow: Flow; nodeId:
 }
 
 const READ_LABEL: Record<(typeof READ_STRATEGIES)[number], string> = {
-  auto: "알아서(칸이면 값, 아니면 글자)", value: "칸의 값", text: "글자(숨은 것 포함)", innerText: "보이는 글자", checked: "체크 여부", attribute: "속성", selected: "고른 보기의 이름", link: "링크 주소",
+  auto: "알아서(칸이면 값, 아니면 글자)", value: "칸의 값", text: "글자(숨은 것 포함)", innerText: "보이는 글자", checked: "체크 여부", attribute: "속성", selected: "고른 보기의 이름", link: "링크 주소", html: "HTML 그대로(요소의 outerHTML)",
 };
 const WAIT_LABEL: Record<(typeof WAIT_KINDS)[number], string> = {
   fixed: "정해진 시간", visible: "요소가 보일 때까지", hidden: "요소가 사라질 때까지", url: "주소가 바뀔 때까지", networkIdle: "네트워크가 잠잠해질 때까지", filled: "칸에 값이 찰 때까지",
@@ -484,11 +485,31 @@ function SaveForm({ flow, nodeId, action: a, onChange }: { flow: Flow; nodeId: s
   return (
     <>
       <Field label="무엇을">
-        <select value={a.source} onChange={(e) => onChange({ ...a, source: e.target.value as typeof a.source })}>
+        <select value={a.source} onChange={(e) => {
+          const source = e.target.value as typeof a.source;
+          const { capture: _c, html: _h, ...rest } = a;
+          onChange(source === "screenshot" ? { ...rest, source, capture: a.capture ?? { area: "full", target: null, format: "png", quality: null, mask: [] } }
+            : source === "html" ? { ...rest, source, html: a.html ?? { area: "page", target: null } } : { ...rest, source });
+        }}>
           <option value="url">주소에서 받기 — 이 브라우저의 로그인으로(PDF 내보내기 · 첨부)</option>
           <option value="page">지금 페이지를 PDF로 — 창 없는 브라우저에서만</option>
+          <option value="screenshot">화면 캡처(PNG · JPEG) — 어느 브라우저에서나</option>
+          <option value="html">HTML 추출 — 페이지 · 요소 하나</option>
         </select>
       </Field>
+      {a.source === "screenshot" && a.capture && <CaptureFields c={a.capture} onChange={(capture) => onChange({ ...a, capture })} />}
+      {a.source === "html" && a.html && (
+        <>
+          <Field label="무엇의 HTML">
+            <select value={a.html.area} onChange={(e) => onChange({ ...a, html: e.target.value === "element" ? { area: "element", target: a.html!.target ?? emptyTarget() } : { area: "page", target: null } })}>
+              <option value="page">페이지 전체 — 지금 그려진 그대로</option>
+              <option value="element">요소 하나(본문만 같은 것)</option>
+            </select>
+          </Field>
+          {a.html.area === "element" && <TargetEditor target={a.html.target ?? emptyTarget()} onChange={(target) => onChange({ ...a, html: { area: "element", target } })} />}
+          <span className="small muted">따로 열어도 보이게 원래 주소(&lt;base&gt;)와 utf-8을 붙입니다. 값으로 넘기려면 «읽기»의 «HTML 그대로»를 쓰세요.</span>
+        </>
+      )}
       {a.source === "url" && (
         <Field label="받을 주소" hint="이 페이지 기준 상대 주소도 됩니다 — 화면은 옮기지 않습니다">
           <TemplateInput flow={flow} nodeId={nodeId} value={a.url} placeholder="/spaces/flyingpdf/pdfpageexport.action?pageId={{ $item.id }}" onChange={(url) => onChange({ ...a, url })} />
@@ -511,6 +532,43 @@ function SaveForm({ flow, nodeId, action: a, onChange }: { flow: Flow; nodeId: s
         <Field label="경로를 내보낼 이름(비워도 됨)"><input value={a.output ?? ""} onChange={(e) => onChange({ ...a, output: e.target.value.trim() === "" ? null : e.target.value })} /></Field>
         <label className="check"><input type="checkbox" checked={a.skipExisting} onChange={(e) => onChange({ ...a, skipExisting: e.target.checked })} />이미 있으면 건너뛰기(끊긴 수집 이어 하기)</label>
       </div>
+    </>
+  );
+}
+
+/** 화면 캡처 — 범위 · 요소 · 형식 · 품질 · 가릴 요소(개인정보) */
+function CaptureFields({ c, onChange }: { c: NonNullable<Extract<WebAction, { kind: "save" }>["capture"]>; onChange: (c: NonNullable<Extract<WebAction, { kind: "save" }>["capture"]>) => void }) {
+  return (
+    <>
+      <div className="row wrap">
+        <Field label="무엇을">
+          <select value={c.area} onChange={(e) => { const area = e.target.value as typeof c.area; onChange({ ...c, area, target: area === "element" ? (c.target ?? emptyTarget()) : null }); }}>
+            <option value="full">전체 페이지(스크롤 아래까지)</option>
+            <option value="viewport">보이는 화면만</option>
+            <option value="element">요소 하나</option>
+          </select>
+        </Field>
+        <Field label="형식">
+          <select value={c.format} onChange={(e) => onChange({ ...c, format: e.target.value as typeof c.format, quality: e.target.value === "jpeg" ? (c.quality ?? 80) : null })}>
+            <option value="png">PNG — 글자가 또렷하다</option>
+            <option value="jpeg">JPEG — 작다(긴 페이지)</option>
+          </select>
+        </Field>
+        {c.format === "jpeg" && (
+          <Field label="품질(1~100)">
+            <input type="number" min={1} max={100} style={{ width: 70 }} value={c.quality ?? 80} onChange={(e) => onChange({ ...c, quality: Math.min(100, Math.max(1, Math.round(Number(e.target.value)) || 80)) })} />
+          </Field>
+        )}
+      </div>
+      {c.area === "element" && <TargetEditor target={c.target ?? emptyTarget()} onChange={(target) => onChange({ ...c, target })} />}
+      <span className="small muted">가릴 요소 — 화면의 개인정보(이름 · 연락처 · 계좌)는 실행 기록처럼 저절로 가려지지 않습니다. 여기 고른 자리는 칠해서 찍습니다.</span>
+      {c.mask.map((m, i) => (
+        <div key={i} className="row">
+          <div className="grow"><TargetEditor target={m} onChange={(t) => onChange({ ...c, mask: c.mask.map((x, j) => (j === i ? t : x)) })} /></div>
+          <button className="icon-btn" title="빼기" onClick={() => onChange({ ...c, mask: c.mask.filter((_, j) => j !== i) })}><IconX size={14} /></button>
+        </div>
+      ))}
+      <button className="btn small" style={{ alignSelf: "start" }} onClick={() => onChange({ ...c, mask: [...c.mask, emptyTarget()] })}>가릴 요소 더하기</button>
     </>
   );
 }

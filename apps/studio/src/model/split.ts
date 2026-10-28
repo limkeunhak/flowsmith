@@ -102,9 +102,13 @@ export const splitStages = (f: Flow, nodeId: string): { flow: Flow; ids: string[
 };
 
 /** 캔버스 · 노드 창에서 웹페이지 노드의 얼굴 — 사람 기다리기뿐 · 접속만 · 보통 */
-export function webFace(n: FlowNode): "human" | "open" | null {
+export function webFace(n: FlowNode): "human" | "open" | "capture" | "html" | null {
   if (n.type !== "web") return null;
   if (isHumanOnly(n.config.actions)) return "human";
+  // 화면 캡처 · HTML 추출 — 저장 동작 하나뿐인 노드(노드 고르기의 바로가기가 만든 것)
+  const only = n.config.actions.length === 1 ? n.config.actions[0]! : null;
+  if (only?.kind === "save" && only.source === "screenshot") return "capture";
+  if (only?.kind === "save" && only.source === "html") return "html";
   if (n.config.actions.length === 0 && n.config.start.kind !== "continue") return "open";
   return null;
 }

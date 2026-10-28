@@ -411,6 +411,8 @@ async function readEl(el: PwLocator, strategy: ReadStrategy, attribute: string |
     case "selected": return norm(await el.evaluate((e: any) => (e.selectedOptions && e.selectedOptions[0] ? e.selectedOptions[0].textContent : e.value) ?? "", undefined, { timeout: timeoutMs }));
     // 링크 주소 — 요소 자신이나 감싼 링크의 href를 **절대 주소로**(「?query=…」가 아니라 https://…)
     case "link": return await el.evaluate((e: any) => (e.closest?.("a[href]") ?? e.querySelector?.("a[href]"))?.href ?? null, undefined, { timeout: timeoutMs });
+    // 요소의 HTML 그대로(outerHTML) — 다듬지 않는다(공백 · 줄바꿈도 HTML의 일부)
+    case "html": return await el.evaluate((e: any) => e.outerHTML as string, undefined, { timeout: timeoutMs });
     case "auto": {
       // 입력 칸이면 값, 아니면 보이는 글자
       const v = await el.inputValue({ timeout: 500 }).catch(() => null);

@@ -79,6 +79,10 @@ export const NodeIconWeb = (p: P) => <Svg {...p}><rect x="3" y="4.5" width="18" 
 export const NodeIconHuman = (p: P) => <Svg {...p}><circle cx="10" cy="7.5" r="3.5" {...soft} /><path d="M3.5 20c.6-3.9 3.2-6 6.5-6s5.9 2.1 6.5 6Z" {...soft} /><circle cx="10" cy="7.5" r="3.5" /><path d="M3.5 20c.6-3.9 3.2-6 6.5-6 1.5 0 2.8.4 3.9 1.2" /><circle cx="18" cy="17" r="3.6" /><path d="M18 15.3V17l1.2.9" /></Svg>;
 /** 페이지 접속 — 창 + 들어가는 화살표 */
 export const NodeIconOpen = (p: P) => <Svg {...p}><rect x="3" y="4.5" width="18" height="15" rx="2.5" {...soft} /><rect x="3" y="4.5" width="18" height="15" rx="2.5" /><path d="M3 9h18" /><path d="M6 6.8h.01M8.4 6.8h.01" strokeWidth={2.4} /><path d="M8 14.5h7m-2.5-2.5 2.5 2.5-2.5 2.5" /></Svg>;
+/** 화면 캡처 — 사진기 */
+export const NodeIconCapture = (p: P) => <Svg {...p}><rect x="3" y="7" width="18" height="13" rx="2.5" {...soft} /><path d="M8.5 7 10 4.5h4L15.5 7H18.5A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5v-8A2.5 2.5 0 0 1 5.5 7Z" /><circle cx="12" cy="13.3" r="3.6" /></Svg>;
+/** HTML 추출 — 창 + 꺾쇠 */
+export const NodeIconHtml = (p: P) => <Svg {...p}><rect x="3" y="4.5" width="18" height="15" rx="2.5" {...soft} /><rect x="3" y="4.5" width="18" height="15" rx="2.5" /><path d="M3 9h18" /><path d="m9.5 12.2-2.6 2.4 2.6 2.4M14.5 12.2l2.6 2.4-2.6 2.4" /></Svg>;
 /** 압축(zip) — 상자 + 지퍼 */
 export const NodeIconZip = (p: P) => <Svg {...p}><rect x="4" y="3.5" width="16" height="17" rx="2" {...soft} /><rect x="4" y="3.5" width="16" height="17" rx="2" /><path d="M12 3.5v2m0 2v2m0 2v2" /><rect x="10.3" y="13.5" width="3.4" height="4" rx=".8" /></Svg>;
 export const NodeIconIf = (p: P) => <Svg {...p}><path d="M12 3.2 20.8 12 12 20.8 3.2 12Z" {...soft} /><path d="M12 3.2 20.8 12 12 20.8 3.2 12Z" /><path d="M8.6 12h3.1m0 0 2.7-2.7m-2.7 2.7 2.7 2.7" /></Svg>;
