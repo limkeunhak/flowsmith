@@ -2,7 +2,7 @@
  * 실행 로그 — 왼쪽에 노드 목록(상태), 오른쪽에 고른 노드의 단계 · 실패 · 입력 · 출력.
  * 캔버스 아래 패널과 「실행 기록」 화면이 같이 쓴다 (n8n의 Logs 패널).
  */
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { leftText, RunScreen } from "../../live/RunScreen.tsx";
 import { api } from "../../api.ts";
 import type { NodeRun, NodeStatus, StepFailure } from "../../api.ts";
@@ -92,20 +92,73 @@ export function NodeRunDetail({ n, onFix, runId }: { n: NodeRun; onFix?: (fix: F
   );
 }
 
+/** 따라가기 — 도는 노드를 따라 고르고, 그 로그의 맨 아래를 따라간다(이 브라우저가 기억) */
+const FOLLOW_KEY = "flowsmith.runlog.follow";
+const readFollow = (): boolean => { try { return localStorage.getItem(FOLLOW_KEY) !== "off"; } catch { return true; } };
+/** 맨 아래로 볼 만큼 가까운가(px) */
+const NEAR_BOTTOM = 48;
+/** 실제로 스크롤되는 곳 — 편집 화면의 로그 패널은 상세 칸, 실행 기록 화면은 페이지 */
+function scrollerOf(el: HTMLElement | null): HTMLElement | null {
+  for (let e = el; e; e = e.parentElement) {
+    const o = getComputedStyle(e).overflowY;
+    if ((o === "auto" || o === "scroll") && e.scrollHeight > e.clientHeight) return e;
+  }
+  return (document.scrollingElement as HTMLElement | null) ?? null;
+}
+
 /** watchable — «실제 화면 보기» 단추를 여기 둘까(편집기는 로그 머리에 따로 둔다) */
 /** onFix — 실패 카드의 고치는 단추(편집 화면이 받는다) */
 /** onResumeFrom — 끝난 실행을 그 단계부터 다시(실행 기록이 준다 · 단계 상세에 단추) */
 export function RunLog({ view, focus, onFocusNode, watchable = true, onFix, onResumeFrom }: { view: RunView; focus?: string | null; onFocusNode?: (id: string) => void; watchable?: boolean; onFix?: (fix: Fix) => void; onResumeFrom?: (nodeId: string) => void }) {
   const failed = view.nodes.find((n) => n.status === "failed")?.id;
   const [picked, setPicked] = useState<string | null>(null);
-  // 실패가 있으면 그것을, 아니면 플로우 결과를 먼저 보인다
-  const current = picked ?? focus ?? failed ?? "__result";
-  useEffect(() => { setPicked(null); }, [view.runId, focus]);
+  const [follow, setFollowState] = useState(readFollow);
+  const setFollow = (on: boolean) => { setFollowState(on); try { localStorage.setItem(FOLLOW_KEY, on ? "on" : "off"); } catch { /* 기억 못 해도 된다 */ } };
+  const runningNode = view.nodes.find((n) => n.status === "running");
+  // 도는 동안 사람이 고르지 않았으면 도는 노드를 따라간다 · 아니면 실패가 있으면 그것을, 없으면 플로우 결과를 먼저 보인다
+  const following = view.status === "running" && follow && picked === null && !!runningNode;
+  const current = picked ?? (following ? runningNode!.id : null) ?? focus ?? failed ?? "__result";
+  // 캔버스에서 노드를 고르면 그것(따라가기보다 앞) · 새 실행이면 다시 따라가기부터
+  const firstFocus = useRef(true);
+  useEffect(() => { if (firstFocus.current) { firstFocus.current = false; return; } setPicked(focus ?? null); }, [focus]);
+  useEffect(() => { setPicked(null); }, [view.runId]);
   const node = view.nodes.find((n) => n.id === current) ?? null;
   const [watching, setWatching] = useState(false);
   useEffect(() => { setWatching(false); }, [view.runId]);
-  const runningNode = view.nodes.find((n) => n.status === "running");
   const lastStep = runningNode?.steps.at(-1);
+
+  // ── 로그 맨 아래 따라가기 — 보고 있는 노드가 도는 중이면. 위로 올려 읽는 동안은 멈추고 «새 로그»를 센다 ──
+  const detail = useRef<HTMLDivElement>(null);
+  const atBottom = useRef(true);
+  const [unseen, setUnseen] = useState(0);
+  const tailing = view.status === "running" && node?.status === "running";
+  const lines = node ? node.steps.length + node.logs.length : 0;
+  const seenLines = useRef(lines);
+  const toBottom = () => {
+    const sc = scrollerOf(detail.current);
+    if (sc) sc.scrollTop = sc.scrollHeight;
+    atBottom.current = true;
+    setUnseen(0);
+  };
+  useEffect(() => {
+    const onScroll = () => {
+      const sc = scrollerOf(detail.current);
+      if (!sc) return;
+      atBottom.current = sc.scrollHeight - sc.scrollTop - sc.clientHeight < NEAR_BOTTOM;
+      if (atBottom.current) setUnseen(0);
+    };
+    // scroll은 거품이 일지 않는다 — 잡기(capture)로 어느 칸이 스크롤되든 듣는다
+    document.addEventListener("scroll", onScroll, true);
+    return () => document.removeEventListener("scroll", onScroll, true);
+  }, []);
+  // 다른 노드로 옮기면 그 노드의 맨 아래부터(도는 중일 때만)
+  useLayoutEffect(() => { seenLines.current = lines; setUnseen(0); if (tailing) toBottom(); }, [current]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => {
+    const added = lines - seenLines.current;
+    seenLines.current = lines;
+    if (!tailing || added <= 0) return;
+    if (atBottom.current) toBottom(); else setUnseen((u) => u + added);
+  }, [lines, tailing]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="runlog">
@@ -116,6 +169,13 @@ export function RunLog({ view, focus, onFocusNode, watchable = true, onFix, onRe
           {...(runningNode ? { step: `${runningNode.name}${lastStep ? ` — ${lastStep.note}` : ""}` } : {})} />
       )}
       <div className="runlog-list">
+        {view.status === "running" && (
+          <button className={`runlog-follow small${following ? " on" : ""}`} aria-pressed={following}
+            title={following ? "도는 노드를 따라 보고 있습니다 — 누르면 그만둡니다" : "도는 노드를 따라 보고, 로그가 늘면 맨 아래로 갑니다"}
+            onClick={() => { if (following) setFollow(false); else { setFollow(true); setPicked(null); } }}>
+            {following ? "⤓ 따라가는 중" : "⤓ 따라가기"}
+          </button>
+        )}
         <button className={`runlog-item${current === "__result" ? " on" : ""}`} onClick={() => setPicked("__result")}>
           <StatusDot status={view.status} /><span className="grow">워크플로우 결과</span><span className="muted small">{durationText(view.ms)}</span>
         </button>
@@ -127,7 +187,7 @@ export function RunLog({ view, focus, onFocusNode, watchable = true, onFix, onRe
           </button>
         ))}
       </div>
-      <div className="runlog-detail">
+      <div className="runlog-detail" ref={detail}>
         {current === "__result" || node === null ? (
           <div className="stack">
             {view.message && <div className={`banner ${view.status === "failure" ? "bad" : view.status === "blocked" ? "warn" : "info"}`}>{view.status === "blocked" ? `🚫 막힘 — ${view.message}` : view.message}</div>}
@@ -151,6 +211,7 @@ export function RunLog({ view, focus, onFocusNode, watchable = true, onFix, onRe
                 <button className="small" onClick={() => onResumeFrom(node.id)}>↻ 여기서부터 다시</button></div>
             )}
             <NodeRunDetail n={node} runId={view.runId} {...(onFix ? { onFix } : {})} />
+            {tailing && unseen > 0 && <button className="runlog-unseen small primary" onClick={toBottom}>↓ 새 로그 {unseen}개</button>}
           </div>
         )}
       </div>

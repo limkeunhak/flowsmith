@@ -172,6 +172,10 @@
 .runlog-item { width: 100%; border: none; background: transparent; justify-content: flex-start; text-align: left; padding: 7px 8px; border-radius: 6px; font-size: 13px; }
 .runlog-item.on { background: var(--accent-soft) !important; }
 .runlog-detail { overflow: auto; padding: 14px 16px; }
+/* 따라가기 — 도는 노드 · 로그 맨 아래. 위로 올려 읽는 동안 늘어난 줄은 단추로 알린다 */
+.runlog-follow { width: 100%; margin-bottom: 6px; justify-content: center; }
+.runlog-follow.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.runlog-unseen { position: sticky; bottom: 8px; align-self: center; box-shadow: 0 4px 14px rgba(0, 0, 0, .18); z-index: 2; }
 .exec-detail .runlog { height: auto; min-height: 400px; border: 1px solid var(--border); border-radius: 10px; }
 
 .dot { width: 16px; height: 16px; border-radius: 50%; display: inline-grid; place-items: center; color: var(--on-solid); flex-shrink: 0; vertical-align: middle; }
